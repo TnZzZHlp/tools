@@ -70,12 +70,12 @@ async function copyOutput() {
     </section>
 
     <section
-      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-6 lg:h-full lg:border-t-0 lg:border-l lg:p-6 lg:pt-0">
+      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-6 lg:h-full lg:border-t-0 lg:border-l lg:px-6 lg:pt-0">
       <header class="shrink-0">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="space-y-2">
             <div class="flex justify-between">
-              <Badge variant="outline" class="h-fit ">输出结果</Badge>
+              <Badge variant="outline" class="h-fit">输出结果</Badge>
               <Button type="button" variant="outline" size="icon" :disabled="!output" @click="copyOutput">
                 <ClipboardCopy class="h-4 w-4" />
               </Button>
@@ -90,7 +90,7 @@ async function copyOutput() {
         </div>
       </header>
 
-      <div class="visible-scrollbar flex min-h-0 flex-1 flex-col space-y-4 overflow-auto pt-4">
+      <div class="flex min-h-0 flex-1 flex-col pt-4 h-full">
         <div class="flex min-h-0 flex-1 flex-col space-y-2 overflow-hidden">
           <label class="block text-sm text-muted-foreground" for="logql-output">模板字符串</label>
           <Textarea id="logql-output" :model-value="output" data-testid="logql-output"
@@ -98,7 +98,7 @@ async function copyOutput() {
             readonly />
         </div>
 
-        <Alert v-if="parseResult.error" variant="destructive">
+        <Alert v-if="parseResult.error" variant="destructive" class="mt-4 shrink-0">
           <AlertTitle>解析失败</AlertTitle>
           <AlertDescription>{{ parseResult.error }}</AlertDescription>
         </Alert>
@@ -113,24 +113,27 @@ async function copyOutput() {
         </div>
       </header>
 
-      <div class="visible-scrollbar min-h-0 flex-1 overflow-auto pt-4">
-        <div v-if="parsedMacros.length" class="grid gap-4">
+      <div class="min-h-0 flex-1 overflow-auto pt-4">
+        <div v-if="parsedMacros.length" class="divide-y">
           <article v-for="(macro, index) in parsedMacros" :key="`${macro.macroName}-${index}`"
-            class="space-y-3 rounded-2xl border bg-muted/20 p-4">
+            class="space-y-4 py-4 first:pt-0 last:pb-0">
             <div class="flex flex-wrap items-center gap-2">
               <Badge>{{ macro.macroName }}!</Badge>
               <Badge variant="outline">第 {{ index + 1 }} 条</Badge>
             </div>
 
-            <dl class="grid gap-3">
-              <div v-if="macro.message" class="rounded-2xl border bg-muted/30 px-4 py-3">
+            <dl class="divide-y">
+              <div v-if="macro.message" class="py-3 first:pt-0 last:pb-0">
                 <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Message</dt>
                 <dd class="mt-2 text-sm leading-6">{{ macro.message }}</dd>
               </div>
-              <div class="flex">
-                <Badge v-for="field in macro.fields" :key="field.key" variant="outline" class="ml-1">
-                  {{ field.key }}
-                </Badge>
+              <div v-if="macro.fields.length" class="py-3 first:pt-0 last:pb-0">
+                <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fields</dt>
+                <dd class="mt-2 flex flex-wrap gap-2">
+                  <Badge v-for="field in macro.fields" :key="field.key" variant="outline" class="font-mono">
+                    {{ field.key }}
+                  </Badge>
+                </dd>
               </div>
             </dl>
           </article>
