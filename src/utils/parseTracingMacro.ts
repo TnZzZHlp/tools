@@ -12,9 +12,14 @@ export interface ParsedTracingMacro {
   template: string
 }
 
+export interface ParsedTracingMacroBatch {
+  macros: ParsedTracingMacro[]
+  template: string
+}
+
 export interface ParseTracingMacroResult {
   ok: boolean
-  data: ParsedTracingMacro | null
+  data: ParsedTracingMacroBatch | null
   error: string | null
 }
 
@@ -28,6 +33,50 @@ export function parseTracingMacro(input: string): ParseTracingMacroResult {
       error: '请输入 Rust tracing 宏内容。',
     }
   }
+
+  const statements = splitTopLevelStatements(source)
+
+  if (statements.length === 0) {
+    return {
+      ok: false,
+      data: null,
+      error: '请输入 Rust tracing 宏内容。',
+    }
+  }
+
+  const macros: ParsedTracingMacro[] = []
+
+  for (const [index, statement] of statements.entries()) {
+    const parsed = parseSingleTracingMacro(statement)
+
+    if (!parsed.ok || !parsed.data) {
+      return {
+        ok: false,
+        data: null,
+        error:
+          statements.length === 1 ? parsed.error : `第 ${index + 1} 条宏解析失败：${parsed.error}`,
+      }
+    }
+
+    macros.push(parsed.data)
+  }
+
+  return {
+    ok: true,
+    data: {
+      macros,
+      template: buildBatchTemplate(macros),
+    },
+    error: null,
+  }
+}
+
+function parseSingleTracingMacro(input: string): {
+  ok: boolean
+  data: ParsedTracingMacro | null
+  error: string | null
+} {
+  const source = input.trim()
 
   const macroMatch = source.match(/^(trace|debug|info|warn|error)!\s*\(([\s\S]*)\)\s*;?$/)
 
@@ -102,11 +151,7 @@ export function parseTracingMacro(input: string): ParseTracingMacroResult {
     }
   }
 
-  const templateSegments = [
-    message ? '{{.message}}' : '',
-    ...fields.map((field) => `${field.key}={{.${field.key}}}`),
-  ].filter(Boolean)
-  const template = templateSegments.join(' ')
+  const template = buildTemplate(message, fields)
 
   return {
     ok: true,
@@ -118,6 +163,125 @@ export function parseTracingMacro(input: string): ParseTracingMacroResult {
     },
     error: null,
   }
+}
+
+function splitTopLevelStatements(source: string): string[] {
+  const statements: string[] = []
+  let current = ''
+  let parenDepth = 0
+  let bracketDepth = 0
+  let braceDepth = 0
+  let inString = false
+  let escaped = false
+
+  for (const char of source) {
+    current += char
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+
+      if (char === '\\') {
+        escaped = true
+        continue
+      }
+
+      if (char === '"') {
+        inString = false
+      }
+
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === '(') {
+      parenDepth += 1
+      continue
+    }
+
+    if (char === ')') {
+      parenDepth -= 1
+      continue
+    }
+
+    if (char === '[') {
+      bracketDepth += 1
+      continue
+    }
+
+    if (char === ']') {
+      bracketDepth -= 1
+      continue
+    }
+
+    if (char === '{') {
+      braceDepth += 1
+      continue
+    }
+
+    if (char === '}') {
+      braceDepth -= 1
+      continue
+    }
+
+    if (char === ';' && parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
+      const statement = current.trim()
+
+      if (statement) {
+        statements.push(statement)
+      }
+
+      current = ''
+    }
+  }
+
+  if (current.trim()) {
+    statements.push(current.trim())
+  }
+
+  return statements
+}
+
+function buildTemplate(message: string | null, fields: ParsedTracingField[]): string {
+  const segments = ['{{$hasContent := false}}']
+
+  if (message) {
+    segments.push('{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}')
+  }
+
+  for (const field of fields) {
+    segments.push(
+      `{{ with .${field.key} }}{{ if $hasContent }} {{ end }}${field.key}={{ . }}{{$hasContent = true}}{{ end }}`,
+    )
+  }
+
+  return `| json | line_format "${segments.join('')}"`
+}
+
+function buildBatchTemplate(macros: ParsedTracingMacro[]): string {
+  const seenFieldKeys = new Set<string>()
+  const uniqueFields: ParsedTracingField[] = []
+
+  for (const macro of macros) {
+    for (const field of macro.fields) {
+      if (seenFieldKeys.has(field.key)) {
+        continue
+      }
+
+      seenFieldKeys.add(field.key)
+      uniqueFields.push(field)
+    }
+  }
+
+  const hasMessage = macros.some((macro) => macro.message !== null)
+
+  return buildTemplate(hasMessage ? '__message__' : null, uniqueFields)
 }
 
 function splitTopLevelArguments(source: string): string[] {
