@@ -47,8 +47,8 @@ jobs:
             - name: Upload frontend dist
               uses: actions/upload-artifact@v4
               with:
-                  name: frontend-dist
-                  path: frontend/dist/
+                  name: dist
+                  path: dist/
                   retention-days: 1
 
     deploy:
@@ -59,7 +59,7 @@ jobs:
             - name: Download frontend dist
               uses: actions/download-artifact@v4
               with:
-                  name: frontend-dist
+                  name: dist
                   path: ./dist
 
             - name: Setup SSH
