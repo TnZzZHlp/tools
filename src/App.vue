@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { RouterView } from 'vue-router'
+import { Moon, Sun } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+
+const isDark = ref(false)
+
+onMounted(() => {
+  isDark.value = document.documentElement.classList.contains('dark')
+})
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+}
 </script>
 
 <template>
@@ -15,9 +28,9 @@ import { RouterView } from 'vue-router'
           </div>
 
           <nav class="flex items-center gap-3">
-            <!-- 暗色切换按钮 -->
-            <Button variant="ghost" size="icon" @click="$emit('toggle-theme')">
-              <Sun class="h-4 w-4" />
+            <Button variant="ghost" size="icon" @click="toggleTheme" :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'">
+              <Sun v-if="isDark" class="h-4 w-4" />
+              <Moon v-else class="h-4 w-4" />
             </Button>
           </nav>
         </div>

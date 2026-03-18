@@ -12,20 +12,20 @@ const tools = [
 
 <template>
   <section class="space-y-6">
-    <div class="grid gap-6 md:grid-cols-2 md:divide-x-2 xl:grid-cols-3 xl:divide-x-3">
-      <div
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <li
         v-for="tool in tools"
         :key="tool.to"
-        class="bg-card text-card-foreground group flex cursor-pointer flex-col gap-6 rounded-xl py-6"
+        class="group cursor-pointer rounded-xl p-6 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        tabindex="0"
+        role="link"
         @click="$router.push(tool.to)"
+        @keydown.enter="$router.push(tool.to)"
+        @keydown.space.prevent="$router.push(tool.to)"
       >
-        <div class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 space-y-3">
-          <div class="flex items-start justify-between gap-3">
-            <HoverUnderlineTitle>{{ tool.name }}</HoverUnderlineTitle>
-          </div>
-          <p class="text-muted-foreground text-sm">{{ tool.description }}</p>
-        </div>
-      </div>
-    </div>
+        <HoverUnderlineTitle class="mb-2">{{ tool.name }}</HoverUnderlineTitle>
+        <p class="text-sm text-muted-foreground leading-relaxed">{{ tool.description }}</p>
+      </li>
+    </ul>
   </section>
 </template>

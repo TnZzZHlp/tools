@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { parseTracingMacro } from '@/utils/parseTracingMacro'
-import { ClipboardCopy } from 'lucide-vue-next'
+import { Check, ClipboardCopy } from 'lucide-vue-next'
 
 const exampleInput = `debug!(
     manga_name = manga.name,
@@ -19,26 +19,27 @@ info!(image_index = image.index, path = ?image_path, "Skipped existing image");
 warn!(image_index = image.index, error = %e, "Failed to download image");`
 
 const source = ref(exampleInput)
-const copyStatus = ref('')
+const copySuccess = ref(false)
 
 const parseResult = computed(() => parseTracingMacro(source.value))
 const output = computed(() => parseResult.value.data?.template ?? '')
 const parsedMacros = computed(() => parseResult.value.data?.macros ?? [])
 
 async function copyOutput() {
-  if (!output.value) {
-    copyStatus.value = '当前没有可复制的结果。'
-    return
-  }
+  if (!output.value) return
 
   try {
     await navigator.clipboard?.writeText(output.value)
-    copyStatus.value = '已复制到剪贴板。'
+    copySuccess.value = true
+    setTimeout(() => {
+      copySuccess.value = false
+    }, 2000)
   } catch {
-    copyStatus.value = '复制失败，请手动选中文本。'
+    // Fallback: select the textarea content
+    const textarea = document.querySelector('#logql-output') as HTMLTextAreaElement
+    textarea?.select()
   }
 }
-
 </script>
 
 <template>
@@ -50,9 +51,14 @@ async function copyOutput() {
             <Badge variant="secondary">输入 Rust tracing 宏</Badge>
             <div>
               <h2 class="text-xl font-semibold tracking-tight">生成 LogQL 模板</h2>
-              <p class="mt-2 text-sm text-muted-foreground">
+              <p class="mt-2 text-sm text-muted-foreground leading-relaxed">
                 支持
-                <code>trace!</code>、<code>debug!</code>、<code>info!</code>、<code>warn!</code>、<code>error!</code>，支持批量粘贴多条宏。
+                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">trace!</code>、
+                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">debug!</code>、
+                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">info!</code>、
+                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">warn!</code>、
+                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">error!</code>
+                ，支持批量粘贴多条宏。
               </p>
             </div>
           </div>
@@ -76,13 +82,23 @@ async function copyOutput() {
           <div class="space-y-2">
             <div class="flex justify-between">
               <Badge variant="outline" class="h-fit">输出结果</Badge>
-              <Button type="button" variant="outline" size="icon" :disabled="!output" @click="copyOutput">
-                <ClipboardCopy class="h-4 w-4" />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                :disabled="!output"
+                :aria-label="copySuccess ? '已复制' : '复制到剪贴板'"
+                class="transition-colors"
+                :class="copySuccess && 'text-green-600 dark:text-green-400 border-green-600 dark:border-green-400'"
+                @click="copyOutput"
+              >
+                <Check v-if="copySuccess" class="h-4 w-4" />
+                <ClipboardCopy v-else class="h-4 w-4" />
               </Button>
             </div>
             <div>
               <h2 class="text-xl font-semibold tracking-tight">LogQL 模板</h2>
-              <p class="mt-2 text-sm text-muted-foreground">
+              <p class="mt-2 text-sm text-muted-foreground leading-relaxed">
                 多条宏会按行生成；字段没有值时，对应片段不会输出。
               </p>
             </div>
@@ -98,7 +114,7 @@ async function copyOutput() {
             readonly />
         </div>
 
-        <Alert v-if="parseResult.error" variant="destructive" class="mt-4 shrink-0">
+        <Alert v-if="parseResult.error" variant="destructive" class="mt-4 shrink-0" role="alert" aria-live="polite">
           <AlertTitle>解析失败</AlertTitle>
           <AlertDescription>{{ parseResult.error }}</AlertDescription>
         </Alert>

@@ -14,7 +14,7 @@ describe('parseTracingMacro', () => {
     expect(result.ok).toBe(true)
     expect(result.error).toBeNull()
     expect(result.data?.template).toBe(
-      '{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .manga_name }}{{ if $hasContent }} {{ end }}manga_name={{ . }}{{$hasContent = true}}{{ end }}{{ with .parsed_count }}{{ if $hasContent }} {{ end }}parsed_count={{ . }}{{$hasContent = true}}{{ end }}{{ with .skipped_count }}{{ if $hasContent }} {{ end }}skipped_count={{ . }}{{$hasContent = true}}{{ end }}',
+      '| json | line_format "{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .manga_name }}{{ if $hasContent }} {{ end }}manga_name={{ . }}{{$hasContent = true}}{{ end }}{{ with .parsed_count }}{{ if $hasContent }} {{ end }}parsed_count={{ . }}{{$hasContent = true}}{{ end }}{{ with .skipped_count }}{{ if $hasContent }} {{ end }}skipped_count={{ . }}{{$hasContent = true}}{{ end }}"',
     )
     expect(result.data?.macros[0]?.fields.map((field) => field.key)).toEqual([
       'manga_name',
@@ -30,7 +30,7 @@ describe('parseTracingMacro', () => {
     expect(result.ok).toBe(true)
     expect(result.data?.macros[0]?.macroName).toBe('info')
     expect(result.data?.template).toBe(
-      '{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .user_id }}{{ if $hasContent }} {{ end }}user_id={{ . }}{{$hasContent = true}}{{ end }}{{ with .success }}{{ if $hasContent }} {{ end }}success={{ . }}{{$hasContent = true}}{{ end }}',
+      '| json | line_format "{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .user_id }}{{ if $hasContent }} {{ end }}user_id={{ . }}{{$hasContent = true}}{{ end }}{{ with .success }}{{ if $hasContent }} {{ end }}success={{ . }}{{$hasContent = true}}{{ end }}"',
     )
   })
 
@@ -40,7 +40,7 @@ describe('parseTracingMacro', () => {
     expect(result.ok).toBe(true)
     expect(result.data?.macros[0]?.message).toBeNull()
     expect(result.data?.template).toBe(
-      '{{$hasContent := false}}{{ with .user_id }}{{ if $hasContent }} {{ end }}user_id={{ . }}{{$hasContent = true}}{{ end }}{{ with .retry_count }}{{ if $hasContent }} {{ end }}retry_count={{ . }}{{$hasContent = true}}{{ end }}',
+      '| json | line_format "{{$hasContent := false}}{{ with .user_id }}{{ if $hasContent }} {{ end }}user_id={{ . }}{{$hasContent = true}}{{ end }}{{ with .retry_count }}{{ if $hasContent }} {{ end }}retry_count={{ . }}{{$hasContent = true}}{{ end }}"',
     )
   })
 
@@ -65,7 +65,7 @@ warn!(image_index = image.index, error = %e, "Failed to download image");`)
     expect(result.ok).toBe(true)
     expect(result.data?.macros).toHaveLength(3)
     expect(result.data?.template).toBe(
-      '{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .image_index }}{{ if $hasContent }} {{ end }}image_index={{ . }}{{$hasContent = true}}{{ end }}{{ with .path }}{{ if $hasContent }} {{ end }}path={{ . }}{{$hasContent = true}}{{ end }}{{ with .error }}{{ if $hasContent }} {{ end }}error={{ . }}{{$hasContent = true}}{{ end }}',
+      '| json | line_format "{{$hasContent := false}}{{ with .message }}{{ . }}{{$hasContent = true}}{{ end }}{{ with .image_index }}{{ if $hasContent }} {{ end }}image_index={{ . }}{{$hasContent = true}}{{ end }}{{ with .path }}{{ if $hasContent }} {{ end }}path={{ . }}{{$hasContent = true}}{{ end }}{{ with .error }}{{ if $hasContent }} {{ end }}error={{ . }}{{$hasContent = true}}{{ end }}"',
     )
   })
 
