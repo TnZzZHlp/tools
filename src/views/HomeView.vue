@@ -3,6 +3,11 @@ import HoverUnderlineTitle from '@/components/HoverUnderlineTitle.vue'
 
 const tools = [
   {
+    name: '随机字符串生成器',
+    description: '生成随机字符串，支持自定义字符类型、长度、批量生成、排除字符和 UUID 模式。',
+    to: '/random-string',
+  },
+  {
     name: 'Rust tracing → LogQL',
     description: '提取 Rust tracing 宏并且生成适合 Loki / LogQL 使用的模板字符串。',
     to: '/tools/rust-tracing-to-logql',
@@ -12,11 +17,11 @@ const tools = [
 
 <template>
   <section class="space-y-6">
-    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul class="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
       <li
         v-for="tool in tools"
         :key="tool.to"
-        class="group cursor-pointer rounded-xl p-6 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        class="group cursor-pointer rounded-xl p-4 transition-colors active:bg-muted/70 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
         tabindex="0"
         role="link"
         @click="$router.push(tool.to)"

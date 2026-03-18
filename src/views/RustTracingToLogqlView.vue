@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { parseTracingMacro } from '@/utils/parseTracingMacro'
-import { Check, ClipboardCopy } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronUp, ClipboardCopy } from 'lucide-vue-next'
 
 const exampleInput = `debug!(
     manga_name = manga.name,
@@ -20,6 +20,7 @@ warn!(image_index = image.index, error = %e, "Failed to download image");`
 
 const source = ref(exampleInput)
 const copySuccess = ref(false)
+const showDetails = ref(false)
 
 const parseResult = computed(() => parseTracingMacro(source.value))
 const output = computed(() => parseResult.value.data?.template ?? '')
@@ -35,7 +36,6 @@ async function copyOutput() {
       copySuccess.value = false
     }, 2000)
   } catch {
-    // Fallback: select the textarea content
     const textarea = document.querySelector('#logql-output') as HTMLTextAreaElement
     textarea?.select()
   }
@@ -43,21 +43,25 @@ async function copyOutput() {
 </script>
 
 <template>
-  <section class="grid h-full w-full min-h-0 gap-6 overflow-hidden lg:grid-cols-3 lg:gap-0">
+  <section class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-3 lg:gap-0">
     <section class="flex min-h-0 min-w-0 flex-col overflow-hidden lg:h-full lg:pr-6">
       <header class="shrink-0">
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="space-y-2">
+          <div class="space-y-1.5 sm:space-y-2">
             <Badge variant="secondary">输入 Rust tracing 宏</Badge>
             <div>
-              <h2 class="text-xl font-semibold tracking-tight">生成 LogQL 模板</h2>
-              <p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+              <h2 class="text-lg font-semibold tracking-tight sm:text-xl">生成 LogQL 模板</h2>
+              <p class="mt-1.5 text-sm text-muted-foreground leading-relaxed sm:mt-2">
                 支持
-                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">trace!</code>、
-                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">debug!</code>、
-                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">info!</code>、
-                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">warn!</code>、
-                <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">error!</code>
+                <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs sm:px-1.5">trace!</code
+                >、
+                <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs sm:px-1.5">debug!</code
+                >、
+                <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs sm:px-1.5">info!</code
+                >、
+                <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs sm:px-1.5">warn!</code
+                >、
+                <code class="rounded bg-muted px-1 py-0.5 font-mono text-xs sm:px-1.5">error!</code>
                 ，支持批量粘贴多条宏。
               </p>
             </div>
@@ -65,21 +69,31 @@ async function copyOutput() {
         </div>
       </header>
 
-      <div class="visible-scrollbar flex min-h-0 flex-1 flex-col space-y-4 overflow-auto pt-4">
+      <div
+        class="visible-scrollbar flex min-h-0 flex-1 flex-col space-y-3 overflow-auto pt-3 sm:space-y-4 sm:pt-4"
+      >
         <div class="flex min-h-0 flex-1 flex-col space-y-2 overflow-hidden">
-          <label class="block text-sm text-muted-foreground" for="tracing-source">Rust 宏内容</label>
-          <Textarea id="tracing-source" v-model="source" data-testid="tracing-input"
+          <label class="block text-sm text-muted-foreground" for="tracing-source"
+            >Rust 宏内容</label
+          >
+          <Textarea
+            id="tracing-source"
+            v-model="source"
+            data-testid="tracing-input"
             class="visible-scrollbar h-full min-h-0 flex-1 resize-none overflow-auto font-mono text-sm leading-6"
-            :placeholder="exampleInput" spellcheck="false" />
+            :placeholder="exampleInput"
+            spellcheck="false"
+          />
         </div>
       </div>
     </section>
 
     <section
-      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-6 lg:h-full lg:border-t-0 lg:border-l lg:px-6 lg:pt-0">
+      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-4 lg:h-full lg:border-t-0 lg:border-l lg:px-6 lg:pt-0"
+    >
       <header class="shrink-0">
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="space-y-2">
+          <div class="space-y-1.5 sm:space-y-2">
             <div class="flex justify-between">
               <Badge variant="outline" class="h-fit">输出结果</Badge>
               <Button
@@ -89,7 +103,10 @@ async function copyOutput() {
                 :disabled="!output"
                 :aria-label="copySuccess ? '已复制' : '复制到剪贴板'"
                 class="transition-colors"
-                :class="copySuccess && 'text-green-600 dark:text-green-400 border-green-600 dark:border-green-400'"
+                :class="
+                  copySuccess &&
+                  'text-green-600 dark:text-green-400 border-green-600 dark:border-green-400'
+                "
                 @click="copyOutput"
               >
                 <Check v-if="copySuccess" class="h-4 w-4" />
@@ -97,8 +114,8 @@ async function copyOutput() {
               </Button>
             </div>
             <div>
-              <h2 class="text-xl font-semibold tracking-tight">LogQL 模板</h2>
-              <p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+              <h2 class="text-lg font-semibold tracking-tight sm:text-xl">LogQL 模板</h2>
+              <p class="mt-1.5 text-sm text-muted-foreground leading-relaxed sm:mt-2">
                 多条宏会按行生成；字段没有值时，对应片段不会输出。
               </p>
             </div>
@@ -106,47 +123,67 @@ async function copyOutput() {
         </div>
       </header>
 
-      <div class="flex min-h-0 flex-1 flex-col pt-4 h-full">
+      <div class="flex min-h-0 flex-1 flex-col pt-3 h-full sm:pt-4">
         <div class="flex min-h-0 flex-1 flex-col space-y-2 overflow-hidden">
           <label class="block text-sm text-muted-foreground" for="logql-output">模板字符串</label>
-          <Textarea id="logql-output" :model-value="output" data-testid="logql-output"
+          <Textarea
+            id="logql-output"
+            :model-value="output"
+            data-testid="logql-output"
             class="visible-scrollbar h-full min-h-0 flex-1 resize-none overflow-auto font-mono text-sm leading-6"
-            readonly />
+            readonly
+          />
         </div>
 
-        <Alert v-if="parseResult.error" variant="destructive" class="mt-4 shrink-0" role="alert" aria-live="polite">
+        <Alert
+          v-if="parseResult.error"
+          variant="destructive"
+          class="mt-3 shrink-0 sm:mt-4"
+          role="alert"
+          aria-live="polite"
+        >
           <AlertTitle>解析失败</AlertTitle>
           <AlertDescription>{{ parseResult.error }}</AlertDescription>
         </Alert>
       </div>
     </section>
+
     <section
-      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-6 lg:h-full lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
-      <header class="shrink-0 space-y-2">
+      class="hidden min-h-0 min-w-0 flex-col overflow-hidden lg:flex lg:h-full lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
+    >
+      <header class="shrink-0 space-y-1.5 sm:space-y-2">
         <Badge variant="secondary">解析详情</Badge>
         <div>
-          <h2 class="text-xl font-semibold tracking-tight">字段列表</h2>
+          <h2 class="text-lg font-semibold tracking-tight sm:text-xl">字段列表</h2>
         </div>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-auto pt-4">
+      <div class="min-h-0 flex-1 overflow-auto pt-3 sm:pt-4">
         <div v-if="parsedMacros.length" class="divide-y">
-          <article v-for="(macro, index) in parsedMacros" :key="`${macro.macroName}-${index}`"
-            class="space-y-4 py-4 first:pt-0 last:pb-0">
+          <article
+            v-for="(macro, index) in parsedMacros"
+            :key="`${macro.macroName}-${index}`"
+            class="space-y-3 py-3 first:pt-0 last:pb-0 sm:space-y-4 sm:py-4"
+          >
             <div class="flex flex-wrap items-center gap-2">
               <Badge>{{ macro.macroName }}!</Badge>
               <Badge variant="outline">第 {{ index + 1 }} 条</Badge>
             </div>
 
             <dl class="divide-y">
-              <div v-if="macro.message" class="py-3 first:pt-0 last:pb-0">
+              <div v-if="macro.message" class="py-2.5 first:pt-0 last:pb-0 sm:py-3">
                 <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Message</dt>
-                <dd class="mt-2 text-sm leading-6">{{ macro.message }}</dd>
+                <dd class="mt-1.5 text-sm leading-6 sm:mt-2">{{ macro.message }}</dd>
               </div>
-              <div v-if="macro.fields.length" class="py-3 first:pt-0 last:pb-0">
+              <div v-if="macro.fields.length" class="py-2.5 first:pt-0 last:pb-0 sm:py-3">
                 <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fields</dt>
-                <dd class="mt-2 flex flex-wrap gap-2">
-                  <Badge v-for="field in macro.fields" :key="field.key" variant="outline" class="font-mono">
+                <dd class="mt-1.5 flex flex-wrap gap-1.5 sm:mt-2 sm:gap-2">
+                  <Badge
+                    v-for="field in macro.fields"
+                    :key="field.key"
+                    variant="outline"
+                    class="font-mono"
+                  >
                     {{ field.key }}
                   </Badge>
                 </dd>
@@ -163,6 +200,63 @@ async function copyOutput() {
         </Alert>
       </div>
     </section>
+
+    <div class="border-t pt-3 lg:hidden">
+      <button
+        type="button"
+        class="flex w-full items-center justify-between gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted/50 active:bg-muted/70"
+        @click="showDetails = !showDetails"
+      >
+        <div class="flex items-center gap-2">
+          <Badge variant="secondary">解析详情</Badge>
+          <span v-if="parsedMacros.length" class="text-sm text-muted-foreground"
+            >{{ parsedMacros.length }} 条宏</span
+          >
+        </div>
+        <ChevronDown v-if="!showDetails" class="h-4 w-4 text-muted-foreground" />
+        <ChevronUp v-else class="h-4 w-4 text-muted-foreground" />
+      </button>
+
+      <div v-if="showDetails" class="mt-3 max-h-[40vh] overflow-auto">
+        <div v-if="parsedMacros.length" class="divide-y">
+          <article
+            v-for="(macro, index) in parsedMacros"
+            :key="`${macro.macroName}-${index}`"
+            class="space-y-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <Badge>{{ macro.macroName }}!</Badge>
+              <Badge variant="outline">第 {{ index + 1 }} 条</Badge>
+            </div>
+
+            <dl class="divide-y">
+              <div v-if="macro.message" class="py-2.5 first:pt-0 last:pb-0">
+                <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Message</dt>
+                <dd class="mt-1.5 text-sm leading-6">{{ macro.message }}</dd>
+              </div>
+              <div v-if="macro.fields.length" class="py-2.5 first:pt-0 last:pb-0">
+                <dt class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fields</dt>
+                <dd class="mt-1.5 flex flex-wrap gap-1.5">
+                  <Badge
+                    v-for="field in macro.fields"
+                    :key="field.key"
+                    variant="outline"
+                    class="font-mono"
+                  >
+                    {{ field.key }}
+                  </Badge>
+                </dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+
+        <Alert v-else class="border-dashed bg-transparent">
+          <AlertTitle>等待输入</AlertTitle>
+          <AlertDescription> 解析结果会显示在这里。 </AlertDescription>
+        </Alert>
+      </div>
+    </div>
   </section>
 </template>
 
