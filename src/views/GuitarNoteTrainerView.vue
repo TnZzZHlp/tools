@@ -17,14 +17,16 @@ import {
   RotateCcw,
   Target,
   Trophy,
+  Volume2,
   XCircle,
 } from 'lucide-vue-next'
 
-type Mode = 'reference' | 'quiz' | 'fretboard'
+type Mode = 'reference' | 'quiz' | 'ear' | 'fretboard'
 type IntervalKind = 'whole' | 'half'
 type QuestionKind = 'A' | 'B' | 'C' | 'D'
 type AnswerStatus = 'idle' | 'correct' | 'wrong'
 type FretAnswer = 1 | 2 | 3
+type EarAnswerMode = 'letter' | 'number' | 'solfege'
 
 interface NoteItem {
   id: string
@@ -74,7 +76,58 @@ interface FretMarker {
   type: 'start' | 'end'
 }
 
+interface EarOption {
+  id: string
+  label: string
+  value: string
+}
+
+interface EarQuestion {
+  id: string
+  noteIndex: number
+  answerMode: EarAnswerMode
+  options: EarOption[]
+  answer: string
+  answerLabel: string
+}
+
 const STORAGE_KEY = 'tools:guitar-note-trainer:stats'
+const NOTE_ROOT_MIDI = 60
+const GUITAR_NOTE_DURATION_SECONDS = 1.15
+const SCALE_MIDI_OFFSETS = [0, 2, 4, 5, 7, 9, 11, 12] as const
+const NOTE_OPTION_OFFSETS: Record<string, number> = {
+  '1': 0,
+  '2': 2,
+  '3': 4,
+  '4': 5,
+  '5': 7,
+  '6': 9,
+  '7': 11,
+  '1̇': 12,
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+  do: 0,
+  re: 2,
+  mi: 4,
+  fa: 5,
+  sol: 7,
+  la: 9,
+  si: 11,
+}
+
+type AudioContextConstructor = new () => AudioContext
+
+type WindowWithWebkitAudioContext = Window &
+  typeof globalThis & {
+    webkitAudioContext?: AudioContextConstructor
+  }
+
+let audioContext: AudioContext | null = null
 
 const notes: NoteItem[] = [
   {
@@ -206,10 +259,38 @@ const modes: Array<{
     icon: Brain,
   },
   {
+    id: 'ear',
+    label: '听音识别',
+    description: '听吉他音选答案',
+    icon: Volume2,
+  },
+  {
     id: 'fretboard',
     label: '指板大闯关',
     description: '把距离落到品格',
     icon: Guitar,
+  },
+]
+
+const earAnswerModes: Array<{
+  id: EarAnswerMode
+  label: string
+  description: string
+}> = [
+  {
+    id: 'letter',
+    label: '音名 CDEFGABC',
+    description: '听吉他音，选择 C D E F G A B 或高音 C。',
+  },
+  {
+    id: 'number',
+    label: '简谱 12345671̇',
+    description: '听吉他音，选择 1 2 3 4 5 6 7 或高音 1̇。',
+  },
+  {
+    id: 'solfege',
+    label: '唱名 do...si',
+    description: '听吉他音，选择 do re mi fa sol la si 或高音 do。',
   },
 ]
 
@@ -223,6 +304,10 @@ const currentQuestion = ref<QuizQuestion>(createQuestion())
 const selectedAnswer = ref<string | null>(null)
 const answerStatus = ref<AnswerStatus>('idle')
 const quizCardKey = ref(0)
+const earAnswerMode = ref<EarAnswerMode>('letter')
+const earQuestion = ref<EarQuestion>(createEarQuestion('letter'))
+const selectedEarAnswer = ref<string | null>(null)
+const earAnswerStatus = ref<AnswerStatus>('idle')
 const selectedFretAnswer = ref<FretAnswer | null>(null)
 const fretAnswerStatus = ref<AnswerStatus>('idle')
 
@@ -288,6 +373,13 @@ const feedbackTitle = computed(() => {
   return `正确答案：${currentQuestion.value.answerLabel}`
 })
 
+const earQuestionNote = computed(() => noteByIndex(earQuestion.value.noteIndex))
+
+const earFeedbackTitle = computed(() => {
+  if (earAnswerStatus.value === 'correct') return `听对了：${earQuestion.value.answerLabel}`
+  return `正确答案：${earQuestion.value.answerLabel}`
+})
+
 const fretFeedbackTitle = computed(() => {
   if (fretAnswerStatus.value === 'correct') return '过关，品格距离记对了'
   return `正确答案：${selectedInterval.value.frets} 个品格`
@@ -347,6 +439,10 @@ watch(
 
 function selectMode(mode: Mode) {
   currentMode.value = mode
+
+  if (mode === 'ear') {
+    void playEarQuestion()
+  }
 }
 
 function selectNote(index: number) {
@@ -398,6 +494,165 @@ function noteSignature(note: NoteItem) {
   return `${note.number} - ${note.letter} - ${note.solfege}`
 }
 
+function playQuizOptionSound(option: QuizOption) {
+  const frequency = quizOptionFrequency(option, currentQuestion.value)
+  if (frequency === null) return
+
+  void playGuitarNote(frequency)
+}
+
+function playFretAnswerSound(answer: FretAnswer) {
+  const frequency = midiToFrequency(midiForNoteIndex(selectedInterval.value.fromIndex) + answer)
+
+  void playGuitarNote(frequency)
+}
+
+function playEarOptionSound(option: EarOption) {
+  const noteIndex = Number.parseInt(option.value, 10)
+  if (!Number.isInteger(noteIndex)) return
+
+  void playGuitarNote(noteIndexFrequency(noteIndex))
+}
+
+function quizOptionFrequency(option: QuizOption, question: QuizQuestion) {
+  if (question.kind === 'C') {
+    const semitones = intervalOptionSemitones(option.value)
+    if (semitones === null) return null
+
+    const interval = question.interval ?? selectedInterval.value
+    return midiToFrequency(midiForNoteIndex(interval.fromIndex) + semitones)
+  }
+
+  if (question.kind === 'D') {
+    const frets = fretOptionValue(option.value)
+    if (frets === null) return null
+
+    const interval = question.interval ?? selectedInterval.value
+    return midiToFrequency(midiForNoteIndex(interval.fromIndex) + frets)
+  }
+
+  return noteOptionFrequency(
+    option.value,
+    question.kind === 'A' && question.promptBadge === '1̇' ? 12 : 0,
+  )
+}
+
+function noteOptionFrequency(value: string, octaveOffset: number) {
+  const scaleOffset = NOTE_OPTION_OFFSETS[value]
+  if (scaleOffset === undefined) return null
+
+  const effectiveOctaveOffset = value === '1̇' ? 0 : octaveOffset
+  return midiToFrequency(NOTE_ROOT_MIDI + scaleOffset + effectiveOctaveOffset)
+}
+
+function intervalOptionSemitones(value: string) {
+  if (value === '半音') return 1
+  if (value === '全音') return 2
+  return null
+}
+
+function fretOptionValue(value: string) {
+  const frets = Number.parseInt(value, 10)
+  return frets >= 1 && frets <= 3 ? frets : null
+}
+
+function midiForNoteIndex(index: number) {
+  return NOTE_ROOT_MIDI + (SCALE_MIDI_OFFSETS[index] ?? SCALE_MIDI_OFFSETS[0])
+}
+
+function noteIndexFrequency(index: number) {
+  return midiToFrequency(midiForNoteIndex(index))
+}
+
+function midiToFrequency(midi: number) {
+  return 440 * 2 ** ((midi - 69) / 12)
+}
+
+async function playGuitarNote(frequency: number) {
+  try {
+    const context = getAudioContext()
+    if (!context) return
+
+    if (context.state === 'suspended') {
+      await context.resume()
+    }
+
+    const startTime = context.currentTime
+    const source = context.createBufferSource()
+    const bodyFilter = context.createBiquadFilter()
+    const resonanceFilter = context.createBiquadFilter()
+    const gain = context.createGain()
+
+    source.buffer = createGuitarPluckBuffer(context, frequency, GUITAR_NOTE_DURATION_SECONDS)
+
+    bodyFilter.type = 'lowpass'
+    bodyFilter.frequency.setValueAtTime(Math.min(5200, frequency * 14), startTime)
+    bodyFilter.Q.setValueAtTime(0.85, startTime)
+
+    resonanceFilter.type = 'peaking'
+    resonanceFilter.frequency.setValueAtTime(190, startTime)
+    resonanceFilter.Q.setValueAtTime(0.75, startTime)
+    resonanceFilter.gain.setValueAtTime(3.2, startTime)
+
+    gain.gain.setValueAtTime(0.0001, startTime)
+    gain.gain.exponentialRampToValueAtTime(0.62, startTime + 0.012)
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + GUITAR_NOTE_DURATION_SECONDS)
+
+    source.connect(bodyFilter)
+    bodyFilter.connect(resonanceFilter)
+    resonanceFilter.connect(gain)
+    gain.connect(context.destination)
+
+    source.start(startTime)
+    source.stop(startTime + GUITAR_NOTE_DURATION_SECONDS)
+  } catch {
+    // 音频播放失败时，不影响答题流程。
+  }
+}
+
+function getAudioContext() {
+  if (audioContext) return audioContext
+
+  const AudioContextClass =
+    window.AudioContext ?? (window as WindowWithWebkitAudioContext).webkitAudioContext
+  if (!AudioContextClass) return null
+
+  audioContext = new AudioContextClass()
+  return audioContext
+}
+
+function createGuitarPluckBuffer(
+  context: AudioContext,
+  frequency: number,
+  durationSeconds: number,
+) {
+  const sampleRate = context.sampleRate
+  const length = Math.floor(sampleRate * durationSeconds)
+  const buffer = context.createBuffer(1, length, sampleRate)
+  const data = buffer.getChannelData(0)
+  const period = Math.max(2, Math.round(sampleRate / frequency))
+  const stringBuffer = new Float32Array(period)
+  const damping = Math.min(0.997, Math.max(0.985, 0.995 - frequency / 90000))
+
+  for (let index = 0; index < period; index += 1) {
+    stringBuffer[index] = Math.random() * 2 - 1
+  }
+
+  for (let index = 0; index < length; index += 1) {
+    const stringIndex = index % period
+    const nextStringIndex = (stringIndex + 1) % period
+    const sample = stringBuffer[stringIndex] ?? 0
+    const averagedSample = (sample + (stringBuffer[nextStringIndex] ?? 0)) * 0.5
+    const pickNoiseEnvelope = index < period ? 1 - index / period : 0
+    const pickNoise = (Math.random() * 2 - 1) * pickNoiseEnvelope * 0.16
+
+    stringBuffer[stringIndex] = averagedSample * damping
+    data[index] = (sample * 0.82 + pickNoise) * 0.75
+  }
+
+  return buffer
+}
+
 function intervalTheory(interval: IntervalItem) {
   const from = noteByIndex(interval.fromIndex)
   const to = noteByIndex(interval.toIndex)
@@ -416,6 +671,7 @@ function markerForFret(fret: number) {
 function chooseAnswer(option: QuizOption) {
   if (answerStatus.value !== 'idle') return
 
+  void playQuizOptionSound(option)
   selectedAnswer.value = option.value
   const isCorrect = option.value === currentQuestion.value.answer
 
@@ -430,9 +686,42 @@ function nextQuestion() {
   quizCardKey.value += 1
 }
 
+function selectEarAnswerMode(mode: EarAnswerMode) {
+  if (earAnswerMode.value === mode) return
+
+  earAnswerMode.value = mode
+  nextEarQuestion(true)
+}
+
+function playEarQuestion() {
+  void playGuitarNote(noteIndexFrequency(earQuestion.value.noteIndex))
+}
+
+function chooseEarAnswer(option: EarOption) {
+  if (earAnswerStatus.value !== 'idle') return
+
+  playEarOptionSound(option)
+  selectedEarAnswer.value = option.value
+  const isCorrect = option.value === earQuestion.value.answer
+
+  earAnswerStatus.value = isCorrect ? 'correct' : 'wrong'
+  recordAnswer(isCorrect)
+}
+
+function nextEarQuestion(shouldPlay = false) {
+  earQuestion.value = createEarQuestion(earAnswerMode.value)
+  selectedEarAnswer.value = null
+  earAnswerStatus.value = 'idle'
+
+  if (shouldPlay) {
+    void playEarQuestion()
+  }
+}
+
 function answerFretChallenge(answer: FretAnswer) {
   if (fretAnswerStatus.value !== 'idle') return
 
+  void playFretAnswerSound(answer)
   selectedFretAnswer.value = answer
   const isCorrect = answer === selectedInterval.value.frets
 
@@ -499,6 +788,17 @@ function fretOptionButtonClass(answer: FretAnswer) {
       fretAnswerStatus.value === 'wrong' &&
       selectedFretAnswer.value === answer &&
       answer !== selectedInterval.value.frets,
+  }
+}
+
+function earOptionButtonClass(option: EarOption) {
+  return {
+    'border-primary bg-primary text-primary-foreground hover:bg-primary/90':
+      earAnswerStatus.value !== 'idle' && option.value === earQuestion.value.answer,
+    'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/10':
+      earAnswerStatus.value === 'wrong' &&
+      selectedEarAnswer.value === option.value &&
+      option.value !== earQuestion.value.answer,
   }
 }
 
@@ -631,6 +931,33 @@ function createOptions(source: string[], answer: string, count: number) {
   }))
 }
 
+function createEarQuestion(answerMode: EarAnswerMode): EarQuestion {
+  const noteIndex = Math.floor(Math.random() * notes.length)
+
+  return {
+    id: createId(),
+    noteIndex,
+    answerMode,
+    options: createEarOptions(answerMode),
+    answer: String(noteIndex),
+    answerLabel: earOptionLabel(noteByIndex(noteIndex), noteIndex, answerMode),
+  }
+}
+
+function createEarOptions(answerMode: EarAnswerMode) {
+  return notes.map((note, index) => ({
+    id: `${answerMode}-${note.id}`,
+    label: earOptionLabel(note, index, answerMode),
+    value: String(index),
+  }))
+}
+
+function earOptionLabel(note: NoteItem, index: number, answerMode: EarAnswerMode) {
+  if (answerMode === 'letter') return index === notes.length - 1 ? '高音 C' : note.letter
+  if (answerMode === 'number') return note.number
+  return index === notes.length - 1 ? '高音 do' : note.solfege
+}
+
 function randomItem<T>(items: readonly T[]): T {
   const item = items[Math.floor(Math.random() * items.length)]
   if (item === undefined) {
@@ -715,7 +1042,7 @@ function toSafeNumber(value: unknown) {
 
           <CardContent class="space-y-4">
             <div class="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div class="grid gap-2 sm:grid-cols-3">
+              <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <button
                   v-for="mode in modes"
                   :key="mode.id"
@@ -1011,6 +1338,152 @@ function toSafeNumber(value: unknown) {
                 </CardContent>
               </Card>
             </div>
+          </section>
+
+          <section
+            v-else-if="currentMode === 'ear'"
+            key="ear"
+            class="grid gap-4 lg:grid-cols-[0.78fr_1.22fr]"
+          >
+            <Card>
+              <CardHeader>
+                <Badge variant="secondary" class="w-fit">Ear Training</Badge>
+                <CardTitle class="flex items-center gap-2 text-xl sm:text-2xl">
+                  <Volume2 class="size-5 text-orange-500" />
+                  听音识别练习
+                </CardTitle>
+                <CardDescription class="leading-6">
+                  先听吉他音，再选择音名、简谱或唱名。选择答案时也会播放你选中的那个音。
+                </CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-4">
+                <div class="grid gap-2">
+                  <button
+                    v-for="answerMode in earAnswerModes"
+                    :key="answerMode.id"
+                    type="button"
+                    class="rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.98]"
+                    :class="
+                      earAnswerMode === answerMode.id
+                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                        : 'border-border bg-background'
+                    "
+                    @click="selectEarAnswerMode(answerMode.id)"
+                  >
+                    <p class="font-semibold">{{ answerMode.label }}</p>
+                    <p
+                      class="mt-1 text-xs leading-5"
+                      :class="
+                        earAnswerMode === answerMode.id
+                          ? 'text-primary-foreground/75'
+                          : 'text-muted-foreground'
+                      "
+                    >
+                      {{ answerMode.description }}
+                    </p>
+                  </button>
+                </div>
+
+                <div class="rounded-2xl border bg-muted/35 p-4 text-sm leading-6 text-muted-foreground">
+                  <strong class="text-foreground">练习范围：</strong>
+                  C D E F G A B 高音 C，对应 1 2 3 4 5 6 7 1̇，以及 do re mi fa sol la si 高音 do。
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              class="overflow-hidden"
+              :class="{
+                'border-green-500': earAnswerStatus === 'correct',
+                'border-destructive': earAnswerStatus === 'wrong',
+                'animate-correct-flash': earAnswerStatus === 'correct',
+                'animate-wrong-shake': earAnswerStatus === 'wrong',
+              }"
+            >
+              <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+                <div class="space-y-2">
+                  <Badge variant="outline" class="w-fit">Listen and Choose</Badge>
+                  <CardTitle class="text-xl sm:text-2xl">听到的是哪个音？</CardTitle>
+                  <CardDescription class="leading-6">
+                    点击播放题目音，听完后从当前答案组中选择。答对或答错都会记录到统计里。
+                  </CardDescription>
+                </div>
+                <Button variant="outline" @click="playEarQuestion">
+                  <Volume2 class="size-4" />
+                  播放题目音
+                </Button>
+              </CardHeader>
+
+              <CardContent class="space-y-6">
+                <div class="rounded-2xl bg-muted/50 p-6 text-center">
+                  <p class="text-sm text-muted-foreground">当前题目</p>
+                  <div class="mt-4 flex justify-center">
+                    <button
+                      type="button"
+                      class="grid size-24 place-items-center rounded-full border bg-background shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-95"
+                      aria-label="播放题目音"
+                      @click="playEarQuestion"
+                    >
+                      <Volume2 class="size-10 text-orange-500" />
+                    </button>
+                  </div>
+                  <p class="mt-4 text-sm leading-6 text-muted-foreground">
+                    请听音后选择，不显示提示音名。
+                  </p>
+                </div>
+
+                <div class="grid gap-2 sm:grid-cols-4">
+                  <Button
+                    v-for="option in earQuestion.options"
+                    :key="option.id"
+                    type="button"
+                    variant="outline"
+                    class="h-14 rounded-2xl text-base font-semibold"
+                    :class="earOptionButtonClass(option)"
+                    :disabled="earAnswerStatus !== 'idle'"
+                    @click="chooseEarAnswer(option)"
+                  >
+                    {{ option.label }}
+                  </Button>
+                </div>
+
+                <Transition name="feedback">
+                  <div
+                    v-if="earAnswerStatus !== 'idle'"
+                    class="flex gap-3 rounded-2xl border p-4"
+                    :class="
+                      earAnswerStatus === 'correct'
+                        ? 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300'
+                        : 'border-destructive/40 bg-destructive/10 text-destructive'
+                    "
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <CheckCircle2
+                      v-if="earAnswerStatus === 'correct'"
+                      class="mt-0.5 size-5 shrink-0"
+                    />
+                    <XCircle v-else class="mt-0.5 size-5 shrink-0" />
+                    <div class="space-y-1">
+                      <p class="font-semibold">{{ earFeedbackTitle }}</p>
+                      <p class="text-sm leading-6 opacity-90">
+                        {{ noteSignature(earQuestionNote) }}。可以反复播放题目音和已选择音，对比音高。
+                      </p>
+                    </div>
+                  </div>
+                </Transition>
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p class="text-sm text-muted-foreground">
+                    当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
+                  </p>
+                  <Button @click="nextEarQuestion(true)">
+                    <RefreshCcw class="size-4" />
+                    {{ earAnswerStatus === 'idle' ? '换一个音' : '下一题' }}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           <section v-else key="fretboard" class="space-y-4">
