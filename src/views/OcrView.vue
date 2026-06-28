@@ -473,7 +473,7 @@ async function copyOutput() {
 
 <template>
   <section
-    class="relative grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-2 lg:gap-6"
+    class="relative grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] lg:gap-6"
     :aria-busy="loading"
   >
     <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -691,15 +691,6 @@ async function copyOutput() {
                     class="pointer-events-none absolute inset-0 z-10 h-full w-full"
                     aria-hidden="true"
                   />
-                </div>
-                <div class="flex flex-wrap gap-1.5">
-                  <Badge
-                    v-for="(block, blockIndex) in overlayPage.blocks"
-                    :key="`${blockIndex}-${block.label}-badge`"
-                    variant="secondary"
-                  >
-                    {{ block.label || 'block' }}
-                  </Badge>
                 </div>
               </div>
             </div>
