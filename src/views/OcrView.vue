@@ -73,8 +73,8 @@ watch(file, (nextFile) => {
 })
 
 watch(outputMode, (mode) => {
-  if (mode === 'text' && activeOutputTab.value === 'markdown') {
-    activeOutputTab.value = 'text'
+  if (activeOutputTab.value !== 'normal') {
+    activeOutputTab.value = mode
   }
 })
 
@@ -577,7 +577,7 @@ async function copyOutput() {
               :variant="activeOutputTab === 'normal' ? 'default' : 'ghost'"
               @click="activeOutputTab = 'normal'"
             >
-              普通
+              预览
             </Button>
             <Button
               v-if="outputMode === 'markdown'"
@@ -590,6 +590,7 @@ async function copyOutput() {
               Markdown
             </Button>
             <Button
+              v-if="outputMode === 'text'"
               type="button"
               size="sm"
               class="min-w-20"
