@@ -6,15 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Check,
-  ClipboardCopy,
-  FileText,
-  Image,
-  LoaderCircle,
-  Upload,
-  X,
-} from 'lucide-vue-next'
+import { Check, ClipboardCopy, FileText, Image, LoaderCircle, Upload, X } from 'lucide-vue-next'
 
 const OCR_API_URL = 'https://api.tnzzz.top/ocr'
 const markdownIt = new MarkdownIt({
@@ -80,6 +72,12 @@ watch(file, (nextFile) => {
   }
 })
 
+watch(outputMode, (mode) => {
+  if (mode === 'text' && activeOutputTab.value === 'markdown') {
+    activeOutputTab.value = 'text'
+  }
+})
+
 onBeforeUnmount(() => {
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
@@ -100,7 +98,9 @@ const fileSize = computed(() => {
 const canRun = computed(() => Boolean(file.value) && !loading.value)
 const ocrImages = computed(() => pages.value.map((page) => page.ocrImage).filter(Boolean))
 const layoutOverlayPages = computed(() => extractLayoutOverlayPages(rawResults.value))
-const firstResultImage = computed(() => layoutOverlayPages.value[0]?.imageUrl ?? ocrImages.value[0] ?? '')
+const firstResultImage = computed(
+  () => layoutOverlayPages.value[0]?.imageUrl ?? ocrImages.value[0] ?? '',
+)
 const fallbackPreviewUrl = computed(() => previewUrl.value || firstResultImage.value)
 const markdownOutput = computed(() =>
   pages.value
@@ -430,7 +430,9 @@ async function recognize() {
     const data = (await response.json()) as OcrResponse | { error?: string }
 
     if (!response.ok) {
-      throw new Error('error' in data && data.error ? data.error : `OCR 请求失败: ${response.status}`)
+      throw new Error(
+        'error' in data && data.error ? data.error : `OCR 请求失败: ${response.status}`,
+      )
     }
 
     if (currentToken !== recognitionToken) return
@@ -527,17 +529,23 @@ async function copyOutput() {
 
             <Upload class="mb-4 h-10 w-10 text-muted-foreground" />
             <p class="font-medium">粘贴、拖放或选择文件</p>
-            <p class="mt-2 text-sm leading-6 text-muted-foreground">
-              支持图片和 PDF。粘贴前先点击这个区域，让它获得焦点。
-            </p>
+            <p class="mt-2 text-sm leading-6 text-muted-foreground">支持图片和 PDF</p>
           </div>
 
           <div v-if="file" class="flex items-center justify-between gap-3 rounded-lg border p-3">
             <div class="min-w-0">
               <p class="truncate text-sm font-medium">{{ file.name }}</p>
-              <p class="text-xs text-muted-foreground">{{ file.type || '未知类型' }} · {{ fileSize }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ file.type || '未知类型' }} · {{ fileSize }}
+              </p>
             </div>
-            <Button type="button" variant="ghost" size="icon" aria-label="移除文件" @click="clearFile">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="移除文件"
+              @click="clearFile"
+            >
               <X class="h-4 w-4" />
             </Button>
           </div>
@@ -572,6 +580,7 @@ async function copyOutput() {
               普通
             </Button>
             <Button
+              v-if="outputMode === 'markdown'"
               type="button"
               size="sm"
               class="min-w-24"
@@ -597,7 +606,10 @@ async function copyOutput() {
             size="icon"
             :disabled="!activeTextOutput"
             :aria-label="copySuccess ? '已复制' : '复制结果'"
-            :class="copySuccess && 'border-green-600 text-green-600 dark:border-green-400 dark:text-green-400'"
+            :class="
+              copySuccess &&
+              'border-green-600 text-green-600 dark:border-green-400 dark:text-green-400'
+            "
             @click="copyOutput"
           >
             <Check v-if="copySuccess" class="h-4 w-4" />
@@ -608,7 +620,10 @@ async function copyOutput() {
 
       <div class="flex min-h-0 flex-1 flex-col gap-3 pt-4">
         <template v-if="activeOutputTab === 'normal'">
-          <div v-if="fallbackPreviewUrl && !layoutOverlayPages.length" class="overflow-hidden rounded-lg border">
+          <div
+            v-if="fallbackPreviewUrl && !layoutOverlayPages.length"
+            class="overflow-hidden rounded-lg border"
+          >
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
                 <p class="text-sm font-medium">图片预览</p>
@@ -619,14 +634,26 @@ async function copyOutput() {
               <Badge variant="outline">{{ firstResultImage ? 'Result' : 'Local' }}</Badge>
             </div>
             <div class="visible-scrollbar max-h-[42vh] overflow-auto bg-muted/30 p-3">
-              <div class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background">
-                <img :src="fallbackPreviewUrl" class="block max-h-[38vh] max-w-full object-contain" alt="" />
-                <canvas class="pointer-events-none absolute inset-0 z-10 h-full w-full" aria-hidden="true" />
+              <div
+                class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background"
+              >
+                <img
+                  :src="fallbackPreviewUrl"
+                  class="block max-h-[38vh] max-w-full object-contain"
+                  alt=""
+                />
+                <canvas
+                  class="pointer-events-none absolute inset-0 z-10 h-full w-full"
+                  aria-hidden="true"
+                />
               </div>
             </div>
           </div>
 
-          <div v-if="layoutOverlayPages.length" class="min-h-0 flex-1 overflow-hidden rounded-lg border">
+          <div
+            v-if="layoutOverlayPages.length"
+            class="min-h-0 flex-1 overflow-hidden rounded-lg border"
+          >
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
                 <p class="text-sm font-medium">识别区域</p>
@@ -642,7 +669,9 @@ async function copyOutput() {
                 :key="`${overlayPage.imageUrl}-${pageIndex}`"
                 class="space-y-2"
               >
-                <div class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background">
+                <div
+                  class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background"
+                >
                   <img
                     :src="overlayPage.imageUrl"
                     class="block max-h-[40vh] max-w-full object-contain"
@@ -650,7 +679,9 @@ async function copyOutput() {
                     @load="drawOverlayCanvas(pageIndex)"
                   />
                   <canvas
-                    :ref="(element) => setOverlayCanvas(element as HTMLCanvasElement | null, pageIndex)"
+                    :ref="
+                      (element) => setOverlayCanvas(element as HTMLCanvasElement | null, pageIndex)
+                    "
                     class="pointer-events-none absolute inset-0 z-10 h-full w-full"
                     aria-hidden="true"
                   />
@@ -682,7 +713,10 @@ async function copyOutput() {
         >
           <div
             class="markdown-preview min-h-48 rounded-md border px-4 py-3"
-            v-html="renderedMarkdown || '<p class=&quot;text-muted-foreground&quot;>Markdown 结果会显示在这里</p>'"
+            v-html="
+              renderedMarkdown ||
+              '<p class=&quot;text-muted-foreground&quot;>Markdown 结果会显示在这里</p>'
+            "
           />
           <Textarea
             :model-value="markdownOutput"
@@ -701,7 +735,6 @@ async function copyOutput() {
           spellcheck="false"
           placeholder="纯文本结果会显示在这里"
         />
-
       </div>
     </section>
   </section>
