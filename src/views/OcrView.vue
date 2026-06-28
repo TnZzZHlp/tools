@@ -692,6 +692,16 @@ async function copyOutput() {
                     aria-hidden="true"
                   />
                 </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <Badge
+                    v-for="(block, blockIndex) in overlayPage.blocks"
+                    :key="`${blockIndex}-${block.label}-content`"
+                    variant="secondary"
+                    class="h-auto max-w-full whitespace-normal text-left"
+                  >
+                    {{ block.content || block.label || 'block' }}
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
