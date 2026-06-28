@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import MarkdownIt from 'markdown-it'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,11 @@ import {
 } from 'lucide-vue-next'
 
 const OCR_API_URL = 'https://api.tnzzz.top/ocr'
+const markdownIt = new MarkdownIt({
+  breaks: true,
+  html: true,
+  linkify: true,
+})
 
 type OutputMode = 'text' | 'markdown'
 type OutputTab = 'normal' | 'markdown' | 'text'
@@ -94,9 +100,11 @@ const fileSize = computed(() => {
 const canRun = computed(() => Boolean(file.value) && !loading.value)
 const ocrImages = computed(() => pages.value.map((page) => page.ocrImage).filter(Boolean))
 const layoutOverlayPages = computed(() => extractLayoutOverlayPages(rawResults.value))
+const firstResultImage = computed(() => layoutOverlayPages.value[0]?.imageUrl ?? ocrImages.value[0] ?? '')
+const fallbackPreviewUrl = computed(() => previewUrl.value || firstResultImage.value)
 const markdownOutput = computed(() =>
   pages.value
-    .map((page) => page.markdown.trim() || page.text?.trim() || '')
+    .map((page) => resolveMarkdownImages(page).trim() || page.text?.trim() || '')
     .filter(Boolean)
     .join('\n\n---\n\n'),
 )
@@ -111,6 +119,7 @@ const activeTextOutput = computed(() => {
   if (activeOutputTab.value === 'text') return textOutput.value
   return ''
 })
+const renderedMarkdown = computed(() => markdownIt.render(markdownOutput.value))
 
 watch(layoutOverlayPages, () => {
   void nextTick(() => drawAllOverlayCanvases())
@@ -258,37 +267,102 @@ function extractLayoutOverlayPages(results: unknown[]): LayoutOverlayPage[] {
   const overlayPages: LayoutOverlayPage[] = []
 
   for (const result of results) {
-    if (!isRecord(result) || !Array.isArray(result.layoutParsingResults)) continue
+    if (!isRecord(result)) continue
 
-    for (const layoutResult of result.layoutParsingResults) {
-      if (!isRecord(layoutResult)) continue
+    overlayPages.push(...extractDocumentLayoutOverlayPages(result))
+    overlayPages.push(...extractPlainOcrOverlayPages(result))
+  }
 
-      const prunedResult = isRecord(layoutResult.prunedResult) ? layoutResult.prunedResult : null
-      const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
-      const imageUrl = asString(layoutResult.inputImage)
-      const width = asNumber(prunedResult?.width) ?? asNumber(dataInfo?.width)
-      const height = asNumber(prunedResult?.height) ?? asNumber(dataInfo?.height)
-      const parsingList = Array.isArray(prunedResult?.parsing_res_list)
-        ? prunedResult.parsing_res_list
+  return overlayPages
+}
+
+function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): LayoutOverlayPage[] {
+  if (!Array.isArray(result.layoutParsingResults)) return []
+
+  const overlayPages: LayoutOverlayPage[] = []
+
+  for (const layoutResult of result.layoutParsingResults) {
+    if (!isRecord(layoutResult)) continue
+
+    const prunedResult = isRecord(layoutResult.prunedResult) ? layoutResult.prunedResult : null
+    const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
+    const imageUrl = asString(layoutResult.inputImage)
+    const width = asNumber(prunedResult?.width) ?? asNumber(dataInfo?.width)
+    const height = asNumber(prunedResult?.height) ?? asNumber(dataInfo?.height)
+    const parsingList = Array.isArray(prunedResult?.parsing_res_list)
+      ? prunedResult.parsing_res_list
+      : []
+
+    if (!imageUrl || !width || !height || !parsingList.length) continue
+
+    const blocks = parsingList
+      .filter(isRecord)
+      .map((block) => {
+        const polygon = parsePolygon(block.block_polygon_points)
+        return {
+          label: asString(block.block_label),
+          content: asString(block.block_content),
+          polygon: polygon.length >= 3 ? polygon : boxToPolygon(block.block_bbox),
+        }
+      })
+      .filter((block) => block.polygon.length >= 3)
+
+    if (blocks.length) {
+      overlayPages.push({ imageUrl, width, height, blocks })
+    }
+  }
+
+  return overlayPages
+}
+
+function extractPlainOcrOverlayPages(result: Record<string, unknown>): LayoutOverlayPage[] {
+  if (!Array.isArray(result.ocrResults)) return []
+
+  const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
+  const width = asNumber(dataInfo?.width)
+  const height = asNumber(dataInfo?.height)
+  if (!width || !height) return []
+
+  const overlayPages: LayoutOverlayPage[] = []
+
+  for (const ocrResult of result.ocrResults) {
+    if (!isRecord(ocrResult)) continue
+
+    const prunedResult = isRecord(ocrResult.prunedResult) ? ocrResult.prunedResult : null
+    const imageUrl = asString(ocrResult.inputImage)
+    const texts = Array.isArray(prunedResult?.rec_texts) ? prunedResult.rec_texts : []
+    const polygons = Array.isArray(prunedResult?.rec_polys)
+      ? prunedResult.rec_polys
+      : Array.isArray(prunedResult?.dt_polys)
+        ? prunedResult.dt_polys
+        : []
+    const boxes = Array.isArray(prunedResult?.rec_boxes)
+      ? prunedResult.rec_boxes
+      : Array.isArray(prunedResult?.dt_boxes)
+        ? prunedResult.dt_boxes
         : []
 
-      if (!imageUrl || !width || !height || !parsingList.length) continue
+    if (!imageUrl || (!polygons.length && !boxes.length)) continue
 
-      const blocks = parsingList
-        .filter(isRecord)
-        .map((block) => {
-          const polygon = parsePolygon(block.block_polygon_points)
-          return {
-            label: asString(block.block_label),
-            content: asString(block.block_content),
-            polygon: polygon.length >= 3 ? polygon : boxToPolygon(block.block_bbox),
-          }
+    const blockCount = Math.max(polygons.length, boxes.length)
+    const blocks: LayoutBlock[] = []
+
+    for (let index = 0; index < blockCount; index++) {
+      const polygon = parsePolygon(polygons[index])
+      const fallbackPolygon = boxToPolygon(boxes[index])
+      const blockPolygon = polygon.length >= 3 ? polygon : fallbackPolygon
+
+      if (blockPolygon.length >= 3) {
+        blocks.push({
+          label: 'text',
+          content: asString(texts[index]),
+          polygon: blockPolygon,
         })
-        .filter((block) => block.polygon.length >= 3)
-
-      if (blocks.length) {
-        overlayPages.push({ imageUrl, width, height, blocks })
       }
+    }
+
+    if (blocks.length) {
+      overlayPages.push({ imageUrl, width, height, blocks })
     }
   }
 
@@ -303,6 +377,16 @@ function plainTextFromMarkdown(markdown: string): string {
     .replace(/`{1,3}/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+}
+
+function resolveMarkdownImages(page: OcrPage): string {
+  let markdown = page.markdown
+  for (const [path, url] of Object.entries(page.markdownImages ?? {})) {
+    markdown = markdown.replaceAll(`src="${path}"`, `src="${url}"`)
+    markdown = markdown.replaceAll(`src='${path}'`, `src='${url}'`)
+    markdown = markdown.replaceAll(`](${path})`, `](${url})`)
+  }
+  return markdown
 }
 
 function renderOutput() {
@@ -524,17 +608,19 @@ async function copyOutput() {
 
       <div class="flex min-h-0 flex-1 flex-col gap-3 pt-4">
         <template v-if="activeOutputTab === 'normal'">
-          <div v-if="previewUrl && !layoutOverlayPages.length" class="overflow-hidden rounded-lg border">
+          <div v-if="fallbackPreviewUrl && !layoutOverlayPages.length" class="overflow-hidden rounded-lg border">
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
                 <p class="text-sm font-medium">图片预览</p>
-                <p class="text-xs text-muted-foreground">识别完成后会显示后端返回的区域图</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ firstResultImage ? '后端返回的图片' : '识别完成后会显示后端返回的区域图' }}
+                </p>
               </div>
-              <Badge variant="outline">Local</Badge>
+              <Badge variant="outline">{{ firstResultImage ? 'Result' : 'Local' }}</Badge>
             </div>
             <div class="visible-scrollbar max-h-[42vh] overflow-auto bg-muted/30 p-3">
               <div class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background">
-                <img :src="previewUrl" class="block max-h-[38vh] max-w-full object-contain" alt="" />
+                <img :src="fallbackPreviewUrl" class="block max-h-[38vh] max-w-full object-contain" alt="" />
                 <canvas class="pointer-events-none absolute inset-0 z-10 h-full w-full" aria-hidden="true" />
               </div>
             </div>
@@ -583,12 +669,29 @@ async function copyOutput() {
           </div>
 
           <div
-            v-if="!previewUrl && !layoutOverlayPages.length"
+            v-if="!fallbackPreviewUrl && !layoutOverlayPages.length"
             class="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
           >
             普通视图会显示图片和识别区域
           </div>
         </template>
+
+        <div
+          v-else-if="activeOutputTab === 'markdown'"
+          class="visible-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-auto"
+        >
+          <div
+            class="markdown-preview min-h-48 rounded-md border px-4 py-3"
+            v-html="renderedMarkdown || '<p class=&quot;text-muted-foreground&quot;>Markdown 结果会显示在这里</p>'"
+          />
+          <Textarea
+            :model-value="markdownOutput"
+            class="visible-scrollbar min-h-40 resize-none overflow-auto font-mono text-sm leading-6"
+            readonly
+            spellcheck="false"
+            placeholder="Markdown 源码会显示在这里"
+          />
+        </div>
 
         <Textarea
           v-else
@@ -596,7 +699,7 @@ async function copyOutput() {
           class="visible-scrollbar h-full min-h-0 flex-1 resize-none overflow-auto font-mono text-sm leading-6"
           readonly
           spellcheck="false"
-          :placeholder="activeOutputTab === 'markdown' ? 'Markdown 结果会显示在这里' : '纯文本结果会显示在这里'"
+          placeholder="纯文本结果会显示在这里"
         />
 
       </div>
@@ -615,4 +718,52 @@ async function copyOutput() {
   height: 8px;
 }
 
+.markdown-preview {
+  line-height: 1.7;
+}
+
+.markdown-preview :deep(h1) {
+  margin: 0.75rem 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-preview :deep(h2) {
+  margin: 0.75rem 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.markdown-preview :deep(p) {
+  margin: 0.75rem 0;
+}
+
+.markdown-preview :deep(img) {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.markdown-preview :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-preview :deep(th),
+.markdown-preview :deep(td) {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.markdown-preview :deep(code) {
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+}
 </style>
