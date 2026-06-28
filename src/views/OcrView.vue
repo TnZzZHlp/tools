@@ -658,7 +658,7 @@ async function copyOutput() {
 
           <div
             v-if="layoutOverlayPages.length"
-            class="min-h-0 flex-1 overflow-hidden rounded-lg border"
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
           >
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
@@ -669,7 +669,7 @@ async function copyOutput() {
               </div>
               <Badge variant="outline">{{ layoutOverlayPages.length }} 页</Badge>
             </div>
-            <div class="visible-scrollbar max-h-[46vh] space-y-4 overflow-auto bg-muted/30 p-3">
+            <div class="visible-scrollbar min-h-0 flex-1 space-y-4 overflow-auto bg-muted/30 p-3">
               <div
                 v-for="(overlayPage, pageIndex) in layoutOverlayPages"
                 :key="`${overlayPage.imageUrl}-${pageIndex}`"
