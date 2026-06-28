@@ -325,15 +325,18 @@ function extractPlainOcrOverlayPages(result: Record<string, unknown>): LayoutOve
   if (!Array.isArray(result.ocrResults)) return []
 
   const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
-  const width = asNumber(dataInfo?.width)
-  const height = asNumber(dataInfo?.height)
-  if (!width || !height) return []
+  const pageData = Array.isArray(dataInfo?.pages) ? dataInfo.pages : []
+  const defaultWidth = asNumber(dataInfo?.width)
+  const defaultHeight = asNumber(dataInfo?.height)
 
   const overlayPages: LayoutOverlayPage[] = []
 
-  for (const ocrResult of result.ocrResults) {
+  for (const [pageIndex, ocrResult] of result.ocrResults.entries()) {
     if (!isRecord(ocrResult)) continue
 
+    const pageInfo = isRecord(pageData[pageIndex]) ? pageData[pageIndex] : null
+    const width = asNumber(pageInfo?.width) ?? defaultWidth
+    const height = asNumber(pageInfo?.height) ?? defaultHeight
     const prunedResult = isRecord(ocrResult.prunedResult) ? ocrResult.prunedResult : null
     const imageUrl = asString(ocrResult.inputImage)
     const texts = Array.isArray(prunedResult?.rec_texts) ? prunedResult.rec_texts : []
@@ -348,7 +351,7 @@ function extractPlainOcrOverlayPages(result: Record<string, unknown>): LayoutOve
         ? prunedResult.dt_boxes
         : []
 
-    if (!imageUrl || (!polygons.length && !boxes.length)) continue
+    if (!imageUrl || !width || !height || (!polygons.length && !boxes.length)) continue
 
     const blockCount = Math.max(polygons.length, boxes.length)
     const blocks: LayoutBlock[] = []
