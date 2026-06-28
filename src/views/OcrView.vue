@@ -57,20 +57,9 @@ const error = ref('')
 const loading = ref(false)
 const dragging = ref(false)
 const copySuccess = ref(false)
-const previewUrl = ref('')
+const selectedPageIndex = ref(0)
 const overlayCanvases = new Map<number, HTMLCanvasElement>()
 let recognitionToken = 0
-
-watch(file, (nextFile) => {
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = ''
-  }
-
-  if (nextFile?.type.startsWith('image/')) {
-    previewUrl.value = URL.createObjectURL(nextFile)
-  }
-})
 
 watch(outputMode, (mode) => {
   if (activeOutputTab.value !== 'normal') {
@@ -79,9 +68,6 @@ watch(outputMode, (mode) => {
 })
 
 onBeforeUnmount(() => {
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-  }
   window.removeEventListener('paste', handlePaste)
   window.removeEventListener('resize', drawAllOverlayCanvases)
 })
@@ -100,10 +86,13 @@ const fileSize = computed(() => {
 const canRun = computed(() => Boolean(file.value) && !loading.value)
 const ocrImages = computed(() => pages.value.map((page) => page.ocrImage).filter(Boolean))
 const layoutOverlayPages = computed(() => extractLayoutOverlayPages(rawResults.value))
+const selectedOverlayPage = computed(
+  () => layoutOverlayPages.value[selectedPageIndex.value] ?? null,
+)
 const firstResultImage = computed(
   () => layoutOverlayPages.value[0]?.imageUrl ?? ocrImages.value[0] ?? '',
 )
-const fallbackPreviewUrl = computed(() => previewUrl.value || firstResultImage.value)
+const fallbackPreviewUrl = computed(() => firstResultImage.value)
 const markdownOutput = computed(() =>
   pages.value
     .map((page) => resolveMarkdownImages(page).trim() || page.text?.trim() || '')
@@ -124,6 +113,11 @@ const activeTextOutput = computed(() => {
 const renderedMarkdown = computed(() => markdownIt.render(markdownOutput.value))
 
 watch(layoutOverlayPages, () => {
+  selectedPageIndex.value = 0
+  void nextTick(() => drawAllOverlayCanvases())
+})
+
+watch(selectedPageIndex, () => {
   void nextTick(() => drawAllOverlayCanvases())
 })
 
@@ -636,11 +630,9 @@ async function copyOutput() {
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
                 <p class="text-sm font-medium">图片预览</p>
-                <p class="text-xs text-muted-foreground">
-                  {{ firstResultImage ? '后端返回的图片' : '识别完成后会显示后端返回的区域图' }}
-                </p>
+                <p class="text-xs text-muted-foreground">后端返回的图片</p>
               </div>
-              <Badge variant="outline">{{ firstResultImage ? 'Result' : 'Local' }}</Badge>
+              <Badge variant="outline">Result</Badge>
             </div>
             <div class="visible-scrollbar max-h-[42vh] overflow-auto bg-muted/30 p-3">
               <div
@@ -667,29 +659,46 @@ async function copyOutput() {
               <div class="min-w-0">
                 <p class="text-sm font-medium">识别区域</p>
                 <p class="text-xs text-muted-foreground">
-                  {{ layoutOverlayPages.reduce((sum, page) => sum + page.blocks.length, 0) }} 个区域
+                  {{ selectedOverlayPage?.blocks.length ?? 0 }} 个区域
                 </p>
               </div>
-              <Badge variant="outline">{{ layoutOverlayPages.length }} 页</Badge>
+              <div class="flex shrink-0 items-center gap-2">
+                <select
+                  v-if="layoutOverlayPages.length > 1"
+                  v-model.number="selectedPageIndex"
+                  class="h-8 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                  aria-label="选择识别页"
+                >
+                  <option
+                    v-for="(_, pageIndex) in layoutOverlayPages"
+                    :key="pageIndex"
+                    :value="pageIndex"
+                  >
+                    第 {{ pageIndex + 1 }} 页
+                  </option>
+                </select>
+                <Badge variant="outline">{{ layoutOverlayPages.length }} 页</Badge>
+              </div>
             </div>
             <div class="visible-scrollbar min-h-0 flex-1 space-y-4 overflow-auto bg-muted/30 p-3">
               <div
-                v-for="(overlayPage, pageIndex) in layoutOverlayPages"
-                :key="`${overlayPage.imageUrl}-${pageIndex}`"
+                v-if="selectedOverlayPage"
+                :key="`${selectedOverlayPage.imageUrl}-${selectedPageIndex}`"
                 class="space-y-2"
               >
                 <div
                   class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background"
                 >
                   <img
-                    :src="overlayPage.imageUrl"
+                    :src="selectedOverlayPage.imageUrl"
                     class="block max-h-[40vh] max-w-full object-contain"
                     alt=""
-                    @load="drawOverlayCanvas(pageIndex)"
+                    @load="drawOverlayCanvas(selectedPageIndex)"
                   />
                   <canvas
                     :ref="
-                      (element) => setOverlayCanvas(element as HTMLCanvasElement | null, pageIndex)
+                      (element) =>
+                        setOverlayCanvas(element as HTMLCanvasElement | null, selectedPageIndex)
                     "
                     class="pointer-events-none absolute inset-0 z-10 h-full w-full"
                     aria-hidden="true"
@@ -697,7 +706,7 @@ async function copyOutput() {
                 </div>
                 <div class="flex flex-wrap gap-1.5">
                   <Badge
-                    v-for="(block, blockIndex) in overlayPage.blocks"
+                    v-for="(block, blockIndex) in selectedOverlayPage.blocks"
                     :key="`${blockIndex}-${block.label}-content`"
                     variant="secondary"
                     class="h-auto max-w-full whitespace-normal text-left"
