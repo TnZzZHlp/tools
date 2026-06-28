@@ -82,10 +82,12 @@ onBeforeUnmount(() => {
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
   }
+  window.removeEventListener('paste', handlePaste)
   window.removeEventListener('resize', drawAllOverlayCanvases)
 })
 
 onMounted(() => {
+  window.addEventListener('paste', handlePaste)
   window.addEventListener('resize', drawAllOverlayCanvases)
 })
 
@@ -151,7 +153,11 @@ function handlePaste(event: ClipboardEvent) {
   const items = Array.from(event.clipboardData?.items ?? [])
   const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
   const fileItem = items.find((item) => item.kind === 'file')
-  void selectFile((imageItem ?? fileItem)?.getAsFile() ?? null)
+  const pastedFile = (imageItem ?? fileItem)?.getAsFile() ?? null
+  if (!pastedFile) return
+
+  event.preventDefault()
+  void selectFile(pastedFile)
 }
 
 function clearFile() {
@@ -513,7 +519,6 @@ async function copyOutput() {
             @click="fileInput?.click()"
             @keydown.enter="fileInput?.click()"
             @keydown.space.prevent="fileInput?.click()"
-            @paste.prevent="handlePaste"
             @dragenter.prevent="dragging = true"
             @dragover.prevent="dragging = true"
             @dragleave.prevent="dragging = false"
