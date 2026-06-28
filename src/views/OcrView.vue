@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -35,15 +35,12 @@ interface OcrResponse {
 
 interface LayoutOverlayPage {
   imageUrl: string
-  width: number
-  height: number
   blocks: LayoutBlock[]
 }
 
 interface LayoutBlock {
   label: string
   content: string
-  polygon: Array<[number, number]>
 }
 
 const file = ref<File | null>(null)
@@ -58,7 +55,6 @@ const loading = ref(false)
 const dragging = ref(false)
 const copySuccess = ref(false)
 const selectedPageIndex = ref(0)
-const overlayCanvases = new Map<number, HTMLCanvasElement>()
 let recognitionToken = 0
 
 watch(outputMode, (mode) => {
@@ -69,12 +65,10 @@ watch(outputMode, (mode) => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('paste', handlePaste)
-  window.removeEventListener('resize', drawAllOverlayCanvases)
 })
 
 onMounted(() => {
   window.addEventListener('paste', handlePaste)
-  window.addEventListener('resize', drawAllOverlayCanvases)
 })
 
 const fileSize = computed(() => {
@@ -114,11 +108,6 @@ const renderedMarkdown = computed(() => markdownIt.render(markdownOutput.value))
 
 watch(layoutOverlayPages, () => {
   selectedPageIndex.value = 0
-  void nextTick(() => drawAllOverlayCanvases())
-})
-
-watch(selectedPageIndex, () => {
-  void nextTick(() => drawAllOverlayCanvases())
 })
 
 async function selectFile(nextFile: File | null) {
@@ -168,99 +157,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function asNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : ''
-}
-
-function parsePolygon(value: unknown): Array<[number, number]> {
-  if (!Array.isArray(value)) return []
-
-  return value
-    .map((point) => {
-      if (!Array.isArray(point)) return null
-      const x = asNumber(point[0])
-      const y = asNumber(point[1])
-      return x === null || y === null ? null : ([x, y] as [number, number])
-    })
-    .filter((point): point is [number, number] => point !== null)
-}
-
-function boxToPolygon(value: unknown): Array<[number, number]> {
-  if (!Array.isArray(value)) return []
-  const x1 = asNumber(value[0])
-  const y1 = asNumber(value[1])
-  const x2 = asNumber(value[2])
-  const y2 = asNumber(value[3])
-  if (x1 === null || y1 === null || x2 === null || y2 === null) return []
-  return [
-    [x1, y1],
-    [x2, y1],
-    [x2, y2],
-    [x1, y2],
-  ]
-}
-
-function setOverlayCanvas(element: HTMLCanvasElement | null, index: number) {
-  if (element) {
-    overlayCanvases.set(index, element)
-    drawOverlayCanvas(index)
-  } else {
-    overlayCanvases.delete(index)
-  }
-}
-
-function drawAllOverlayCanvases() {
-  for (const index of overlayCanvases.keys()) {
-    drawOverlayCanvas(index)
-  }
-}
-
-function drawOverlayCanvas(index: number) {
-  const canvas = overlayCanvases.get(index)
-  const overlayPage = layoutOverlayPages.value[index]
-  if (!canvas || !overlayPage) return
-
-  const image = canvas.previousElementSibling
-  if (!(image instanceof HTMLImageElement) || !image.complete) return
-
-  const rect = image.getBoundingClientRect()
-  if (!rect.width || !rect.height) return
-
-  canvas.width = Math.round(rect.width)
-  canvas.height = Math.round(rect.height)
-
-  const context = canvas.getContext('2d')
-  if (!context) return
-
-  context.clearRect(0, 0, canvas.width, canvas.height)
-  context.lineWidth = 2
-  context.strokeStyle = 'rgba(37, 99, 235, 0.95)'
-  context.fillStyle = 'rgba(37, 99, 235, 0.18)'
-
-  const scaleX = canvas.width / overlayPage.width
-  const scaleY = canvas.height / overlayPage.height
-
-  for (const block of overlayPage.blocks) {
-    if (block.polygon.length < 3) continue
-
-    context.beginPath()
-    block.polygon.forEach(([x, y], pointIndex) => {
-      const scaledX = x * scaleX
-      const scaledY = y * scaleY
-      if (pointIndex === 0) {
-        context.moveTo(scaledX, scaledY)
-      } else {
-        context.lineTo(scaledX, scaledY)
-      }
-    })
-    context.closePath()
-    context.fill()
-    context.stroke()
-  }
 }
 
 function extractLayoutOverlayPages(results: unknown[]): LayoutOverlayPage[] {
@@ -285,30 +183,26 @@ function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): Lay
     if (!isRecord(layoutResult)) continue
 
     const prunedResult = isRecord(layoutResult.prunedResult) ? layoutResult.prunedResult : null
-    const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
-    const imageUrl = asString(layoutResult.inputImage)
-    const width = asNumber(prunedResult?.width) ?? asNumber(dataInfo?.width)
-    const height = asNumber(prunedResult?.height) ?? asNumber(dataInfo?.height)
+    const outputImages = isRecord(layoutResult.outputImages) ? layoutResult.outputImages : null
+    const imageUrl =
+      asString(outputImages?.layout_det_res) ||
+      Object.values(outputImages ?? {}).map(asString).find(Boolean) ||
+      asString(layoutResult.inputImage)
     const parsingList = Array.isArray(prunedResult?.parsing_res_list)
       ? prunedResult.parsing_res_list
       : []
 
-    if (!imageUrl || !width || !height || !parsingList.length) continue
+    if (!imageUrl || !parsingList.length) continue
 
     const blocks = parsingList
       .filter(isRecord)
-      .map((block) => {
-        const polygon = parsePolygon(block.block_polygon_points)
-        return {
-          label: asString(block.block_label),
-          content: asString(block.block_content),
-          polygon: polygon.length >= 3 ? polygon : boxToPolygon(block.block_bbox),
-        }
-      })
-      .filter((block) => block.polygon.length >= 3)
+      .map((block) => ({
+        label: asString(block.block_label),
+        content: asString(block.block_content),
+      }))
 
     if (blocks.length) {
-      overlayPages.push({ imageUrl, width, height, blocks })
+      overlayPages.push({ imageUrl, blocks })
     }
   }
 
@@ -318,54 +212,20 @@ function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): Lay
 function extractPlainOcrOverlayPages(result: Record<string, unknown>): LayoutOverlayPage[] {
   if (!Array.isArray(result.ocrResults)) return []
 
-  const dataInfo = isRecord(result.dataInfo) ? result.dataInfo : null
-  const pageData = Array.isArray(dataInfo?.pages) ? dataInfo.pages : []
-  const defaultWidth = asNumber(dataInfo?.width)
-  const defaultHeight = asNumber(dataInfo?.height)
-
   const overlayPages: LayoutOverlayPage[] = []
 
-  for (const [pageIndex, ocrResult] of result.ocrResults.entries()) {
+  for (const ocrResult of result.ocrResults) {
     if (!isRecord(ocrResult)) continue
 
-    const pageInfo = isRecord(pageData[pageIndex]) ? pageData[pageIndex] : null
-    const width = asNumber(pageInfo?.width) ?? defaultWidth
-    const height = asNumber(pageInfo?.height) ?? defaultHeight
     const prunedResult = isRecord(ocrResult.prunedResult) ? ocrResult.prunedResult : null
-    const imageUrl = asString(ocrResult.inputImage)
+    const imageUrl = asString(ocrResult.ocrImage) || asString(ocrResult.inputImage)
     const texts = Array.isArray(prunedResult?.rec_texts) ? prunedResult.rec_texts : []
-    const polygons = Array.isArray(prunedResult?.rec_polys)
-      ? prunedResult.rec_polys
-      : Array.isArray(prunedResult?.dt_polys)
-        ? prunedResult.dt_polys
-        : []
-    const boxes = Array.isArray(prunedResult?.rec_boxes)
-      ? prunedResult.rec_boxes
-      : Array.isArray(prunedResult?.dt_boxes)
-        ? prunedResult.dt_boxes
-        : []
+    if (!imageUrl || !texts.length) continue
 
-    if (!imageUrl || !width || !height || (!polygons.length && !boxes.length)) continue
-
-    const blockCount = Math.max(polygons.length, boxes.length)
-    const blocks: LayoutBlock[] = []
-
-    for (let index = 0; index < blockCount; index++) {
-      const polygon = parsePolygon(polygons[index])
-      const fallbackPolygon = boxToPolygon(boxes[index])
-      const blockPolygon = polygon.length >= 3 ? polygon : fallbackPolygon
-
-      if (blockPolygon.length >= 3) {
-        blocks.push({
-          label: 'text',
-          content: asString(texts[index]),
-          polygon: blockPolygon,
-        })
-      }
-    }
+    const blocks = texts.map((text) => ({ label: 'text', content: asString(text) }))
 
     if (blocks.length) {
-      overlayPages.push({ imageUrl, width, height, blocks })
+      overlayPages.push({ imageUrl, blocks })
     }
   }
 
@@ -625,7 +485,7 @@ async function copyOutput() {
         <template v-if="activeOutputTab === 'normal'">
           <div
             v-if="fallbackPreviewUrl && !layoutOverlayPages.length"
-            class="overflow-hidden rounded-lg border"
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
           >
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
               <div class="min-w-0">
@@ -634,18 +494,14 @@ async function copyOutput() {
               </div>
               <Badge variant="outline">Result</Badge>
             </div>
-            <div class="visible-scrollbar max-h-[42vh] overflow-auto bg-muted/30 p-3">
-              <div
-                class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background"
-              >
+            <div
+              class="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3"
+            >
+              <div class="w-fit max-w-full overflow-hidden rounded-md border bg-background">
                 <img
                   :src="fallbackPreviewUrl"
-                  class="block max-h-[38vh] max-w-full object-contain"
+                  class="block h-auto max-h-[50dvh] w-auto max-w-full object-contain lg:max-h-[calc(100dvh-16rem)]"
                   alt=""
-                />
-                <canvas
-                  class="pointer-events-none absolute inset-0 z-10 h-full w-full"
-                  aria-hidden="true"
                 />
               </div>
             </div>
@@ -680,39 +536,38 @@ async function copyOutput() {
                 <Badge variant="outline">{{ layoutOverlayPages.length }} 页</Badge>
               </div>
             </div>
-            <div class="visible-scrollbar min-h-0 flex-1 space-y-4 overflow-auto bg-muted/30 p-3">
+            <div
+              class="visible-scrollbar min-h-0 flex-1 overflow-auto bg-muted/30 p-3 md:overflow-hidden"
+            >
               <div
                 v-if="selectedOverlayPage"
                 :key="`${selectedOverlayPage.imageUrl}-${selectedPageIndex}`"
-                class="space-y-2"
+                class="grid min-h-0 gap-3 md:h-full md:grid-cols-[minmax(0,3fr)_minmax(15rem,2fr)]"
               >
                 <div
-                  class="relative mx-auto w-fit max-w-full overflow-hidden rounded-md border bg-background"
+                  class="flex min-h-64 min-w-0 items-center justify-center overflow-hidden rounded-md border bg-background p-2 md:min-h-0"
                 >
-                  <img
-                    :src="selectedOverlayPage.imageUrl"
-                    class="block max-h-[40vh] max-w-full object-contain"
-                    alt=""
-                    @load="drawOverlayCanvas(selectedPageIndex)"
-                  />
-                  <canvas
-                    :ref="
-                      (element) =>
-                        setOverlayCanvas(element as HTMLCanvasElement | null, selectedPageIndex)
-                    "
-                    class="pointer-events-none absolute inset-0 z-10 h-full w-full"
-                    aria-hidden="true"
-                  />
+                  <div class="w-fit max-w-full">
+                    <img
+                      :src="selectedOverlayPage.imageUrl"
+                      class="block h-auto max-h-[50dvh] w-auto max-w-full object-contain lg:max-h-[calc(100dvh-16rem)]"
+                      alt=""
+                    />
+                  </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                  <Badge
-                    v-for="(block, blockIndex) in selectedOverlayPage.blocks"
-                    :key="`${blockIndex}-${block.label}-content`"
-                    variant="secondary"
-                    class="h-auto max-w-full whitespace-normal text-left"
-                  >
-                    {{ block.content || block.label || 'block' }}
-                  </Badge>
+                <div
+                  class="visible-scrollbar min-h-48 overflow-auto rounded-md border bg-background p-3 md:min-h-0"
+                >
+                  <div class="flex flex-wrap content-start gap-1.5">
+                    <Badge
+                      v-for="(block, blockIndex) in selectedOverlayPage.blocks"
+                      :key="`${blockIndex}-${block.label}-content`"
+                      variant="secondary"
+                      class="h-auto max-w-full whitespace-normal text-left"
+                    >
+                      {{ block.content || block.label || 'block' }}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
