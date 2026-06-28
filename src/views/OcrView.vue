@@ -45,7 +45,7 @@ interface LayoutBlock {
 
 const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const outputMode = ref<OutputMode>('markdown')
+const outputMode = ref<OutputMode>('text')
 const activeOutputTab = ref<OutputTab>('normal')
 const result = ref('')
 const pages = ref<OcrPage[]>([])
@@ -186,7 +186,9 @@ function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): Lay
     const outputImages = isRecord(layoutResult.outputImages) ? layoutResult.outputImages : null
     const imageUrl =
       asString(outputImages?.layout_det_res) ||
-      Object.values(outputImages ?? {}).map(asString).find(Boolean) ||
+      Object.values(outputImages ?? {})
+        .map(asString)
+        .find(Boolean) ||
       asString(layoutResult.inputImage)
     const parsingList = Array.isArray(prunedResult?.parsing_res_list)
       ? prunedResult.parsing_res_list
@@ -194,12 +196,10 @@ function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): Lay
 
     if (!imageUrl || !parsingList.length) continue
 
-    const blocks = parsingList
-      .filter(isRecord)
-      .map((block) => ({
-        label: asString(block.block_label),
-        content: asString(block.block_content),
-      }))
+    const blocks = parsingList.filter(isRecord).map((block) => ({
+      label: asString(block.block_label),
+      content: asString(block.block_content),
+    }))
 
     if (blocks.length) {
       overlayPages.push({ imageUrl, blocks })

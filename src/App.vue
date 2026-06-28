@@ -21,7 +21,7 @@ function toggleTheme() {
 <template>
   <div class="h-screen overflow-hidden bg-background text-foreground">
     <div
-      class="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+      class="mx-auto flex h-full w-full max-w-[80vw] flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
     >
       <header class="mb-4 flex flex-col gap-3 border-b pb-4 sm:mb-6 sm:gap-4 sm:pb-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
