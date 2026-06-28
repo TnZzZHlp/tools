@@ -17,6 +17,11 @@ const tools = [
     description: '训练简谱、音名、唱名对应关系，并把全音/半音换算成吉他品格距离。',
     to: '/tools/guitar-note-trainer',
   },
+  {
+    name: 'OCR 识别',
+    description: '粘贴图片或选择文件，自动识别成纯文本或 Markdown。',
+    to: '/tools/ocr',
+  },
 ]
 </script>
 

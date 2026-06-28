@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import GuitarNoteTrainerView from '@/views/GuitarNoteTrainerView.vue'
 import HomeView from '@/views/HomeView.vue'
+import OcrView from '@/views/OcrView.vue'
 import RandomStringView from '@/views/RandomStringView.vue'
 import RustTracingToLogqlView from '@/views/RustTracingToLogqlView.vue'
 
@@ -26,6 +27,11 @@ const router = createRouter({
       path: '/tools/guitar-note-trainer',
       name: 'guitar-note-trainer',
       component: GuitarNoteTrainerView,
+    },
+    {
+      path: '/tools/ocr',
+      name: 'ocr',
+      component: OcrView,
     },
   ],
 })
