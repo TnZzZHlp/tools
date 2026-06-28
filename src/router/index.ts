@@ -32,6 +32,11 @@ const router = createRouter({
       name: 'ocr',
       component: () => import('@/views/OcrView.vue'),
     },
+    {
+      path: '/tools/barcode-reader',
+      name: 'barcode-reader',
+      component: () => import('@/views/BarcodeReaderView.vue'),
+    },
   ],
 })
 

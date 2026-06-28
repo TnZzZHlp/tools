@@ -22,6 +22,11 @@ const tools = [
     description: '粘贴图片或选择文件，自动识别成纯文本或 Markdown。',
     to: '/tools/ocr',
   },
+  {
+    name: '条码识别',
+    description: '从图片中识别二维码及常见条码的内容和编码格式，全程本地处理。',
+    to: '/tools/barcode-reader',
+  },
 ]
 </script>
 

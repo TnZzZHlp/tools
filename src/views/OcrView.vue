@@ -351,21 +351,21 @@ async function copyOutput() {
               type="button"
               size="sm"
               class="min-w-24"
-              :variant="outputMode === 'markdown' ? 'default' : 'ghost'"
-              @click="outputMode = 'markdown'"
-            >
-              <FileText class="h-4 w-4" />
-              MD
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              class="min-w-24"
               :variant="outputMode === 'text' ? 'default' : 'ghost'"
               @click="outputMode = 'text'"
             >
               <Image class="h-4 w-4" />
               纯文本
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              class="min-w-24"
+              :variant="outputMode === 'markdown' ? 'default' : 'ghost'"
+              @click="outputMode = 'markdown'"
+            >
+              <FileText class="h-4 w-4" />
+              MD
             </Button>
           </div>
 
