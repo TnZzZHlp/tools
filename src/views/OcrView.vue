@@ -719,7 +719,7 @@ async function copyOutput() {
           class="visible-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-auto"
         >
           <div
-            class="markdown-preview min-h-48 rounded-md border px-4 py-3"
+            class="markdown-preview min-h-48 shrink-0 rounded-md border px-4 py-3"
             v-html="
               renderedMarkdown ||
               '<p class=&quot;text-muted-foreground&quot;>Markdown 结果会显示在这里</p>'
