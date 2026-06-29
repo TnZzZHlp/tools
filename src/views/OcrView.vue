@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { katex } from '@mdit/plugin-katex'
+import 'katex/dist/katex.min.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 
@@ -13,6 +15,8 @@ const markdownIt = new MarkdownIt({
   breaks: true,
   html: true,
   linkify: true,
+}).use(katex, {
+  throwOnError: false,
 })
 
 type OutputMode = 'text' | 'markdown'
@@ -672,5 +676,11 @@ async function copyOutput() {
   padding: 0.125rem 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875em;
+}
+
+.markdown-preview :deep(.katex-display) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25rem;
 }
 </style>
