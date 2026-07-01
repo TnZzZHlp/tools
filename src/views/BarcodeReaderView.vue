@@ -21,6 +21,19 @@ interface BarcodeResult {
   text: string
   format: string
   formatLabel: string
+  points: Point[]
+}
+
+interface Point {
+  x: number
+  y: number
+}
+
+interface ScanRegion {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -46,8 +59,9 @@ const FORMAT_LABELS: Record<string, string> = {
 
 const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const previewCanvas = ref<HTMLCanvasElement | null>(null)
 const previewUrl = ref('')
-const result = ref<BarcodeResult | null>(null)
+const results = ref<BarcodeResult[]>([])
 const error = ref('')
 const loading = ref(false)
 const dragging = ref(false)
@@ -90,7 +104,7 @@ async function selectFile(nextFile: File | null) {
   releasePreviewUrl()
   file.value = nextFile
   previewUrl.value = URL.createObjectURL(nextFile)
-  result.value = null
+  results.value = []
   error.value = ''
   copySuccess.value = false
   await recognize()
@@ -122,7 +136,7 @@ function clearFile() {
   recognitionToken++
   releasePreviewUrl()
   file.value = null
-  result.value = null
+  results.value = []
   error.value = ''
   loading.value = false
   copySuccess.value = false
@@ -133,7 +147,7 @@ async function recognize() {
 
   const currentToken = ++recognitionToken
   loading.value = true
-  result.value = null
+  results.value = []
   error.value = ''
 
   try {
@@ -141,19 +155,69 @@ async function recognize() {
       import('@zxing/browser'),
       import('@zxing/library'),
     ])
+    const image = await loadImage(previewUrl.value)
+    if (currentToken !== recognitionToken) return
+
+    drawPreview(image, [])
+
     const hints = new Map()
     hints.set(DecodeHintType.TRY_HARDER, true)
     const reader = new BrowserMultiFormatReader(hints)
-    const decoded = await reader.decodeFromImageUrl(previewUrl.value)
+    const found: BarcodeResult[] = []
+
+    for (const region of createScanRegions(image.naturalWidth, image.naturalHeight)) {
+      const scanCanvas = document.createElement('canvas')
+      scanCanvas.width = region.width
+      scanCanvas.height = region.height
+      const context = scanCanvas.getContext('2d', { willReadFrequently: true })
+      if (!context) continue
+
+      context.drawImage(
+        image,
+        region.x,
+        region.y,
+        region.width,
+        region.height,
+        0,
+        0,
+        region.width,
+        region.height,
+      )
+
+      // ZXing 每次只返回一个结果。识别后遮盖该区域并继续扫描，
+      // 再结合重叠分块，避免同一张图片中其余条码被忽略。
+      for (let attempt = 0; attempt < 8; attempt++) {
+        try {
+          const decoded = reader.decodeFromCanvas(scanCanvas)
+          const points = decoded.getResultPoints().map((point) => ({
+            x: point.getX() + region.x,
+            y: point.getY() + region.y,
+          }))
+          const format = BarcodeFormat[decoded.getBarcodeFormat()]
+          const nextResult = {
+            text: decoded.getText(),
+            format,
+            formatLabel: FORMAT_LABELS[format] ?? format,
+            points,
+          }
+
+          if (!isDuplicateResult(found, nextResult)) {
+            found.push(nextResult)
+          }
+          maskResult(context, decoded.getResultPoints(), region.width, region.height)
+        } catch {
+          break
+        }
+      }
+    }
 
     if (currentToken !== recognitionToken) return
 
-    const format = BarcodeFormat[decoded.getBarcodeFormat()]
-    result.value = {
-      text: decoded.getText(),
-      format,
-      formatLabel: FORMAT_LABELS[format] ?? format,
+    if (!found.length) {
+      throw new Error('No barcode found')
     }
+    results.value = found
+    drawPreview(image, found)
   } catch {
     if (currentToken !== recognitionToken) return
     error.value = '未识别到条码。请使用清晰、完整且对焦准确的条码图片后重试。'
@@ -164,11 +228,154 @@ async function recognize() {
   }
 }
 
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = url
+  })
+}
+
+function createScanRegions(width: number, height: number): ScanRegion[] {
+  const regions: ScanRegion[] = [{ x: 0, y: 0, width, height }]
+  const overlap = 0.12
+
+  for (let row = 0; row < 2; row++) {
+    for (let column = 0; column < 2; column++) {
+      const x = Math.round(column * width * (0.5 - overlap))
+      const y = Math.round(row * height * (0.5 - overlap))
+      regions.push({
+        x,
+        y,
+        width: Math.min(width - x, Math.round(width * (0.5 + overlap))),
+        height: Math.min(height - y, Math.round(height * (0.5 + overlap))),
+      })
+    }
+  }
+
+  return regions
+}
+
+function getResultCenter(result: BarcodeResult): Point {
+  if (!result.points.length) return { x: 0, y: 0 }
+  return {
+    x: result.points.reduce((sum, point) => sum + point.x, 0) / result.points.length,
+    y: result.points.reduce((sum, point) => sum + point.y, 0) / result.points.length,
+  }
+}
+
+function isDuplicateResult(existing: BarcodeResult[], candidate: BarcodeResult) {
+  const center = getResultCenter(candidate)
+  return existing.some((item) => {
+    if (item.text !== candidate.text || item.format !== candidate.format) return false
+    const itemCenter = getResultCenter(item)
+    const itemSize = getPointBounds(item.points)
+    const candidateSize = getPointBounds(candidate.points)
+
+    if (item.points.length <= 2 || candidate.points.length <= 2) {
+      const barcodeWidth = Math.max(itemSize.width, candidateSize.width)
+      return (
+        Math.abs(center.x - itemCenter.x) < Math.max(24, barcodeWidth * 0.25) &&
+        Math.abs(center.y - itemCenter.y) < Math.max(24, barcodeWidth * 0.3)
+      )
+    }
+
+    const tolerance = Math.max(
+      24,
+      Math.min(itemSize.width, itemSize.height, candidateSize.width, candidateSize.height) * 0.5,
+    )
+    return Math.hypot(center.x - itemCenter.x, center.y - itemCenter.y) < tolerance
+  })
+}
+
+function getPointBounds(points: Point[]) {
+  if (!points.length) return { x: 0, y: 0, width: 0, height: 0 }
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  return {
+    x: Math.min(...xs),
+    y: Math.min(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  }
+}
+
+function maskResult(
+  context: CanvasRenderingContext2D,
+  points: { getX(): number; getY(): number }[],
+  canvasWidth: number,
+  canvasHeight: number,
+) {
+  if (!points.length) {
+    context.fillStyle = '#fff'
+    context.fillRect(0, 0, canvasWidth, canvasHeight)
+    return
+  }
+
+  const bounds = getPointBounds(points.map((point) => ({ x: point.getX(), y: point.getY() })))
+  const paddingX = Math.max(16, bounds.width * 0.18)
+  const paddingY = Math.max(
+    24,
+    bounds.height * 0.25,
+    bounds.width * (points.length <= 2 ? 0.18 : 0.05),
+  )
+  context.fillStyle = '#fff'
+  context.fillRect(
+    Math.max(0, bounds.x - paddingX),
+    Math.max(0, bounds.y - paddingY),
+    Math.min(canvasWidth, bounds.width + paddingX * 2),
+    Math.min(canvasHeight, bounds.height + paddingY * 2),
+  )
+}
+
+function drawPreview(image: HTMLImageElement, barcodes: BarcodeResult[]) {
+  const canvas = previewCanvas.value
+  if (!canvas) return
+  canvas.width = image.naturalWidth
+  canvas.height = image.naturalHeight
+  const context = canvas.getContext('2d')
+  if (!context) return
+
+  context.drawImage(image, 0, 0)
+  const lineWidth = Math.max(3, Math.min(canvas.width, canvas.height) / 250)
+  context.lineWidth = lineWidth
+  context.font = `600 ${Math.max(18, lineWidth * 5)}px sans-serif`
+  context.textBaseline = 'middle'
+
+  barcodes.forEach((barcode, index) => {
+    if (!barcode.points.length) return
+    const bounds = getPointBounds(barcode.points)
+    const paddingX = Math.max(8, bounds.width * 0.06)
+    const paddingY = Math.max(
+      12,
+      bounds.height * 0.08,
+      bounds.width * (barcode.points.length <= 2 ? 0.12 : 0.03),
+    )
+    const x = Math.max(lineWidth, bounds.x - paddingX)
+    const y = Math.max(lineWidth, bounds.y - paddingY)
+    const width = Math.min(canvas.width - x - lineWidth, bounds.width + paddingX * 2)
+    const height = Math.min(canvas.height - y - lineWidth, bounds.height + paddingY * 2)
+
+    context.strokeStyle = '#16a34a'
+    context.fillStyle = 'rgba(22, 163, 74, 0.12)'
+    context.fillRect(x, y, width, height)
+    context.strokeRect(x, y, width, height)
+
+    const label = `${index + 1}`
+    const labelSize = Math.max(24, lineWidth * 7)
+    context.fillStyle = '#16a34a'
+    context.fillRect(x, y, labelSize, labelSize)
+    context.fillStyle = '#fff'
+    context.fillText(label, x + labelSize * 0.3, y + labelSize * 0.52)
+  })
+}
+
 async function copyContent() {
-  if (!result.value) return
+  if (!results.value.length) return
 
   try {
-    await navigator.clipboard.writeText(result.value.text)
+    await navigator.clipboard.writeText(results.value.map((item) => item.text).join('\n'))
     copySuccess.value = true
     clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {
@@ -257,10 +464,13 @@ async function copyContent() {
       <header class="flex shrink-0 items-center justify-between gap-3">
         <div>
           <h2 class="text-lg font-semibold">识别结果</h2>
-          <p class="mt-1 text-sm text-muted-foreground">显示条码内容和编码格式</p>
+          <p class="mt-1 text-sm text-muted-foreground">
+            <template v-if="results.length">共识别到 {{ results.length }} 个条码</template>
+            <template v-else>显示条码位置、内容和编码格式</template>
+          </p>
         </div>
         <Button
-          v-if="result"
+          v-if="results.length"
           type="button"
           variant="outline"
           size="sm"
@@ -289,42 +499,55 @@ async function copyContent() {
               <div
                 class="flex min-h-64 items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-3"
               >
-                <img
-                  :src="previewUrl"
+                <canvas
+                  ref="previewCanvas"
                   class="max-h-[55dvh] max-w-full rounded-md object-contain"
-                  alt="待识别的条码图片"
+                  role="img"
+                  :aria-label="
+                    results.length
+                      ? `条码图片，已标记 ${results.length} 个条码位置`
+                      : '待识别的条码图片'
+                  "
                 />
               </div>
             </CardContent>
           </Card>
 
-          <Card v-if="result" class="gap-4 py-4">
+          <Card v-if="results.length" class="gap-4 py-4">
             <CardHeader class="px-4">
               <div class="flex items-center justify-between gap-3">
                 <CardTitle class="flex items-center gap-2 text-base">
                   <Barcode class="h-4 w-4" />
-                  条码信息
+                  条码信息（{{ results.length }}）
                 </CardTitle>
-                <Badge>{{ result.formatLabel }}</Badge>
               </div>
             </CardHeader>
-            <CardContent class="space-y-4 px-4">
-              <div>
-                <p class="mb-2 text-xs font-medium text-muted-foreground">内容</p>
+            <CardContent class="space-y-3 px-4">
+              <div
+                v-for="(result, index) in results"
+                :key="`${result.format}-${result.text}-${index}`"
+                class="space-y-3 rounded-lg border p-3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <span
+                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-green-600 text-xs font-semibold text-white"
+                  >
+                    {{ index + 1 }}
+                  </span>
+                  <Badge variant="secondary">{{ result.formatLabel }}</Badge>
+                </div>
                 <Textarea
                   :model-value="result.text"
-                  class="visible-scrollbar min-h-32 resize-none overflow-auto font-mono"
+                  class="visible-scrollbar min-h-20 resize-none overflow-auto font-mono"
                   readonly
                   spellcheck="false"
                 />
-              </div>
-              <div class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-                <span class="text-muted-foreground">编码格式</span>
-                <span class="font-medium">{{ result.formatLabel }}</span>
-                <span class="text-muted-foreground">原始格式名</span>
-                <code class="break-all">{{ result.format }}</code>
-                <span class="text-muted-foreground">字符数</span>
-                <span>{{ Array.from(result.text).length }}</span>
+                <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                  <span class="text-muted-foreground">原始格式名</span>
+                  <code class="break-all">{{ result.format }}</code>
+                  <span class="text-muted-foreground">字符数</span>
+                  <span>{{ Array.from(result.text).length }}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
