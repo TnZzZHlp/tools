@@ -6,17 +6,24 @@ import {
 } from '@/utils/ocrChatCompletions'
 
 describe('OCR Chat Completions helpers', () => {
-  it('builds a URL-based JSON request body', () => {
-    const request = buildOcrChatCompletionsRequest('https://example.com/image.jpg', 'markdown')
+  it('builds an OpenAI-style multimodal request body', () => {
+    const request = buildOcrChatCompletionsRequest('data:image/png;base64,abc', 'markdown')
 
-    expect(request).toEqual({
+    expect(request).toMatchObject({
       model: 'PaddleOCR-VL-1.6',
-      fileUrl: 'https://example.com/image.jpg',
-      optionalPayload: {
-        useDocOrientationClassify: false,
-        useDocUnwarping: false,
-        useChartRecognition: false,
-      },
+      stream: false,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text' },
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/png;base64,abc' },
+            },
+          ],
+        },
+      ],
     })
   })
 
