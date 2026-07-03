@@ -7,11 +7,11 @@ import MarkdownIt from 'markdown-it'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   buildOcrChatCompletionsRequest,
   extractChatCompletionText,
-  fileToDataUrl,
 } from '@/utils/ocrChatCompletions'
 import {
   Braces,
@@ -66,6 +66,7 @@ const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const outputMode = ref<OutputMode>('text')
 const requestFormat = ref<RequestFormat>('multipart')
+const fileUrl = ref('')
 const activeOutputTab = ref<OutputTab>('normal')
 const result = ref('')
 const pages = ref<OcrPage[]>([])
@@ -97,7 +98,13 @@ const fileSize = computed(() => {
   return mb >= 1 ? `${mb.toFixed(2)} MB` : `${Math.ceil(file.value.size / 1024)} KB`
 })
 
-const canRun = computed(() => Boolean(file.value) && !loading.value)
+const canRun = computed(
+  () =>
+    !loading.value &&
+    (requestFormat.value === 'chat-completions'
+      ? Boolean(fileUrl.value.trim())
+      : Boolean(file.value)),
+)
 const ocrImages = computed(() => pages.value.map((page) => page.ocrImage).filter(Boolean))
 const layoutOverlayPages = computed(() => extractLayoutOverlayPages(rawResults.value))
 const selectedOverlayPage = computed(
@@ -277,7 +284,8 @@ function renderOutput() {
 }
 
 async function recognize() {
-  if (!file.value) return
+  if (requestFormat.value === 'multipart' && !file.value) return
+  if (requestFormat.value === 'chat-completions' && !fileUrl.value.trim()) return
 
   const currentToken = ++recognitionToken
   loading.value = true
@@ -286,17 +294,14 @@ async function recognize() {
   pages.value = []
 
   try {
-    const useChatCompletions =
-      requestFormat.value === 'chat-completions' && file.value.type.startsWith('image/')
     let body: BodyInit
     let headers: HeadersInit | undefined
 
-    if (useChatCompletions) {
-      body = JSON.stringify(
-        buildOcrChatCompletionsRequest(await fileToDataUrl(file.value), outputMode.value),
-      )
+    if (requestFormat.value === 'chat-completions') {
+      body = JSON.stringify(buildOcrChatCompletionsRequest(fileUrl.value.trim(), outputMode.value))
       headers = { 'Content-Type': 'application/json' }
     } else {
+      if (!file.value) return
       const formData = new FormData()
       formData.append('file', file.value)
       formData.append('model', outputMode.value === 'markdown' ? 'PaddleOCR-VL-1.6' : 'PP-OCRv6')
@@ -446,11 +451,12 @@ async function copyOutput() {
               </Button>
             </div>
             <p class="text-xs leading-5 text-muted-foreground">
-              Chat Completions 使用 JSON + Data URL 传图；PDF 会自动使用 Form Data。
+              Chat Completions 使用 JSON + 公网文件 URL；本地文件请使用 Form Data。
             </p>
           </div>
 
           <div
+            v-if="requestFormat === 'multipart'"
             class="flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             :class="dragging ? 'border-primary bg-muted/70' : 'hover:bg-muted/40'"
             tabindex="0"
@@ -475,7 +481,25 @@ async function copyOutput() {
             <p class="mt-2 text-sm leading-6 text-muted-foreground">支持图片和 PDF</p>
           </div>
 
-          <div v-if="file" class="flex items-center justify-between gap-3 rounded-lg border p-3">
+          <div v-if="requestFormat === 'chat-completions'" class="space-y-2 rounded-lg border p-3">
+            <label for="ocr-file-url" class="text-sm font-medium">公网文件 URL</label>
+            <Input
+              id="ocr-file-url"
+              v-model="fileUrl"
+              type="url"
+              placeholder="https://example.com/image.jpg"
+              autocomplete="url"
+              @keydown.enter.prevent="canRun && recognize()"
+            />
+            <p class="text-xs leading-5 text-muted-foreground">
+              支持服务端可访问的图片或 PDF URL。
+            </p>
+          </div>
+
+          <div
+            v-if="requestFormat === 'multipart' && file"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3"
+          >
             <div class="min-w-0">
               <p class="truncate text-sm font-medium">{{ file.name }}</p>
               <p class="text-xs text-muted-foreground">
