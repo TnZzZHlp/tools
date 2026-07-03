@@ -8,7 +8,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, ClipboardCopy, FileText, Image, LoaderCircle, Upload, X } from 'lucide-vue-next'
+import {
+  buildOcrChatCompletionsRequest,
+  extractChatCompletionText,
+  fileToDataUrl,
+} from '@/utils/ocrChatCompletions'
+import {
+  Braces,
+  Check,
+  ClipboardCopy,
+  FileText,
+  Image,
+  LoaderCircle,
+  Upload,
+  X,
+} from 'lucide-vue-next'
 
 const OCR_API_URL = 'https://api.tnzzz.top/ocr'
 const markdownIt = new MarkdownIt({
@@ -21,6 +35,7 @@ const markdownIt = new MarkdownIt({
 
 type OutputMode = 'text' | 'markdown'
 type OutputTab = 'normal' | 'markdown' | 'text'
+type RequestFormat = 'multipart' | 'chat-completions'
 
 interface OcrPage {
   page: number
@@ -50,6 +65,7 @@ interface LayoutBlock {
 const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const outputMode = ref<OutputMode>('text')
+const requestFormat = ref<RequestFormat>('multipart')
 const activeOutputTab = ref<OutputTab>('normal')
 const result = ref('')
 const pages = ref<OcrPage[]>([])
@@ -270,42 +286,76 @@ async function recognize() {
   pages.value = []
 
   try {
-    const formData = new FormData()
-    formData.append('file', file.value)
-    formData.append('model', outputMode.value === 'markdown' ? 'PaddleOCR-VL-1.6' : 'PP-OCRv6')
-    formData.append(
-      'optionalPayload',
-      JSON.stringify(
-        outputMode.value === 'markdown'
-          ? {
-              useDocOrientationClassify: false,
-              useDocUnwarping: false,
-              useChartRecognition: false,
-            }
-          : {
-              useDocOrientationClassify: false,
-              useDocUnwarping: false,
-              useTextlineOrientation: false,
-            },
-      ),
-    )
+    const useChatCompletions =
+      requestFormat.value === 'chat-completions' && file.value.type.startsWith('image/')
+    let body: BodyInit
+    let headers: HeadersInit | undefined
+
+    if (useChatCompletions) {
+      body = JSON.stringify(
+        buildOcrChatCompletionsRequest(await fileToDataUrl(file.value), outputMode.value),
+      )
+      headers = { 'Content-Type': 'application/json' }
+    } else {
+      const formData = new FormData()
+      formData.append('file', file.value)
+      formData.append('model', outputMode.value === 'markdown' ? 'PaddleOCR-VL-1.6' : 'PP-OCRv6')
+      formData.append(
+        'optionalPayload',
+        JSON.stringify(
+          outputMode.value === 'markdown'
+            ? {
+                useDocOrientationClassify: false,
+                useDocUnwarping: false,
+                useChartRecognition: false,
+              }
+            : {
+                useDocOrientationClassify: false,
+                useDocUnwarping: false,
+                useTextlineOrientation: false,
+              },
+        ),
+      )
+      body = formData
+    }
 
     const response = await fetch(OCR_API_URL, {
       method: 'POST',
-      body: formData,
+      headers,
+      body,
     })
-    const data = (await response.json()) as OcrResponse | { error?: string }
+    const data: unknown = await response.json()
 
     if (!response.ok) {
-      throw new Error(
-        'error' in data && data.error ? data.error : `OCR 请求失败: ${response.status}`,
-      )
+      const responseError =
+        isRecord(data) && typeof data.error === 'string'
+          ? data.error
+          : isRecord(data) && isRecord(data.error) && typeof data.error.message === 'string'
+            ? data.error.message
+            : ''
+      throw new Error(responseError || `OCR 请求失败: ${response.status}`)
     }
 
     if (currentToken !== recognitionToken) return
 
-    pages.value = (data as OcrResponse).pages ?? []
-    rawResults.value = (data as OcrResponse).rawResults ?? []
+    const chatCompletionText = extractChatCompletionText(data)
+    if (chatCompletionText) {
+      pages.value = [
+        {
+          page: 1,
+          text: outputMode.value === 'text' ? chatCompletionText : undefined,
+          markdown: outputMode.value === 'markdown' ? chatCompletionText : '',
+          markdownImages: {},
+          outputImages: {},
+        },
+      ]
+      rawResults.value = []
+      activeOutputTab.value = outputMode.value
+    } else {
+      const ocrResponse = data as OcrResponse
+      pages.value = ocrResponse.pages ?? []
+      rawResults.value = ocrResponse.rawResults ?? []
+    }
     renderOutput()
 
     if (!result.value && ocrImages.value.length) {
@@ -371,6 +421,33 @@ async function copyOutput() {
               <FileText class="h-4 w-4" />
               MD
             </Button>
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-sm font-medium">请求格式</p>
+            <div class="grid grid-cols-2 gap-1.5 rounded-lg border p-1">
+              <Button
+                type="button"
+                size="sm"
+                :variant="requestFormat === 'multipart' ? 'default' : 'ghost'"
+                @click="requestFormat = 'multipart'"
+              >
+                <Upload class="h-4 w-4" />
+                Form Data
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                :variant="requestFormat === 'chat-completions' ? 'default' : 'ghost'"
+                @click="requestFormat = 'chat-completions'"
+              >
+                <Braces class="h-4 w-4" />
+                Chat Completions
+              </Button>
+            </div>
+            <p class="text-xs leading-5 text-muted-foreground">
+              Chat Completions 使用 JSON + Data URL 传图；PDF 会自动使用 Form Data。
+            </p>
           </div>
 
           <div
