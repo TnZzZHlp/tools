@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import EncodingView from '@/views/EncodingView.vue'
 import GuitarNoteTrainerView from '@/views/GuitarNoteTrainerView.vue'
 import HomeView from '@/views/HomeView.vue'
 import RandomStringView from '@/views/RandomStringView.vue'
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/tools/rust-tracing-to-logql',
       name: 'rust-tracing-to-logql',
       component: RustTracingToLogqlView,
+    },
+    {
+      path: '/tools/encoding',
+      name: 'encoding',
+      component: EncodingView,
     },
     {
       path: '/tools/guitar-note-trainer',
