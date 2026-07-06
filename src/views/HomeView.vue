@@ -29,7 +29,7 @@ const tools = [
   },
   {
     name: '条码识别',
-    description: '从图片中识别二维码及常见条码的内容和编码格式，全程本地处理。',
+    description: '通过图片或摄像头实时识别二维码及常见条码，全程在浏览器本地处理。',
     to: '/tools/barcode-reader',
   },
 ]
