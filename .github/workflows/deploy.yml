@@ -7,6 +7,7 @@ on:
             - "src/**"
             - "package.json"
             - "pnpm-lock.yaml"
+            - "pnpm-workspace.yaml"
             - ".github/workflows/deploy.yml"
     workflow_dispatch:
 
@@ -78,3 +79,12 @@ jobs:
               shell: bash
               env:
                   SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+                  SERVER_IP: ${{ secrets.SERVER_IP }}
+
+            - name: Deploy frontend to server
+              run: |
+                  # Test SSH connection with verbose output
+                  ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=VERBOSE -p 9999 root@$SERVER_IP "echo 'SSH connection successful'"
+
+                  # Prepare temp directory for frontend deployment
+                  ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p 9999 root@$SERVER_IP "rm -rf /www/tools.tnzzz.top_tmp && mkdir -p /www/tools.tnzzz.top_tmp"
