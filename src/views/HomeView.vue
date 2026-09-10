@@ -32,6 +32,11 @@ const tools = [
     description: '通过图片或摄像头实时识别二维码及常见条码，全程在浏览器本地处理。',
     to: '/tools/barcode-reader',
   },
+  {
+    name: 'MAC 地址识别',
+    description: '连续识别设备屏幕上的 MAC 后四段，自动拼接前缀、去重并导出 CSV。',
+    to: '/tools/mac-address-scanner',
+  },
 ]
 </script>
 

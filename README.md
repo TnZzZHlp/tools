@@ -1,5 +1,14 @@
 # tools
 
+## MAC 地址识别
+
+访问 `/tools/mac-address-scanner`，即可使用浏览器摄像头连续识别设备屏幕上的 MAC 后四段。
+
+- 识别在浏览器本地完成，首次使用会下载并缓存英文 OCR 模型。
+- 摄像头模式需要 HTTPS（`localhost` 开发环境除外），连续两次识别一致后才会录入。
+- 可手动填写前两段前缀，结果会自动去重并保存到浏览器本地存储。
+- 支持上传图片测试、复制全部结果、清空和导出 CSV。
+
 This template should help get you started developing with Vue 3 in Vite.
 
 ## Recommended IDE Setup

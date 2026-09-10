@@ -43,6 +43,11 @@ const router = createRouter({
       name: 'barcode-reader',
       component: () => import('@/views/BarcodeReaderView.vue'),
     },
+    {
+      path: '/tools/mac-address-scanner',
+      name: 'mac-address-scanner',
+      component: () => import('@/views/MacAddressScannerView.vue'),
+    },
   ],
 })
 
