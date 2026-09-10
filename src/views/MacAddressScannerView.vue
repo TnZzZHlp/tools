@@ -29,12 +29,6 @@ type InputMode = 'camera' | 'image'
 const STORAGE_PREFIX = 'mac-scanner-prefix'
 const STORAGE_RESULTS = 'mac-scanner-results'
 const OCR_WHITELIST = '0123456789ABCDEFabcdef-: '
-const OCR_INTERVAL = 1800
-const FRAME_PROBE_INTERVAL = 350
-const FRAME_SIGNATURE_WIDTH = 32
-const FRAME_SIGNATURE_HEIGHT = 16
-const FRAME_CHANGE_THRESHOLD = 10
-const STABLE_READS_REQUIRED = 2
 
 const inputMode = ref<InputMode>('camera')
 const prefix = ref(localStorage.getItem(STORAGE_PREFIX) ?? '')
@@ -42,9 +36,9 @@ const results = ref<string[]>(loadResults())
 const error = ref('')
 const info = ref('准备开始')
 const currentRead = ref('')
-const stableCount = ref(0)
 const cameraStarting = ref(false)
 const cameraActive = ref(false)
+const scanInProgress = ref(false)
 const loadingImage = ref(false)
 const workerReady = ref(false)
 const copySuccess = ref(false)
@@ -56,21 +50,13 @@ const previewUrl = ref('')
 
 let stream: MediaStream | null = null
 let worker: Worker | null = null
-let scanTimer: ReturnType<typeof setTimeout> | undefined
 let copyTimer: ReturnType<typeof setTimeout> | undefined
-let scanInProgress = false
 let cameraSession = 0
-let frameProbeCanvas: HTMLCanvasElement | null = null
-let lastOcrAt = 0
-let waitingForFrameChange = false
-let referenceFrame: Uint8Array | null = null
-let lastFrameSignature: Uint8Array | null = null
 
 const fullResults = computed(() => results.value.map((suffix) => buildMacAddress(prefix.value, suffix)))
 const latestResult = computed(() => fullResults.value[0] ?? '')
 const canExport = computed(() => fullResults.value.length > 0)
 const displayPrefix = computed(() => normalizeMacPrefix(prefix.value) || '未设置')
-const progressLabel = computed(() => `${stableCount.value}/${STABLE_READS_REQUIRED}`)
 
 watch(prefix, (value) => {
   prefix.value = normalizeMacPrefix(value)
@@ -92,7 +78,6 @@ onBeforeUnmount(() => {
   void disposeWorker()
   releasePreviewUrl()
   clearTimeout(copyTimer)
-  clearTimeout(scanTimer)
 })
 
 function loadResults(): string[] {
@@ -158,12 +143,7 @@ async function startCamera() {
     video.value.srcObject = stream
     await video.value.play()
     cameraActive.value = true
-    lastOcrAt = 0
-    waitingForFrameChange = false
-    referenceFrame = null
-    lastFrameSignature = null
-    info.value = '将屏幕上的 MAC 对准取景框，保持稳定即可自动录入。'
-    scheduleScan(session)
+    info.value = '将屏幕上的 MAC 对准取景框，点击“拍照识别”即可录入。'
   } catch (cause) {
     error.value = cause instanceof DOMException && cause.name === 'NotAllowedError'
       ? '摄像头权限被拒绝，请在浏览器设置中允许访问摄像头。'
@@ -177,70 +157,9 @@ function stopCamera() {
   cameraSession++
   cameraActive.value = false
   cameraStarting.value = false
-  clearTimeout(scanTimer)
   stream?.getTracks().forEach((track) => track.stop())
   stream = null
   if (video.value) video.value.srcObject = null
-  waitingForFrameChange = false
-  referenceFrame = null
-  lastFrameSignature = null
-  resetStability()
-}
-
-function scheduleScan(session: number, delay = OCR_INTERVAL) {
-  clearTimeout(scanTimer)
-  scanTimer = setTimeout(() => {
-    void scanCameraFrame(session)
-  }, delay)
-}
-
-async function scanCameraFrame(session: number) {
-  if (!cameraActive.value || session !== cameraSession || scanInProgress) return
-  if (!video.value?.videoWidth || !cameraCanvas.value) {
-    scheduleScan(session)
-    return
-  }
-
-  const frameSignature = captureFrameSignature(video.value)
-  if (!frameSignature) {
-    scheduleScan(session, FRAME_PROBE_INTERVAL)
-    return
-  }
-
-  if (waitingForFrameChange) {
-    if (!hasFrameChanged(frameSignature)) {
-      scheduleScan(session, FRAME_PROBE_INTERVAL)
-      return
-    }
-
-    waitingForFrameChange = false
-    referenceFrame = null
-    resetStability()
-    info.value = '画面已变化，正在重新识别…'
-  }
-
-  const elapsed = performance.now() - lastOcrAt
-  if (elapsed < OCR_INTERVAL) {
-    scheduleScan(session, OCR_INTERVAL - elapsed)
-    return
-  }
-
-  scanInProgress = true
-  lastOcrAt = performance.now()
-  lastFrameSignature = frameSignature
-  try {
-    drawCameraRegion(video.value, cameraCanvas.value)
-    const suffix = await recognizeCanvas(cameraCanvas.value)
-    if (suffix && handleRecognizedSuffix(suffix)) {
-      waitingForFrameChange = true
-      referenceFrame = lastFrameSignature.slice()
-    }
-  } finally {
-    scanInProgress = false
-    if (cameraActive.value && session === cameraSession) {
-      scheduleScan(session, waitingForFrameChange ? FRAME_PROBE_INTERVAL : OCR_INTERVAL)
-    }
-  }
 }
 
 function getCameraCrop(source: HTMLVideoElement) {
@@ -278,41 +197,23 @@ function drawCameraRegion(source: HTMLVideoElement, target: HTMLCanvasElement) {
   context.filter = 'none'
 }
 
-function captureFrameSignature(source: HTMLVideoElement): Uint8Array | null {
-  const crop = getCameraCrop(source)
-  frameProbeCanvas ??= document.createElement('canvas')
-  setCanvasSize(frameProbeCanvas, FRAME_SIGNATURE_WIDTH, FRAME_SIGNATURE_HEIGHT)
-  const context = frameProbeCanvas.getContext('2d', { willReadFrequently: true })
-  if (!context) return null
+async function captureCameraFrame() {
+  if (!cameraActive.value || scanInProgress.value || !video.value?.videoWidth || !cameraCanvas.value) return
 
-  context.drawImage(
-    source,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    FRAME_SIGNATURE_WIDTH,
-    FRAME_SIGNATURE_HEIGHT,
-  )
-  const pixels = context.getImageData(0, 0, FRAME_SIGNATURE_WIDTH, FRAME_SIGNATURE_HEIGHT).data
-  const signature = new Uint8Array(FRAME_SIGNATURE_WIDTH * FRAME_SIGNATURE_HEIGHT)
-  for (let index = 0; index < signature.length; index++) {
-    const pixel = index * 4
-    signature[index] = Math.round(pixels[pixel]! * 0.299 + pixels[pixel + 1]! * 0.587 + pixels[pixel + 2]! * 0.114)
+  const session = cameraSession
+  scanInProgress.value = true
+  error.value = ''
+  info.value = '正在识别当前画面…'
+  try {
+    drawCameraRegion(video.value, cameraCanvas.value)
+    const suffix = await recognizeCanvas(cameraCanvas.value)
+    if (!suffix || !cameraActive.value || session !== cameraSession) return
+
+    currentRead.value = suffix
+    addResult(suffix)
+  } finally {
+    scanInProgress.value = false
   }
-  return signature
-}
-
-function hasFrameChanged(signature: Uint8Array): boolean {
-  if (!referenceFrame) return true
-
-  let difference = 0
-  for (let index = 0; index < signature.length; index++) {
-    difference += Math.abs(signature[index]! - referenceFrame[index]!)
-  }
-  return difference / signature.length >= FRAME_CHANGE_THRESHOLD
 }
 
 async function recognizeCanvas(canvas: HTMLCanvasElement): Promise<string | null> {
@@ -329,23 +230,6 @@ async function recognizeCanvas(canvas: HTMLCanvasElement): Promise<string | null
     error.value = 'OCR 识别失败，请重试或改用更清晰的图片。'
     return null
   }
-}
-
-function handleRecognizedSuffix(suffix: string): boolean {
-  const previousRead = currentRead.value
-  currentRead.value = suffix
-  stableCount.value = previousRead === suffix ? stableCount.value + 1 : 1
-  info.value = `识别到 ${suffix}，保持稳定 ${Math.min(stableCount.value, STABLE_READS_REQUIRED)}/${STABLE_READS_REQUIRED}`
-
-  if (stableCount.value < STABLE_READS_REQUIRED) return false
-  addResult(suffix)
-  stableCount.value = 0
-  return true
-}
-
-function resetStability() {
-  currentRead.value = ''
-  stableCount.value = 0
 }
 
 function addResult(suffix: string) {
@@ -387,7 +271,7 @@ async function recognizeImage(file: File) {
   error.value = ''
   releasePreviewUrl()
   previewUrl.value = URL.createObjectURL(file)
-  resetStability()
+  currentRead.value = ''
   try {
     await new Promise<void>((resolve, reject) => {
       const image = new Image()
@@ -479,7 +363,7 @@ function exportCsv() {
 
 function clearResults() {
   results.value = []
-  resetStability()
+  currentRead.value = ''
   info.value = '已清空识别结果'
 }
 
@@ -499,7 +383,7 @@ function removeResult(suffix: string) {
                 <ScanLine class="h-5 w-5" />
                 MAC 地址识别
               </CardTitle>
-              <p class="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">扫描设备屏幕上的后四段，稳定识别后自动追加。</p>
+  <p class="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">扫描设备屏幕上的后四段，点击拍照后自动追加。</p>
             </div>
             <Badge variant="secondary" class="shrink-0">本地 OCR</Badge>
           </div>
@@ -510,7 +394,7 @@ function removeResult(suffix: string) {
               size="sm"
               @click="switchMode('camera')"
             >
-              <Camera class="mr-1.5 h-4 w-4 shrink-0 sm:mr-2" />摄像头连续识别
+              <Camera class="mr-1.5 h-4 w-4 shrink-0 sm:mr-2" />摄像头拍照识别
             </Button>
             <Button
               class="min-h-10 flex-1 px-2 text-xs sm:min-h-9 sm:px-3 sm:text-sm"
@@ -535,7 +419,13 @@ function removeResult(suffix: string) {
                 点击下方按钮启动摄像头
               </div>
             </div>
-            <div class="pointer-events-none absolute left-[15%] top-[34%] h-[32%] w-[70%] rounded-lg border-2 border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.32)]">
+            <div class="pointer-events-none absolute inset-0">
+              <div class="absolute inset-x-0 top-0 h-[34%] bg-black/30" />
+              <div class="absolute inset-x-0 bottom-0 h-[34%] bg-black/30" />
+              <div class="absolute bottom-[34%] left-0 top-[34%] w-[15%] bg-black/30" />
+              <div class="absolute bottom-[34%] right-0 top-[34%] w-[15%] bg-black/30" />
+            </div>
+            <div class="pointer-events-none absolute left-[15%] top-[34%] h-[32%] w-[70%] rounded-lg border-2 border-emerald-400">
               <span class="absolute -top-7 left-0 whitespace-nowrap rounded bg-emerald-400 px-2 py-1 text-xs font-medium text-emerald-950">将 MAC 放入框内</span>
             </div>
           </div>
@@ -554,7 +444,11 @@ function removeResult(suffix: string) {
             <Button v-if="inputMode === 'camera' && !cameraActive" class="min-h-10 w-full sm:min-h-9 sm:w-auto" :disabled="cameraStarting" @click="startCamera">
               <Camera class="mr-2 h-4 w-4" />启动摄像头
             </Button>
-            <Button v-if="inputMode === 'camera' && cameraActive" class="min-h-10 w-full sm:min-h-9 sm:w-auto" variant="outline" @click="stopCamera">
+            <Button v-if="inputMode === 'camera' && cameraActive" class="min-h-10 w-full sm:min-h-9 sm:w-auto" :disabled="scanInProgress" @click="captureCameraFrame">
+              <LoaderCircle v-if="scanInProgress" class="mr-2 h-4 w-4 animate-spin" />
+              <ScanLine v-else class="mr-2 h-4 w-4" />{{ scanInProgress ? '正在识别…' : '拍照识别' }}
+            </Button>
+            <Button v-if="inputMode === 'camera' && cameraActive" class="min-h-10 w-full sm:min-h-9 sm:w-auto" variant="outline" :disabled="scanInProgress" @click="stopCamera">
               <CameraOff class="mr-2 h-4 w-4" />停止摄像头
             </Button>
             <Button v-if="inputMode === 'image'" class="min-h-10 w-full sm:min-h-9 sm:w-auto" :disabled="loadingImage" @click="fileInput?.click()">
@@ -574,7 +468,7 @@ function removeResult(suffix: string) {
               <Badge v-else variant="outline">待加载模型</Badge>
             </div>
             <p class="mt-2">{{ info }}</p>
-            <p v-if="currentRead" class="mt-1 font-mono text-lg font-semibold tracking-wider">{{ currentRead }} <span class="text-sm font-normal text-muted-foreground">{{ progressLabel }}</span></p>
+            <p v-if="currentRead" class="mt-1 font-mono text-lg font-semibold tracking-wider">{{ currentRead }}</p>
           </div>
 
           <Alert v-if="error" variant="destructive">
