@@ -29,7 +29,11 @@ type InputMode = 'camera' | 'image'
 const STORAGE_PREFIX = 'mac-scanner-prefix'
 const STORAGE_RESULTS = 'mac-scanner-results'
 const OCR_WHITELIST = '0123456789ABCDEFabcdef-: '
-const OCR_INTERVAL = 650
+const OCR_INTERVAL = 1800
+const FRAME_PROBE_INTERVAL = 350
+const FRAME_SIGNATURE_WIDTH = 32
+const FRAME_SIGNATURE_HEIGHT = 16
+const FRAME_CHANGE_THRESHOLD = 10
 const STABLE_READS_REQUIRED = 2
 
 const inputMode = ref<InputMode>('camera')
@@ -56,6 +60,11 @@ let scanTimer: ReturnType<typeof setTimeout> | undefined
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 let scanInProgress = false
 let cameraSession = 0
+let frameProbeCanvas: HTMLCanvasElement | null = null
+let lastOcrAt = 0
+let waitingForFrameChange = false
+let referenceFrame: Uint8Array | null = null
+let lastFrameSignature: Uint8Array | null = null
 
 const fullResults = computed(() => results.value.map((suffix) => buildMacAddress(prefix.value, suffix)))
 const latestResult = computed(() => fullResults.value[0] ?? '')
@@ -149,6 +158,10 @@ async function startCamera() {
     video.value.srcObject = stream
     await video.value.play()
     cameraActive.value = true
+    lastOcrAt = 0
+    waitingForFrameChange = false
+    referenceFrame = null
+    lastFrameSignature = null
     info.value = '将屏幕上的 MAC 对准取景框，保持稳定即可自动录入。'
     scheduleScan(session)
   } catch (cause) {
@@ -168,14 +181,17 @@ function stopCamera() {
   stream?.getTracks().forEach((track) => track.stop())
   stream = null
   if (video.value) video.value.srcObject = null
+  waitingForFrameChange = false
+  referenceFrame = null
+  lastFrameSignature = null
   resetStability()
 }
 
-function scheduleScan(session: number) {
+function scheduleScan(session: number, delay = OCR_INTERVAL) {
   clearTimeout(scanTimer)
   scanTimer = setTimeout(() => {
     void scanCameraFrame(session)
-  }, OCR_INTERVAL)
+  }, delay)
 }
 
 async function scanCameraFrame(session: number) {
@@ -185,17 +201,49 @@ async function scanCameraFrame(session: number) {
     return
   }
 
+  const frameSignature = captureFrameSignature(video.value)
+  if (!frameSignature) {
+    scheduleScan(session, FRAME_PROBE_INTERVAL)
+    return
+  }
+
+  if (waitingForFrameChange) {
+    if (!hasFrameChanged(frameSignature)) {
+      scheduleScan(session, FRAME_PROBE_INTERVAL)
+      return
+    }
+
+    waitingForFrameChange = false
+    referenceFrame = null
+    resetStability()
+    info.value = '画面已变化，正在重新识别…'
+  }
+
+  const elapsed = performance.now() - lastOcrAt
+  if (elapsed < OCR_INTERVAL) {
+    scheduleScan(session, OCR_INTERVAL - elapsed)
+    return
+  }
+
   scanInProgress = true
+  lastOcrAt = performance.now()
+  lastFrameSignature = frameSignature
   try {
     drawCameraRegion(video.value, cameraCanvas.value)
-    await recognizeCanvas(cameraCanvas.value)
+    const suffix = await recognizeCanvas(cameraCanvas.value)
+    if (suffix && handleRecognizedSuffix(suffix)) {
+      waitingForFrameChange = true
+      referenceFrame = lastFrameSignature.slice()
+    }
   } finally {
     scanInProgress = false
-    if (cameraActive.value && session === cameraSession) scheduleScan(session)
+    if (cameraActive.value && session === cameraSession) {
+      scheduleScan(session, waitingForFrameChange ? FRAME_PROBE_INTERVAL : OCR_INTERVAL)
+    }
   }
 }
 
-function drawCameraRegion(source: HTMLVideoElement, target: HTMLCanvasElement) {
+function getCameraCrop(source: HTMLVideoElement) {
   const sourceWidth = source.videoWidth
   const sourceHeight = source.videoHeight
   const containerRatio = 4 / 3
@@ -204,45 +252,95 @@ function drawCameraRegion(source: HTMLVideoElement, target: HTMLCanvasElement) {
   const visibleHeight = sourceRatio < containerRatio ? sourceWidth / containerRatio : sourceHeight
   const visibleX = (sourceWidth - visibleWidth) / 2
   const visibleY = (sourceHeight - visibleHeight) / 2
-  const crop = {
+  return {
     x: visibleX + visibleWidth * 0.15,
     y: visibleY + visibleHeight * 0.34,
     width: visibleWidth * 0.7,
     height: visibleHeight * 0.32,
   }
+}
 
-  target.width = Math.max(640, Math.round(crop.width))
-  target.height = Math.max(180, Math.round(crop.height))
+function setCanvasSize(target: HTMLCanvasElement, width: number, height: number) {
+  if (target.width !== width) target.width = width
+  if (target.height !== height) target.height = height
+}
+
+function drawCameraRegion(source: HTMLVideoElement, target: HTMLCanvasElement) {
+  const crop = getCameraCrop(source)
+  const width = Math.max(640, Math.round(crop.width))
+  const height = Math.max(180, Math.round(crop.height))
+
+  setCanvasSize(target, width, height)
   const context = target.getContext('2d')
   if (!context) return
   context.filter = 'grayscale(1) contrast(1.65) brightness(1.1)'
-  context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, target.width, target.height)
+  context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height)
   context.filter = 'none'
 }
 
-async function recognizeCanvas(canvas: HTMLCanvasElement) {
+function captureFrameSignature(source: HTMLVideoElement): Uint8Array | null {
+  const crop = getCameraCrop(source)
+  frameProbeCanvas ??= document.createElement('canvas')
+  setCanvasSize(frameProbeCanvas, FRAME_SIGNATURE_WIDTH, FRAME_SIGNATURE_HEIGHT)
+  const context = frameProbeCanvas.getContext('2d', { willReadFrequently: true })
+  if (!context) return null
+
+  context.drawImage(
+    source,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    FRAME_SIGNATURE_WIDTH,
+    FRAME_SIGNATURE_HEIGHT,
+  )
+  const pixels = context.getImageData(0, 0, FRAME_SIGNATURE_WIDTH, FRAME_SIGNATURE_HEIGHT).data
+  const signature = new Uint8Array(FRAME_SIGNATURE_WIDTH * FRAME_SIGNATURE_HEIGHT)
+  for (let index = 0; index < signature.length; index++) {
+    const pixel = index * 4
+    signature[index] = Math.round(pixels[pixel]! * 0.299 + pixels[pixel + 1]! * 0.587 + pixels[pixel + 2]! * 0.114)
+  }
+  return signature
+}
+
+function hasFrameChanged(signature: Uint8Array): boolean {
+  if (!referenceFrame) return true
+
+  let difference = 0
+  for (let index = 0; index < signature.length; index++) {
+    difference += Math.abs(signature[index]! - referenceFrame[index]!)
+  }
+  return difference / signature.length >= FRAME_CHANGE_THRESHOLD
+}
+
+async function recognizeCanvas(canvas: HTMLCanvasElement): Promise<string | null> {
   try {
     const result = await (await getWorker()).recognize(canvas)
     const suffix = extractMacSuffix(result.data.text)
-    if (suffix) handleRecognizedSuffix(suffix)
-    else if (cameraActive.value) {
+    if (suffix) return suffix
+    if (cameraActive.value) {
       currentRead.value = ''
       info.value = '未识别到完整的 4 段 MAC，请调整距离、角度或光线。'
     }
+    return null
   } catch {
     error.value = 'OCR 识别失败，请重试或改用更清晰的图片。'
+    return null
   }
 }
 
-function handleRecognizedSuffix(suffix: string) {
+function handleRecognizedSuffix(suffix: string): boolean {
   const previousRead = currentRead.value
   currentRead.value = suffix
   stableCount.value = previousRead === suffix ? stableCount.value + 1 : 1
   info.value = `识别到 ${suffix}，保持稳定 ${Math.min(stableCount.value, STABLE_READS_REQUIRED)}/${STABLE_READS_REQUIRED}`
 
-  if (stableCount.value < STABLE_READS_REQUIRED) return
+  if (stableCount.value < STABLE_READS_REQUIRED) return false
   addResult(suffix)
   stableCount.value = 0
+  return true
 }
 
 function resetStability() {
@@ -332,23 +430,25 @@ function drawImageRegion(source: HTMLImageElement, target: HTMLCanvasElement) {
   const height = source.naturalHeight
   const cropWidth = width * 0.7
   const cropHeight = height * 0.32
+  const targetWidth = Math.max(640, Math.round(cropWidth))
+  const targetHeight = Math.max(180, Math.round(cropHeight))
+  setCanvasSize(target, targetWidth, targetHeight)
   const context = target.getContext('2d')
   if (!context) return
-  target.width = Math.max(640, Math.round(cropWidth))
-  target.height = Math.max(180, Math.round(cropHeight))
   context.filter = 'grayscale(1) contrast(1.65) brightness(1.1)'
-  context.drawImage(source, width * 0.15, height * 0.34, cropWidth, cropHeight, 0, 0, target.width, target.height)
+  context.drawImage(source, width * 0.15, height * 0.34, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight)
   context.filter = 'none'
 }
 
 function drawFullImage(source: HTMLImageElement, target: HTMLCanvasElement) {
   const scale = Math.min(1600 / source.naturalWidth, 1600 / source.naturalHeight, 1)
-  target.width = Math.max(1, Math.round(source.naturalWidth * scale))
-  target.height = Math.max(1, Math.round(source.naturalHeight * scale))
+  const targetWidth = Math.max(1, Math.round(source.naturalWidth * scale))
+  const targetHeight = Math.max(1, Math.round(source.naturalHeight * scale))
+  setCanvasSize(target, targetWidth, targetHeight)
   const context = target.getContext('2d')
   if (!context) return
   context.filter = 'grayscale(1) contrast(1.45) brightness(1.08)'
-  context.drawImage(source, 0, 0, target.width, target.height)
+  context.drawImage(source, 0, 0, targetWidth, targetHeight)
   context.filter = 'none'
 }
 
