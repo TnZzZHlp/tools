@@ -3,6 +3,11 @@ import HoverUnderlineTitle from '@/components/HoverUnderlineTitle.vue'
 
 const tools = [
   {
+    name: '文件处理',
+    description: '在浏览器中处理文件，支持 PDF 合并、页面预览和旋转。',
+    to: '/tools/files',
+  },
+  {
     name: '随机字符串生成器',
     description: '生成随机字符串，支持自定义字符类型、长度、批量生成、排除字符和 UUID 模式。',
     to: '/random-string',

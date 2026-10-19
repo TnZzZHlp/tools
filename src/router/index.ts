@@ -34,6 +34,16 @@ const router = createRouter({
       component: GuitarNoteTrainerView,
     },
     {
+      path: '/tools/files',
+      name: 'file-tools',
+      component: () => import('@/views/FileToolsView.vue'),
+    },
+    {
+      path: '/tools/files/pdf-merge',
+      name: 'pdf-merge',
+      component: () => import('@/views/PdfMergeView.vue'),
+    },
+    {
       path: '/tools/ocr',
       name: 'ocr',
       component: () => import('@/views/OcrView.vue'),
