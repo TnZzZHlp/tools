@@ -4,13 +4,14 @@ import 'katex/dist/katex.min.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 
+import { getApiBaseUrl } from '@/api'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Check, ClipboardCopy, FileText, Image, LoaderCircle, Upload, X } from 'lucide-vue-next'
 
-const OCR_API_URL = 'https://api.tnzzz.top/ocr'
+const OCR_API_URL = `${getApiBaseUrl()}/ocr`
 const markdownIt = new MarkdownIt({
   breaks: true,
   html: true,
