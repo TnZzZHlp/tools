@@ -5,6 +5,7 @@ on:
         branches: [main]
         paths:
             - "src/**"
+            - "public/**"
             - "package.json"
             - "pnpm-lock.yaml"
             - "pnpm-workspace.yaml"
@@ -33,15 +34,13 @@ jobs:
             - name: Install pnpm
               run: npm install -g pnpm
 
-            - name: Cache pnpm modules
+            - name: Cache pnpm store
               uses: actions/cache@v4
               with:
-                  path: |
-                      frontend/node_modules
-                      ~/.pnpm-store
-                  key: ${{ runner.os }}-pnpm
+                  path: ~/.local/share/pnpm/store
+                  key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
 
-            - name: Install frontend dependencies
+            - name: Install dependencies
               run: pnpm install
 
             - name: Build frontend
@@ -67,38 +66,47 @@ jobs:
 
             - name: Setup SSH
               run: |
-                  mkdir -p ~/.ssh
-                  echo "$SERVER_SSH_KEY" > ~/.ssh/id_ed25519
+                  set -euo pipefail
+                  umask 077
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
                   chmod 600 ~/.ssh/id_ed25519
-                  chmod 700 ~/.ssh
-                  ssh-keyscan -p 9999 $SERVER_IP >> ~/.ssh/known_hosts
-                  echo "SSH directory contents:"
-                  ls -la ~/.ssh
-                  echo "Private key fingerprint:"
-                  ssh-keygen -lf ~/.ssh/id_ed25519
+                  cat > ~/.ssh/config <<'EOF'
+                  Host deploy-jump
+                      HostName 69.63.193.86
+                      Port 999
+                      User root
+                  Host deploy-target
+                      HostName 192.168.255.201
+                      Port 999
+                      User root
+                      ProxyJump deploy-jump
+                  Host deploy-jump deploy-target
+                      IdentityFile ~/.ssh/id_ed25519
+                      IdentitiesOnly yes
+                      BatchMode yes
+                      StrictHostKeyChecking accept-new
+                      UserKnownHostsFile ~/.ssh/known_hosts
+                      ConnectTimeout 15
+                      ServerAliveInterval 15
+                      ServerAliveCountMax 3
+                  EOF
+                  chmod 600 ~/.ssh/config
+                  ssh deploy-jump 'echo "jump host reachable"'
+                  ssh deploy-target 'echo "target host reachable through jump"'
               shell: bash
               env:
-                  SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-                  SERVER_IP: ${{ secrets.SERVER_IP }}
+                  SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
 
             - name: Deploy frontend to server
               run: |
                   set -euo pipefail
-                  if [[ -z "${SERVER_IP:-}" ]]; then
-                      echo "SERVER_IP secret is empty"
-                      exit 1
-                  fi
+                  REMOTE_DIR=/www/tools
+                  TEMP_DIR=/www/tools_tmp
 
-                  # Test SSH connection with verbose output
-                  ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=VERBOSE -p 9999 -l root "$SERVER_IP" "echo 'SSH connection successful'"
-
-                  # Prepare temp directory for frontend deployment
-                  ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p 9999 -l root "$SERVER_IP" "rm -rf /www/tools.tnzzz.top_tmp && mkdir -p /www/tools.tnzzz.top_tmp"
-
-                  # Upload built frontend files to temp directory
-                  rsync -avz -e "ssh -i ~/.ssh/id_ed25519 -p 9999 -o StrictHostKeyChecking=no" dist/ "root@${SERVER_IP}:/www/tools.tnzzz.top_tmp/"
-
-                  # Swap temp directory into place
-                  ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p 9999 -l root "$SERVER_IP" "rm -rf /www/tools.tnzzz.top_prev || true && if [ -d /www/tools.tnzzz.top ]; then mv /www/tools.tnzzz.top /www/tools.tnzzz.top_prev; fi && mv /www/tools.tnzzz.top_tmp /www/tools.tnzzz.top"
-              env:
-                  SERVER_IP: ${{ secrets.SERVER_IP }}
+                  ssh deploy-target "rm -rf '$TEMP_DIR' && mkdir -p '$TEMP_DIR'"
+                  rsync -avz --delete -e ssh dist/ "deploy-target:$TEMP_DIR/"
+                  ssh deploy-target "rm -rf '${REMOTE_DIR}_prev' || true
+                     if [ -d '$REMOTE_DIR' ]; then mv '$REMOTE_DIR' '${REMOTE_DIR}_prev'; fi
+                     mv '$TEMP_DIR' '$REMOTE_DIR'"
+              shell: bash
