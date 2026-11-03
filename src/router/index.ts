@@ -58,6 +58,28 @@ const router = createRouter({
       name: 'mac-address-scanner',
       component: () => import('@/views/MacAddressScannerView.vue'),
     },
+    {
+      path: '/randomyuri',
+      name: 'random-yuri',
+      component: () => import('@/views/RandomYuriView.vue'),
+    },
+    {
+      path: '/novels',
+      name: 'novels',
+      component: () => import('@/views/NovelsView.vue'),
+    },
+    {
+      path: '/novels/:novelId',
+      name: 'novel-detail',
+      props: true,
+      component: () => import('@/views/NovelDetailView.vue'),
+    },
+    {
+      path: '/novels/:novelId/chapters/:chapterId',
+      name: 'novel-reader',
+      meta: { fullscreen: true },
+      component: () => import('@/views/NovelReaderView.vue'),
+    },
   ],
 })
 
