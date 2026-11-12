@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import AppFooter from '@/components/AppFooter.vue'
 import RouteTransition from '@/components/RouteTransition.vue'
 import { RouterView, useRoute } from 'vue-router'
 import { ChevronLeft, Moon, Sun } from 'lucide-vue-next'
@@ -79,6 +80,8 @@ function toggleTheme() {
             </RouteTransition>
           </RouterView>
         </main>
+
+        <AppFooter />
       </div>
     </div>
   </TooltipProvider>
