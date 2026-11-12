@@ -981,7 +981,7 @@ function toSafeNumber(value: unknown) {
 </script>
 
 <template>
-  <section class="h-full min-h-0 w-full overflow-hidden">
+  <section class="h-full min-h-0 w-full overflow-hidden" data-morph-target>
     <div class="visible-scrollbar h-full overflow-auto pr-1">
       <div class="mx-auto max-w-7xl space-y-4 pb-8 sm:space-y-6">
         <Card class="overflow-hidden border-border/70 bg-card/95 shadow-sm">

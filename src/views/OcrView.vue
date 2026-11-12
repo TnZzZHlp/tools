@@ -337,6 +337,7 @@ async function copyOutput() {
   <section
     class="relative grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] lg:gap-6"
     :aria-busy="loading"
+    data-morph-target
   >
     <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <header class="shrink-0 space-y-1.5 sm:space-y-2">

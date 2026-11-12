@@ -54,7 +54,7 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
 </script>
 
 <template>
-  <section class="flex h-full min-h-0 w-full flex-col overflow-hidden">
+  <section class="flex h-full min-h-0 w-full flex-col overflow-hidden" data-morph-target>
     <header class="mb-4 flex shrink-0 flex-wrap items-start justify-between gap-3 sm:mb-6">
       <div class="space-y-1.5 sm:space-y-2">
         <div class="flex items-center gap-2">

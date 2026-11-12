@@ -133,7 +133,7 @@ async function copyAll() {
 </script>
 
 <template>
-  <section class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-2 lg:gap-6">
+  <section class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-2 lg:gap-6" data-morph-target>
     <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <header class="shrink-0 space-y-1.5 sm:space-y-2">
         <Badge variant="secondary">配置选项</Badge>

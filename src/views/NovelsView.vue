@@ -50,7 +50,7 @@ void load()
 </script>
 
 <template>
-  <section class="visible-scrollbar h-full space-y-6 overflow-y-auto pb-6">
+  <section class="visible-scrollbar h-full space-y-6 overflow-y-auto pb-6" data-morph-target>
     <div class="space-y-2">
       <h1 class="flex items-center gap-2 text-3xl font-semibold tracking-tight">
         <BookOpen class="size-7" />小说阅读
@@ -90,7 +90,12 @@ void load()
         {{ appliedQuery ? '没有找到匹配的小说。' : '暂无小说。' }}
       </p>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card v-for="novel in novels" :key="novel.id" class="min-w-0">
+        <Card
+          v-for="novel in novels"
+          :key="novel.id"
+          class="min-w-0"
+          :data-morph="`/novels/${novel.id}`"
+        >
           <CardHeader
             ><CardTitle class="break-words leading-relaxed"
               ><RouterLink :to="`/novels/${novel.id}`" class="hover:underline">{{

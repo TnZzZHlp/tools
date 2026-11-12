@@ -87,7 +87,7 @@ onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <section class="visible-scrollbar h-full space-y-6 overflow-y-auto pb-6">
+  <section class="visible-scrollbar h-full space-y-6 overflow-y-auto pb-6" data-morph-target>
     <div class="flex items-center justify-between gap-3">
       <Button as-child variant="outline"><RouterLink to="/novels">返回小说列表</RouterLink></Button>
       <Button variant="outline" :disabled="loading" @click="load(true)"
@@ -134,6 +134,7 @@ onBeforeUnmount(() => controller?.abort())
         <li v-for="chapter in chapters" :key="chapter.id" class="min-w-0">
           <RouterLink
             :to="chapterPath(novel.id, chapter.id)"
+            :data-morph="chapterPath(novel.id, chapter.id)"
             class="flex h-full items-start justify-between gap-3 rounded-md border p-3 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span class="min-w-0 break-words text-sm"

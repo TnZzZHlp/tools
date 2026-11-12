@@ -4,7 +4,7 @@ import HoverUnderlineTitle from '@/components/HoverUnderlineTitle.vue'
 </script>
 
 <template>
-  <section class="space-y-6 overflow-y-auto pb-6">
+  <section class="space-y-6 overflow-y-auto pb-6" data-morph-target>
     <div class="space-y-2">
       <h2 class="text-2xl font-semibold">文件处理</h2>
       <p class="text-sm text-muted-foreground">在浏览器中处理文件。</p>
@@ -13,6 +13,7 @@ import HoverUnderlineTitle from '@/components/HoverUnderlineTitle.vue'
       <li>
         <RouterLink
           to="/tools/files/pdf-merge"
+          data-morph="/tools/files/pdf-merge"
           class="group block rounded-xl p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
         >
           <HoverUnderlineTitle class="mb-2">PDF 合并</HoverUnderlineTitle>

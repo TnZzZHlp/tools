@@ -54,6 +54,7 @@ const tools = [
         class="group cursor-pointer rounded-xl p-4 transition-colors active:bg-muted/70 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
         tabindex="0"
         role="link"
+        :data-morph="tool.to"
         @click="$router.push(tool.to)"
         @keydown.enter="$router.push(tool.to)"
         @keydown.space.prevent="$router.push(tool.to)"

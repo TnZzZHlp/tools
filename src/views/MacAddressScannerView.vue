@@ -373,7 +373,10 @@ function removeResult(suffix: string) {
 </script>
 
 <template>
-  <div class="min-h-0 w-full overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-8">
+  <div
+    class="min-h-0 w-full overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-8"
+    data-morph-target
+  >
     <div class="mx-auto grid max-w-6xl gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
       <Card class="overflow-hidden py-4 sm:py-6">
         <CardHeader class="gap-3 px-4 pb-3 sm:px-6 sm:pb-4">

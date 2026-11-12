@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import AppFooter from '@/components/AppFooter.vue'
 import RouteTransition from '@/components/RouteTransition.vue'
-import { RouterView, useRoute } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, Moon, Sun } from 'lucide-vue-next'
 import { computed, ref, onMounted, watch } from 'vue'
 
 const $route = useRoute()
+const router = useRouter()
 const isFullscreen = computed(() => $route.meta.fullscreen === true)
 const shellAppear = ref(false)
 
@@ -38,7 +39,10 @@ function toggleTheme() {
       <div
         class="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden px-3 py-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
       >
-        <header class="mb-3 flex flex-col gap-3 border-b pb-3 sm:mb-6 sm:gap-4 sm:pb-6">
+        <header
+          class="mb-3 flex flex-col gap-3 border-b pb-3 sm:mb-6 sm:gap-4 sm:pb-6"
+          style="view-transition-name: app-header"
+        >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
               <Button
@@ -75,7 +79,7 @@ function toggleTheme() {
 
         <main class="flex min-h-0 flex-1 overflow-hidden">
           <RouterView v-slot="{ Component, route }">
-            <RouteTransition :route-key="route.path" :appear="shellAppear">
+            <RouteTransition :route-key="route.path" :appear="shellAppear" :router="router">
               <component :is="Component" class="min-h-0 w-full flex-1" />
             </RouteTransition>
           </RouterView>

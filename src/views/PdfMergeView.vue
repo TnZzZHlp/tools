@@ -4,7 +4,7 @@ import PdfMergeTool from '@/components/pdf/PdfMergeTool.vue'
 </script>
 
 <template>
-  <section class="space-y-5 overflow-y-auto pb-6">
+  <section class="space-y-5 overflow-y-auto pb-6" data-morph-target>
     <RouterLink to="/tools/files" class="text-sm text-muted-foreground underline underline-offset-4"
       >返回文件处理</RouterLink
     >

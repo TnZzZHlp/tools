@@ -547,6 +547,7 @@ async function copyContent() {
   <section
     class="grid h-full min-h-0 gap-4 overflow-auto lg:grid-cols-[minmax(18rem,2fr)_minmax(0,3fr)] lg:gap-6 lg:overflow-hidden"
     :aria-busy="loading || cameraStarting"
+    data-morph-target
   >
     <section class="flex min-h-0 flex-col">
       <header class="shrink-0 space-y-2">

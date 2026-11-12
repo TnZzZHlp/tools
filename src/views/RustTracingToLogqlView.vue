@@ -43,7 +43,10 @@ async function copyOutput() {
 </script>
 
 <template>
-  <section class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-3 lg:gap-0">
+  <section
+    class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-3 lg:gap-0"
+    data-morph-target
+  >
     <section class="flex min-h-0 min-w-0 flex-col overflow-hidden lg:h-full lg:pr-6">
       <header class="shrink-0">
         <div class="flex flex-wrap items-start justify-between gap-3">
