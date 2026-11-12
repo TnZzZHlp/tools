@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import RouteTransition from '@/components/RouteTransition.vue'
 import { RouterView, useRoute } from 'vue-router'
 import { ChevronLeft, Moon, Sun } from 'lucide-vue-next'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 
 const $route = useRoute()
 const isFullscreen = computed(() => $route.meta.fullscreen === true)
+const shellAppear = ref(false)
+
+watch(
+  () => $route.meta.fullscreen === true,
+  (fullscreen, previous) => {
+    if (previous && !fullscreen) shellAppear.value = true
+  },
+  { flush: 'sync' },
+)
 
 const isDark = ref(false)
 
@@ -63,8 +73,10 @@ function toggleTheme() {
         </header>
 
         <main class="flex min-h-0 flex-1 overflow-hidden">
-          <RouterView v-slot="{ Component }">
-            <component :is="Component" class="min-h-0 w-full flex-1" />
+          <RouterView v-slot="{ Component, route }">
+            <RouteTransition :route-key="route.path" :appear="shellAppear">
+              <component :is="Component" class="min-h-0 w-full flex-1" />
+            </RouteTransition>
           </RouterView>
         </main>
       </div>

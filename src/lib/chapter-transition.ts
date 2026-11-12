@@ -1,166 +1,98 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
-
-type AnimatedElement = Element
-type ChapterLayout = 'scroll' | 'paged'
-
-const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-
-function clearMotionStyles(scope: HTMLElement | undefined) {
-  for (const element of scope?.querySelectorAll<HTMLElement>('[data-chapter-motion]') || []) {
-    element.style.removeProperty('opacity')
-    element.style.removeProperty('transform')
-    element.style.removeProperty('clip-path')
-  }
-}
+import {
+  CONTAINER_MOTION,
+  containerEnterScale,
+  containerLeaveScale,
+  containerOrigin,
+  useReducedMotion,
+} from '@/lib/container-motion'
 
 export function useChapterTransition() {
   const scope = ref<HTMLElement>()
-  const reducedMotion = ref(reducedMotionQuery.matches)
-  const phase = ref<'idle' | 'leaving' | 'revealing'>('idle')
+  const reducedMotion = useReducedMotion()
   const direction = ref(1)
-  const layout = ref<ChapterLayout>('scroll')
-  let animations: Animation[] = []
+  let animation: Animation | undefined
   let finish: (() => void) | undefined
 
-  function play(
-    elements: AnimatedElement[],
-    keyframes: Keyframe[],
-    options: KeyframeAnimationOptions,
-  ) {
-    return elements.map((element) => element.animate(keyframes, { fill: 'both', ...options }))
+  function container() {
+    return scope.value?.querySelector<HTMLElement>('.reader-content') ?? undefined
   }
 
-  function cancel() {
-    for (const animation of animations) animation.cancel()
-    animations = []
-    clearMotionStyles(scope.value)
-    phase.value = 'idle'
+  function release() {
+    animation?.cancel()
+    animation = undefined
+    const node = container()
+    node?.style.removeProperty('opacity')
+    node?.style.removeProperty('transform')
     finish?.()
     finish = undefined
   }
 
-  async function settle() {
-    if (!animations.length) return
-    await Promise.all(
-      animations.map((animation) =>
-        animation.finished.then(
-          () => undefined,
-          () => undefined,
-        ),
-      ),
-    )
-  }
-
   async function wait(signal: AbortSignal) {
     if (signal.aborted) {
-      cancel()
+      release()
       return
     }
-    signal.addEventListener('abort', cancel, { once: true })
+    signal.addEventListener('abort', release, { once: true })
     try {
       await new Promise<void>((resolve) => {
         finish = resolve
-        void settle().then(() => resolve())
+        void animation?.finished.then(
+          () => resolve(),
+          () => resolve(),
+        )
       })
     } finally {
-      signal.removeEventListener('abort', cancel)
+      signal.removeEventListener('abort', release)
     }
   }
 
-  async function leave(signal: AbortSignal, forward: boolean, readingLayout: ChapterLayout) {
-    cancel()
+  async function leave(signal: AbortSignal, forward: boolean) {
+    release()
     direction.value = forward ? 1 : -1
-    layout.value = readingLayout
-    if (reducedMotion.value || signal.aborted || !scope.value) return
-    phase.value = 'leaving'
-    animations = play(
-      Array.from(scope.value.querySelectorAll('[data-chapter-motion]')),
+    if (reducedMotion.value || signal.aborted) return
+    const node = container()
+    if (!node) return
+    animation = node.animate(
       [
+        { opacity: 1, transform: 'scale(1)', transformOrigin: containerOrigin(node) },
         {
-          opacity: '1',
-          transform: layout.value === 'scroll' ? 'translateY(0px)' : 'translateX(0px)',
-        },
-        {
-          opacity: '0.15',
-          transform:
-            layout.value === 'scroll'
-              ? `translateY(${-direction.value * 16}px)`
-              : `translateX(${-direction.value * 6}px)`,
+          opacity: 0.55,
+          transform: `scale(${containerLeaveScale(direction.value)})`,
+          transformOrigin: containerOrigin(node),
         },
       ],
-      { duration: 180, easing: 'ease-in' },
+      { duration: CONTAINER_MOTION.leave, easing: 'ease-in', fill: 'both' },
     )
     await wait(signal)
   }
 
   async function reveal(signal: AbortSignal) {
-    cancel()
-    if (reducedMotion.value || signal.aborted || !scope.value) return
-    phase.value = 'revealing'
-    const inset = direction.value === 1 ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)'
-    const beam = scope.value.querySelector<HTMLElement>('.reader-transition-beam')
-    const vertical = layout.value === 'scroll'
-    const distance = vertical
-      ? beam?.parentElement?.clientHeight || 0
-      : beam?.parentElement?.clientWidth || 0
-    const axis = vertical ? 'Y' : 'X'
-    animations = play(
-      Array.from(scope.value.querySelectorAll('[data-chapter-motion]')),
+    release()
+    if (reducedMotion.value || signal.aborted) return
+    const node = container()
+    if (!node) return
+    const started = node.animate(
       [
         {
-          opacity: vertical ? '0.2' : '0.55',
-          transform: vertical
-            ? `translateY(${direction.value * 28}px)`
-            : `translateX(${direction.value * 10}px)`,
-          clipPath: vertical ? undefined : inset,
+          opacity: 0.55,
+          transform: `scale(${containerEnterScale(direction.value)})`,
+          transformOrigin: containerOrigin(node),
         },
-        {
-          opacity: '1',
-          transform: vertical ? 'translateY(0px)' : 'translateX(0px)',
-          clipPath: vertical ? undefined : 'inset(0 0 0 0)',
-        },
+        { opacity: 1, transform: 'scale(1)', transformOrigin: containerOrigin(node) },
       ],
-      { duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      { duration: CONTAINER_MOTION.enter, easing: CONTAINER_MOTION.easing, fill: 'both' },
     )
-    if (beam)
-      animations.push(
-        ...play(
-          [beam],
-          [
-            {
-              transform:
-                direction.value === 1
-                  ? `translate${axis}(${distance}px)`
-                  : `translate${axis}(-96px)`,
-              opacity: '0',
-            },
-            { offset: 0.5, opacity: '0.45' },
-            {
-              transform:
-                direction.value === 1
-                  ? `translate${axis}(-96px)`
-                  : `translate${axis}(${distance}px)`,
-              opacity: '0',
-            },
-          ],
-          { duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-        ),
-      )
+    animation = started
     await wait(signal)
-    if (!signal.aborted) cancel()
+    if (!signal.aborted && animation === started) release()
   }
 
-  function onReducedMotionChange(event: MediaQueryListEvent) {
-    reducedMotion.value = event.matches
-  }
-
-  reducedMotionQuery.addEventListener('change', onReducedMotionChange)
-  onBeforeUnmount(() => {
-    reducedMotionQuery.removeEventListener('change', onReducedMotionChange)
-    cancel()
-  })
   watch(reducedMotion, (value) => {
-    if (value) cancel()
+    if (value) release()
   })
-  return { scope, phase, direction, layout, leave, reveal, cancel }
+
+  onBeforeUnmount(release)
+
+  return { scope, reducedMotion, leave, reveal, cancel: release }
 }

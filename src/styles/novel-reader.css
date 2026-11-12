@@ -110,61 +110,6 @@ body:has(.novel-reader)::-webkit-scrollbar,
   margin: 0 auto;
   padding: 116px 24px 160px;
 }
-.reader-transition-light {
-  position: fixed;
-  top: 92px;
-  bottom: calc(136px + env(safe-area-inset-bottom));
-  left: 50%;
-  z-index: 10;
-  width: min(calc(100% - 40px), calc(var(--reader-width) - 48px));
-  transform: translateX(-50%);
-  overflow: hidden;
-  pointer-events: none;
-  visibility: hidden;
-}
-[data-chapter-transition='revealing'] .reader-transition-light {
-  visibility: visible;
-}
-.reader-transition-beam {
-  width: 96px;
-  height: 100%;
-  opacity: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--background) 65%,
-    var(--border),
-    transparent
-  );
-}
-[data-chapter-direction='backward'] .reader-transition-beam {
-  background: linear-gradient(
-    270deg,
-    transparent,
-    var(--background) 65%,
-    var(--border),
-    transparent
-  );
-}
-[data-chapter-layout='scroll'] .reader-transition-beam {
-  width: 100%;
-  height: 96px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    var(--background) 65%,
-    var(--border),
-    transparent
-  );
-}
-[data-chapter-layout='scroll'][data-chapter-direction='backward'] .reader-transition-beam {
-  background: linear-gradient(0deg, transparent, var(--background) 65%, var(--border), transparent);
-}
-@media (prefers-reduced-motion: reduce) {
-  .reader-transition-light {
-    visibility: hidden !important;
-  }
-}
 .reader-chapter-heading {
   margin-bottom: 48px;
   text-align: center;

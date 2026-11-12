@@ -87,12 +87,10 @@ const pendingAction = ref<'previous' | 'next' | 'directory' | null>(null)
 const error = ref('')
 const {
   scope: readerScope,
-  phase: chapterPhase,
-  direction: chapterDirection,
-  layout: chapterTransitionLayout,
   leave: leaveChapter,
   reveal: revealChapter,
   cancel: cancelChapterTransition,
+  reducedMotion: readerReducedMotion,
 } = useChapterTransition()
 const mode = ref<ReadingMode>(
   preferences?.mode === 'source' || preferences?.mode === 'parallel' ? preferences.mode : 'target',
@@ -189,6 +187,7 @@ let themeObserver: MutationObserver | undefined
 let scrollTimer: ReturnType<typeof setTimeout> | undefined
 let layoutFrame = 0
 let restoring = true
+let unmounted = false
 let anchors: Partial<Record<'source' | 'target', number>> = {}
 let legacyScroll: number | undefined
 let preferenceRevision = 0
@@ -411,13 +410,11 @@ async function load(refresh = false) {
       novelApi.chapter(novelId, chapterId, current.signal, refresh),
     ])
     if (current.signal.aborted) return
-    const animateChapter = Boolean(cachedBook && chapter.value && chapter.value.id !== content.id)
-    if (animateChapter) {
-      await leaveChapter(
-        current.signal,
-        content.chapter_no > chapter.value!.chapter_no,
-        layout.value,
-      )
+    const previous = chapter.value
+    const previousChapterNo = previous?.chapter_no
+    const changedChapter = Boolean(cachedBook && previous && previous.id !== content.id)
+    if (changedChapter && previousChapterNo !== undefined) {
+      await leaveChapter(current.signal, content.chapter_no > previousChapterNo)
       if (current.signal.aborted) return
     }
     sourcePages.value = 1
@@ -442,7 +439,7 @@ async function load(refresh = false) {
     restorePosition()
     await nextTick()
     if (current.signal.aborted) return
-    if (animateChapter) {
+    if (changedChapter || !previous) {
       await revealChapter(current.signal)
       if (current.signal.aborted) return
       sourceText.value?.measure()
@@ -522,7 +519,14 @@ watch(
   },
 )
 onBeforeRouteUpdate(saveProgress)
-onBeforeRouteLeave(saveProgress)
+onBeforeRouteLeave(async () => {
+  saveProgress()
+  if (readerReducedMotion.value) return
+  await leaveChapter(new AbortController().signal, false)
+  setTimeout(() => {
+    if (!unmounted && !loading.value && !restoring) cancelChapterTransition()
+  }, 0)
+})
 onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('pagehide', saveProgress)
@@ -533,6 +537,7 @@ onMounted(() => {
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 onBeforeUnmount(() => {
+  unmounted = true
   fontRequest++
   saveProgress()
   controller?.abort()
@@ -550,9 +555,6 @@ onBeforeUnmount(() => {
   <div
     ref="readerScope"
     class="novel-reader"
-    :data-chapter-transition="chapterPhase"
-    :data-chapter-direction="chapterDirection === 1 ? 'forward' : 'backward'"
-    :data-chapter-layout="chapterTransitionLayout"
     :class="{
       'reader-paged': layout === 'paged' && chapter,
       'reader-chrome-hidden': !toolsVisible,
@@ -774,7 +776,7 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="chapter && novel" class="reader-content" :aria-busy="loading">
       <header class="reader-chapter-heading">
-        <div data-chapter-motion>
+        <div>
           <p class="mb-3 text-xs tracking-widest text-muted-foreground">
             第 {{ chapter.chapter_no }} 章 / 共 {{ novel.chapter_count }} 章
           </p>
@@ -804,31 +806,17 @@ onBeforeUnmount(() => {
           >
         </div>
       </header>
-      <div
-        v-if="effectiveMode === 'target' && !hasTarget"
-        data-chapter-motion
-        class="reader-empty"
-        role="status"
-      >
+      <div v-if="effectiveMode === 'target' && !hasTarget" class="reader-empty" role="status">
         <p>本章暂无译文。</p>
         <Button v-if="hasSource" variant="outline" @click="selectedVersion = 'source'"
           >阅读原文</Button
         >
         <p v-else class="text-sm text-muted-foreground">本章暂无原文。</p>
       </div>
-      <p
-        v-if="effectiveMode === 'source' && !hasSource"
-        data-chapter-motion
-        role="status"
-        class="reader-empty"
-      >
+      <p v-if="effectiveMode === 'source' && !hasSource" role="status" class="reader-empty">
         本章暂无原文。
       </p>
-      <div
-        data-chapter-motion
-        class="reader-columns"
-        :class="{ 'reader-parallel': effectiveMode === 'parallel' }"
-      >
+      <div class="reader-columns" :class="{ 'reader-parallel': effectiveMode === 'parallel' }">
         <section
           v-if="effectiveMode === 'source' || effectiveMode === 'parallel'"
           aria-label="原文正文"
@@ -876,9 +864,6 @@ onBeforeUnmount(() => {
           </p>
         </section>
       </div>
-    </div>
-    <div class="reader-transition-light" aria-hidden="true">
-      <div class="reader-transition-beam" />
     </div>
     <footer
       v-if="chapter && novel"
