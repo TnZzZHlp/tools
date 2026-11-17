@@ -37,12 +37,9 @@ function toggleTheme() {
     <RouterView v-if="isFullscreen" />
     <div v-else class="h-screen min-h-[100dvh] overflow-hidden bg-background text-foreground">
       <div
-        class="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden px-3 py-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+        class="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden px-3 py-2 sm:px-6 sm:py-3 lg:px-8"
       >
-        <header
-          class="mb-3 flex flex-col gap-3 border-b pb-3 sm:mb-6 sm:gap-4 sm:pb-6"
-          style="view-transition-name: app-header"
-        >
+        <header class="mb-3 shrink-0 border-b pb-2" style="view-transition-name: app-header">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
               <Button
@@ -56,7 +53,7 @@ function toggleTheme() {
                 <ChevronLeft class="h-5 w-5" />
               </Button>
               <h1
-                class="cursor-pointer text-xl font-semibold tracking-tight sm:text-3xl"
+                class="cursor-pointer text-xl font-semibold tracking-tight"
                 @click="$router.push('/')"
               >
                 Tools
