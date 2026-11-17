@@ -33,6 +33,11 @@ const tools = [
     to: '/tools/ocr',
   },
   {
+    name: '条形码生成',
+    description: '批量生成 CODE128 条码，自定义毫米尺寸并导出 PDF、JPG 或 SVG。',
+    to: '/tools/barcode-generator',
+  },
+  {
     name: '条码识别',
     description: '通过图片或摄像头实时识别二维码及常见条码，全程在浏览器本地处理。',
     to: '/tools/barcode-reader',
