@@ -1,4 +1,5 @@
 import { buildBarcodeExport, type BarcodeSize, type GeneratedBarcode } from './barcodeGenerator'
+import { A4_SIZE, buildBarcodeSheets } from './barcodeSheet'
 
 export type BarcodeExportFormat = 'svg' | 'jpg' | 'pdf'
 
@@ -70,33 +71,41 @@ function setJpegDensity(bytes: Uint8Array): void {
   throw new Error('浏览器生成的 JPG 不支持写入实际打印尺寸，请使用 PDF 或 SVG。')
 }
 
-export async function createBarcodeFile(
+export async function createBarcodeFiles(
   barcodes: GeneratedBarcode[],
   size: BarcodeSize,
   format: BarcodeExportFormat,
-): Promise<Blob> {
-  const svg = buildBarcodeExport(barcodes, size)
-  if (format === 'svg') return new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+  useA4 = true,
+): Promise<Blob[]> {
+  const pages = useA4 ? buildBarcodeSheets(barcodes, size) : [buildBarcodeExport(barcodes, size)]
+  const pageSize = useA4 ? A4_SIZE : { ...size, height: size.height * barcodes.length }
+  if (format === 'svg') {
+    return pages.map((svg) => new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
+  }
 
   if (format === 'jpg') {
-    const canvas = await renderCanvas(svg, { ...size, height: size.height * barcodes.length })
-    const blob = await canvasBlob(canvas, 'image/jpeg')
-    const bytes = new Uint8Array(await blob.arrayBuffer())
-    setJpegDensity(bytes)
-    return new Blob([bytes], { type: 'image/jpeg' })
+    const files: Blob[] = []
+    for (const svg of pages) {
+      const canvas = await renderCanvas(svg, pageSize)
+      const blob = await canvasBlob(canvas, 'image/jpeg')
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      setJpegDensity(bytes)
+      files.push(new Blob([bytes], { type: 'image/jpeg' }))
+    }
+    return files
   }
 
   const { PDFDocument } = await import('pdf-lib')
   const document = await PDFDocument.create()
-  const width = (size.width / 25.4) * 72
-  const height = (size.height / 25.4) * 72
-  for (const barcode of barcodes) {
-    const canvas = await renderCanvas(buildBarcodeExport([barcode], size), size)
+  const width = (pageSize.width / 25.4) * 72
+  const height = (pageSize.height / 25.4) * 72
+  for (const svg of pages) {
+    const canvas = await renderCanvas(svg, pageSize)
     const png = await canvasBlob(canvas, 'image/png')
     const image = await document.embedPng(await png.arrayBuffer())
     document.addPage([width, height]).drawImage(image, { x: 0, y: 0, width, height })
   }
-  return new Blob([new Uint8Array(await document.save())], { type: 'application/pdf' })
+  return [new Blob([new Uint8Array(await document.save())], { type: 'application/pdf' })]
 }
 
 export function downloadBarcodeFile(blob: Blob, filename: string): void {

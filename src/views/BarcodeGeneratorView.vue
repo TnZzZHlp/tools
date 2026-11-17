@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  createBarcodeFile,
+  createBarcodeFiles,
   downloadBarcodeFile,
   type BarcodeExportFormat,
 } from '@/utils/barcodeExport'
@@ -25,6 +25,8 @@ import {
   parseBarcodeContents,
   type GeneratedBarcode,
 } from '@/utils/barcodeGenerator'
+
+import { buildBarcodeSheets, getBarcodeSheetLayout } from '@/utils/barcodeSheet'
 
 const input = ref('')
 const width = ref<string | number>(60)
@@ -36,6 +38,18 @@ const barcodes = computed(() => parseBarcodeContents(input.value).map(generateBa
 const validBarcodes = computed(() => barcodes.value.filter((barcode) => !barcode.error))
 const size = computed(() => ({ width: Number(width.value), height: Number(height.value) }))
 const validSize = computed(() => isValidBarcodeSize(size.value))
+const sheetLayout = computed(() => {
+  try {
+    return { layout: getBarcodeSheetLayout(size.value), error: '' }
+  } catch (error) {
+    return { layout: null, error: error instanceof Error ? error.message : '无法排版。' }
+  }
+})
+const sheets = computed(() =>
+  validBarcodes.value.length && sheetLayout.value.layout
+    ? buildBarcodeSheets(validBarcodes.value, size.value)
+    : [],
+)
 
 async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
   if (exporting.value) return
@@ -43,9 +57,12 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
   exporting.value = true
   const selectedFormat = format.value
   try {
-    const blob = await createBarcodeFile(items, size.value, selectedFormat)
-    const name = index === undefined ? 'barcodes' : `barcode-${index + 1}`
-    downloadBarcodeFile(blob, `${name}.${selectedFormat}`)
+    const files = await createBarcodeFiles(items, size.value, selectedFormat, index === undefined)
+    const name = index === undefined ? 'barcodes-a4' : `barcode-${index + 1}`
+    files.forEach((blob, pageIndex) => {
+      const suffix = files.length > 1 ? `-${pageIndex + 1}` : ''
+      downloadBarcodeFile(blob, `${name}${suffix}.${selectedFormat}`)
+    })
   } catch (error) {
     exportError.value = error instanceof Error ? error.message : '导出失败，请重试。'
   } finally {
@@ -115,8 +132,8 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
             宽高必须为 1 至 1000 毫米。
           </p>
           <p class="text-sm leading-relaxed text-muted-foreground">
-            尺寸包含条码、下方文字和留白。PDF 每个条码一页，JPG 和 SVG 纵向拼接。JPG 为 300
-            DPI，尺寸存在像素取整误差；打印请选择 100% 原始尺寸。宽度过小可能影响扫描。
+            每个条码的尺寸包含文字和留白。批量导出按 A4 纵向网格排版，页边距 10 毫米、间距 5
+            毫米，超出自动分页，不缩放条码。打印请选择 100% 原始尺寸。
           </p>
         </fieldset>
         <div class="space-y-2">
@@ -130,12 +147,22 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
             </SelectContent>
           </Select>
         </div>
-        <Button
-          :disabled="!validBarcodes.length || !validSize || exporting"
-          @click="exportBarcodes(validBarcodes)"
-        >
+        <p v-if="sheetLayout.error && validSize" class="text-sm text-destructive" role="alert">
+          {{ sheetLayout.error }}
+        </p>
+        <p v-if="sheets.length && sheetLayout.layout" class="text-sm text-muted-foreground">
+          A4 共 {{ sheets.length }} 页，每页最多 {{ sheetLayout.layout.capacity }} 个条码（{{
+            sheetLayout.layout.columns
+          }}
+          列 × {{ sheetLayout.layout.rows }} 行）。
+        </p>
+        <p class="text-sm leading-relaxed text-muted-foreground">
+          PDF 合并为多页文件；JPG（300 DPI）和 SVG
+          每页一个文件，多页下载可能需要允许浏览器下载多个文件。单个导出仍使用条码原始尺寸。
+        </p>
+        <Button :disabled="!sheets.length || exporting" @click="exportBarcodes(validBarcodes)">
           <Download class="h-4 w-4" />
-          {{ exporting ? '正在导出…' : `批量导出 ${format.toUpperCase()}`
+          {{ exporting ? '正在导出…' : `导出 A4 ${format.toUpperCase()}`
           }}<span v-if="validBarcodes.length">（{{ validBarcodes.length }}）</span>
         </Button>
         <p v-if="exportError" class="text-sm text-destructive" role="alert">{{ exportError }}</p>
@@ -153,6 +180,18 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
           <Barcode class="h-10 w-10" aria-hidden="true" />
           <p class="text-sm">输入内容后自动生成条码</p>
         </div>
+        <figure v-for="(sheet, pageIndex) in sheets" :key="`sheet-${pageIndex}`" class="space-y-2">
+          <figcaption class="text-sm text-muted-foreground">
+            A4 第 {{ pageIndex + 1 }} 页
+          </figcaption>
+          <img
+            :src="`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sheet)}`"
+            :alt="`A4 第 ${pageIndex + 1} 页条码排版预览`"
+            class="block h-auto w-full border bg-white shadow-sm"
+            width="210"
+            height="297"
+          />
+        </figure>
         <article
           v-for="(barcode, index) in barcodes"
           :key="index"
@@ -175,18 +214,6 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
           <p v-if="barcode.error" class="text-sm text-destructive" role="alert">
             {{ barcode.error }}
           </p>
-          <div v-else class="overflow-auto rounded-md bg-white p-3">
-            <img
-              :src="`data:image/svg+xml;charset=utf-8,${encodeURIComponent(barcode.svg)}`"
-              :alt="`CODE128 条码：${barcode.content}`"
-              class="block max-w-none"
-              :style="
-                validSize
-                  ? { width: `${size.width}mm`, height: `${size.height}mm` }
-                  : { width: '60mm', height: '30mm' }
-              "
-            />
-          </div>
         </article>
       </section>
     </div>
