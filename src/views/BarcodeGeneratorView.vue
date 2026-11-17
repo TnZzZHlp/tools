@@ -29,8 +29,8 @@ import {
 import { buildBarcodeSheets, getBarcodeSheetLayout } from '@/utils/barcodeSheet'
 
 const input = ref('')
-const width = ref<string | number>(30)
-const height = ref<string | number>(15)
+const width = ref<string | number>(40)
+const height = ref<string | number>(20)
 const exportError = ref('')
 const format = ref<BarcodeExportFormat>('pdf')
 const exporting = ref(false)
