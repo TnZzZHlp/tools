@@ -843,9 +843,11 @@ onBeforeUnmount(() => {
       <!-- Client IP, Location & ISP Card -->
       <section
         aria-label="本机网络信息"
-        class="flex flex-col gap-3.5 rounded-panel border border-line bg-raised p-4 sm:p-5 lg:gap-4 lg:rounded-panel-lg lg:p-6"
+        class="flex flex-col gap-3.5 rounded-panel border border-line bg-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5 lg:rounded-panel-lg lg:p-6"
       >
-        <dl class="flex flex-col flex-wrap gap-x-8 gap-y-3 sm:flex-row lg:gap-x-12 lg:gap-y-4">
+        <dl
+          class="flex min-w-0 flex-1 flex-col flex-wrap gap-x-8 gap-y-3 sm:flex-row lg:gap-x-12 lg:gap-y-4"
+        >
           <!-- IP Address -->
           <div class="max-w-full flex-1 basis-auto">
             <dt class="text-[13px] leading-snug text-ink-muted lg:text-[14px]">IP 地址</dt>
@@ -914,23 +916,7 @@ onBeforeUnmount(() => {
           </div>
         </dl>
 
-        <div
-          data-screenshot="hide"
-          class="flex flex-wrap items-center justify-between gap-2 border-t border-[color-mix(in_oklab,var(--color-line)_55%,transparent)] pt-3 text-[13px] leading-snug text-ink-muted lg:pt-3.5 lg:text-[14px]"
-        >
-          <span>
-            前往
-            <a
-              href="https://ip.skk.moe"
-              target="_blank"
-              rel="noreferrer noopener"
-              class="text-ink underline decoration-line underline-offset-3 transition-colors duration-[var(--p0seid0n-duration-fast)] hover:decoration-ink"
-            >
-              ip.skk.moe
-            </a>
-            查看完整分流与网络环境检测
-          </span>
-
+        <div data-screenshot="hide" class="flex shrink-0 justify-end">
           <Toggle v-model="redacted" variant="outline" size="sm" class="min-h-7 px-2.5 text-[13px]">
             <Eye v-if="redacted" class="size-3.5" aria-hidden="true" />
             <EyeOff v-else class="size-3.5" aria-hidden="true" />
