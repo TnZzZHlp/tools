@@ -6,12 +6,11 @@ import { getApiBaseUrl } from '@/api'
 import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
@@ -65,7 +64,7 @@ onMounted(getImage)
       :icon="ImageIcon"
     >
       <template #actions>
-        <Button :disabled="loading" @click="getImage">
+        <Button size="sm" :loading="loading" @click="getImage">
           <RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
           {{ loading ? '正在加载…' : '换一张图片' }}
         </Button>
@@ -74,19 +73,21 @@ onMounted(getImage)
 
     <Card aria-label="随机 Yuri 图片" :aria-busy="loading">
       <CardHeader>
-        <CardTitle class="flex items-center gap-2 text-base">
-          <ImageIcon class="size-4.5" />
-          Yuri 插画
-        </CardTitle>
-        <CardAction>
+        <template #title>
+          <span class="inline-flex items-center gap-2">
+            <ImageIcon class="size-4.5" />
+            <span>Yuri 插画</span>
+          </span>
+        </template>
+        <template #action>
           <Dialog>
             <Tooltip>
               <TooltipTrigger as-child>
                 <DialogTrigger as-child>
                   <Button
-                    variant="outline"
-                    size="icon"
-                    class="size-8"
+                    variant="secondary"
+                    size="sm"
+                    class="w-8 px-0"
                     :disabled="!imageSrc"
                     aria-label="放大查看图片"
                   >
@@ -96,25 +97,23 @@ onMounted(getImage)
               </TooltipTrigger>
               <TooltipContent>放大查看图片</TooltipContent>
             </Tooltip>
-            <DialogContent class="sm:max-w-5xl">
-              <DialogHeader>
-                <DialogTitle>图片预览</DialogTitle>
-                <DialogDescription class="sr-only">随机 Yuri 图片</DialogDescription>
-              </DialogHeader>
+            <DialogContent class="w-[min(64rem,calc(100vw-2rem))]">
+              <DialogTitle>图片预览</DialogTitle>
+              <DialogDescription class="sr-only">随机 Yuri 图片</DialogDescription>
               <img
                 :src="imageSrc"
                 alt="随机 Yuri 图片放大预览"
-                class="mx-auto max-h-[75vh] max-w-full rounded-md object-contain"
+                class="mt-3 mx-auto max-h-[75vh] max-w-full rounded-control object-contain"
               />
             </DialogContent>
           </Dialog>
-        </CardAction>
+        </template>
       </CardHeader>
 
       <CardContent class="relative flex min-h-80 items-center justify-center sm:min-h-110">
         <button
           v-if="imageSrc"
-          class="flex w-full cursor-pointer items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          class="flex w-full cursor-pointer items-center justify-center rounded-control outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid"
           :disabled="loading"
           aria-label="换一张随机图片"
           @click="getImage"
@@ -122,14 +121,14 @@ onMounted(getImage)
           <img
             :src="imageSrc"
             alt="随机 Yuri 图片"
-            class="max-h-[68vh] max-w-full rounded-lg object-contain transition-opacity"
+            class="max-h-[68vh] max-w-full rounded-control object-contain transition-opacity"
             :class="{ 'opacity-40': loading }"
           />
         </button>
-        <p v-else-if="!loading" class="text-sm text-muted-foreground">暂无图片</p>
+        <p v-else-if="!loading" class="text-[14px] text-ink-muted">暂无图片</p>
         <div
           v-if="loading"
-          class="absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          class="absolute inset-0 flex items-center justify-center gap-2 text-[14px] text-ink-muted"
           role="status"
         >
           <LoaderCircle class="size-4 animate-spin" aria-hidden="true" />
@@ -138,13 +137,13 @@ onMounted(getImage)
       </CardContent>
     </Card>
 
-    <Alert v-if="error" variant="destructive">
-      <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
-        <span>{{ error }}</span>
-        <Button variant="outline" size="sm" :disabled="loading" @click="getImage">
+    <Alert v-if="error" variant="danger">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <AlertDescription>{{ error }}</AlertDescription>
+        <Button variant="secondary" size="sm" :disabled="loading" @click="getImage">
           重新加载
         </Button>
-      </AlertDescription>
+      </div>
     </Alert>
   </div>
 </template>

@@ -1,14 +1,28 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
 
-const props = defineProps<{
-  class?: HTMLAttributes['class']
-}>()
+defineOptions({ inheritAttrs: false })
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
-  <div data-slot="card-footer" :class="cn('flex items-center px-6 [.border-t]:pt-6', props.class)">
+  <div
+    v-bind="forwarded"
+    :class="
+      cn(
+        'flex items-center justify-between gap-3 border-t border-line px-6 py-4 text-[13px] text-ink-muted',
+        attrs.class as ClassValue,
+      )
+    "
+  >
     <slot />
   </div>
 </template>

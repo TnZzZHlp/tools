@@ -76,11 +76,11 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
       role="button"
       tabindex="0"
       :aria-disabled="busy"
-      class="group flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-card px-6 py-8 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:py-10"
+      class="group flex cursor-pointer flex-col items-center justify-center rounded-panel border-2 border-dashed bg-raised px-6 py-8 text-center outline-none transition-[border-color,background-color] duration-[var(--p0seid0n-duration-normal)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid sm:py-10"
       :class="[
         dragging
-          ? 'border-primary bg-accent/60'
-          : 'border-border hover:border-foreground/30 hover:bg-accent/30',
+          ? 'border-ink bg-control'
+          : 'border-line hover:border-[color-mix(in_oklab,var(--color-ink)_35%,var(--color-line))] hover:bg-[color-mix(in_oklab,var(--color-control)_45%,var(--color-raised))]',
         busy && 'pointer-events-none opacity-60',
       ]"
       @click="!busy && fileInput?.click()"
@@ -92,22 +92,22 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
       @drop.prevent.stop="dropFiles($event)"
     >
       <div
-        class="mb-3 flex size-12 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+        class="mb-3 flex size-12 items-center justify-center rounded-full border border-line bg-control text-ink-muted transition-colors duration-[var(--p0seid0n-duration-normal)] group-hover:border-ink group-hover:bg-ink group-hover:text-surface"
       >
         <LoaderCircle v-if="importing" class="size-5 animate-spin" />
         <Upload v-else class="size-5" />
       </div>
-      <p class="text-base font-medium text-foreground">
+      <p class="text-[15px] font-medium text-ink">
         {{ importing ? '正在读取 PDF 文件…' : '点击或拖入多个 PDF 文件' }}
       </p>
-      <p class="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
+      <p class="mt-1 max-w-md text-[13px] leading-relaxed text-ink-muted sm:text-[14px]">
         可随时继续追加文件；支持拖动文件卡片调整合并先后顺序，以及单页或整份顺时针旋转。
       </p>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         size="sm"
-        class="mt-4 pointer-events-none"
+        class="pointer-events-none mt-4"
         tabindex="-1"
       >
         <FilePlus2 class="size-4" />
@@ -115,20 +115,20 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
       </Button>
     </div>
 
-    <Alert v-if="entries.some((entry) => entry.status === 'error')" variant="destructive">
+    <Alert v-if="entries.some((entry) => entry.status === 'error')" variant="danger">
       <AlertDescription>存在无法处理的文件，请先移除异常文件后再执行合并。</AlertDescription>
     </Alert>
 
-    <Alert v-if="error" variant="destructive">
+    <Alert v-if="error" variant="danger">
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
     <!-- File List Header -->
     <div v-if="entries.length" class="flex flex-wrap items-center justify-between gap-2">
       <div class="flex items-center gap-2" aria-live="polite">
-        <Badge variant="secondary">{{ entries.length }} 个文件</Badge>
+        <Badge variant="neutral">{{ entries.length }} 个文件</Badge>
         <Badge variant="outline">共 {{ pageCount }} 页</Badge>
-        <span class="hidden text-xs text-muted-foreground sm:inline">
+        <span class="hidden text-[12px] text-ink-muted sm:inline">
           拖动左侧手柄或点击上下箭头调整顺序
         </span>
       </div>
@@ -136,7 +136,7 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
         type="button"
         variant="ghost"
         size="sm"
-        class="text-muted-foreground hover:text-destructive"
+        class="text-ink-muted hover:text-danger"
         :disabled="busy"
         @click="clearAll"
       >
@@ -165,17 +165,16 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
     <!-- Sticky Bottom Action Bar -->
     <div
       v-if="entries.length"
-      class="sticky bottom-4 z-20 rounded-xl border bg-card/95 p-4 shadow-lg backdrop-blur-md"
+      class="sticky bottom-4 z-20 rounded-panel border border-line bg-[color-mix(in_oklab,var(--color-raised)_95%,transparent)] p-4 shadow-popup backdrop-blur-md"
     >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div class="min-w-0 flex-1 space-y-1.5">
-          <Label for="pdf-output-name" class="text-xs text-muted-foreground">导出文件名</Label>
+          <Label for="pdf-output-name">导出文件名</Label>
           <Input
             id="pdf-output-name"
             v-model="outputName"
             :disabled="busy"
             placeholder="merged.pdf"
-            class="bg-background"
           />
         </div>
 
@@ -183,19 +182,25 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
           <Button
             type="button"
             class="flex-1 sm:flex-none"
-            :variant="outputUrl ? 'outline' : 'default'"
+            :variant="outputUrl ? 'secondary' : 'primary'"
             :disabled="!canMerge"
+            :loading="merging"
             @click="merge"
           >
             <LoaderCircle v-if="merging" class="size-4 animate-spin" />
             {{ merging ? '正在合并…' : outputUrl ? '重新合并' : `合并 PDF（${pageCount} 页）` }}
           </Button>
 
-          <Button v-if="outputUrl" as-child class="flex-1 sm:flex-none">
-            <a :href="outputUrl" :download="downloadName">
-              <Download class="size-4" />
-              下载合并结果
-            </a>
+          <Button
+            v-if="outputUrl"
+            as="a"
+            :href="outputUrl"
+            :download="downloadName"
+            variant="primary"
+            class="flex-1 sm:flex-none"
+          >
+            <Download class="size-4" />
+            下载合并结果
           </Button>
         </div>
       </div>

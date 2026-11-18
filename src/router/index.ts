@@ -14,6 +14,11 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/tools/speedtest',
+      name: 'speedtest',
+      component: () => import('@/views/SpeedtestView.vue'),
+    },
+    {
       path: '/random-string',
       name: 'random-string',
       component: () => import('@/views/RandomStringView.vue'),

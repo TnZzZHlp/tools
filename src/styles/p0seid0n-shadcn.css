@@ -1,0 +1,43 @@
+:root {
+  --background: var(--p0seid0n-surface);
+  --foreground: var(--p0seid0n-ink);
+  --card: var(--p0seid0n-raised);
+  --card-foreground: var(--p0seid0n-ink);
+  --popover: var(--p0seid0n-raised);
+  --popover-foreground: var(--p0seid0n-ink);
+  --primary: var(--p0seid0n-ink);
+  --primary-foreground: var(--p0seid0n-surface);
+  --secondary: var(--p0seid0n-control);
+  --secondary-foreground: var(--p0seid0n-ink);
+  --muted: var(--p0seid0n-control);
+  --muted-foreground: var(--p0seid0n-ink-muted);
+  --accent: var(--p0seid0n-control);
+  --accent-foreground: var(--p0seid0n-ink);
+  --destructive: var(--p0seid0n-danger);
+  --destructive-foreground: var(--p0seid0n-surface);
+  --border: var(--p0seid0n-line);
+  --input: var(--p0seid0n-line);
+  --ring: var(--p0seid0n-ink);
+  --radius: var(--p0seid0n-radius-control);
+}
+
+@theme inline {
+  --color-background: var(--p0seid0n-surface);
+  --color-foreground: var(--p0seid0n-ink);
+  --color-card: var(--p0seid0n-raised);
+  --color-card-foreground: var(--p0seid0n-ink);
+  --color-popover: var(--p0seid0n-raised);
+  --color-popover-foreground: var(--p0seid0n-ink);
+  --color-primary: var(--p0seid0n-ink);
+  --color-primary-foreground: var(--p0seid0n-surface);
+  --color-secondary: var(--p0seid0n-control);
+  --color-secondary-foreground: var(--p0seid0n-ink);
+  --color-muted: var(--p0seid0n-control);
+  --color-muted-foreground: var(--p0seid0n-ink-muted);
+  --color-accent-foreground: var(--p0seid0n-surface);
+  --color-destructive: var(--p0seid0n-danger);
+  --color-destructive-foreground: var(--p0seid0n-surface);
+  --color-border: var(--p0seid0n-line);
+  --color-input: var(--p0seid0n-line);
+  --color-ring: var(--p0seid0n-ink);
+}

@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import type { DialogTriggerProps } from 'reka-ui'
 import { DialogTrigger } from 'reka-ui'
 
-const props = defineProps<DialogTriggerProps>()
+defineOptions({ inheritAttrs: false })
+
+export type DialogTriggerProps = {
+  as?: string | object
+  asChild?: boolean
+}
+
+withDefaults(defineProps<DialogTriggerProps>(), {
+  as: 'button',
+  asChild: false,
+})
 </script>
 
 <template>
-  <DialogTrigger data-slot="dialog-trigger" v-bind="props">
+  <DialogTrigger :as="as" :as-child="asChild" v-bind="$attrs">
     <slot />
   </DialogTrigger>
 </template>

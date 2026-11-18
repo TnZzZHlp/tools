@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import type { TooltipRootEmits, TooltipRootProps } from 'reka-ui'
-import { TooltipRoot, useForwardPropsEmits } from 'reka-ui'
+import { TooltipProvider, TooltipRoot } from 'reka-ui'
 
-const props = defineProps<TooltipRootProps>()
-const emits = defineEmits<TooltipRootEmits>()
+defineOptions({ name: 'UiTooltip', inheritAttrs: false })
 
-const forwarded = useForwardPropsEmits(props, emits)
+export type TooltipProps = {
+  /** Initial open state when uncontrolled. */
+  defaultOpen?: boolean
+  /** Milliseconds the pointer must rest before the tip opens. */
+  delay?: number
+  disabled?: boolean
+}
+
+withDefaults(defineProps<TooltipProps>(), {
+  defaultOpen: undefined,
+  delay: 300,
+  disabled: false,
+})
+
+const open = defineModel<boolean>('open')
 </script>
 
 <template>
-  <TooltipRoot v-slot="slotProps" data-slot="tooltip" v-bind="forwarded">
-    <slot v-bind="slotProps" />
-  </TooltipRoot>
+  <TooltipProvider :delay-duration="delay" :disabled="disabled">
+    <TooltipRoot v-model:open="open" :default-open="defaultOpen" v-bind="$attrs">
+      <slot />
+    </TooltipRoot>
+  </TooltipProvider>
 </template>

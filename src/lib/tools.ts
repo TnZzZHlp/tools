@@ -6,13 +6,14 @@ import {
   Braces,
   Cpu,
   FileStack,
+  Gauge,
   Guitar,
   QrCode,
   ScanText,
   Shuffle,
 } from 'lucide-vue-next'
 
-export type ToolCategoryId = 'document' | 'barcode' | 'dev' | 'learn'
+export type ToolCategoryId = 'network' | 'document' | 'barcode' | 'dev' | 'learn'
 
 export interface ToolCategory {
   id: ToolCategoryId
@@ -36,6 +37,7 @@ export interface BreadcrumbItem {
 }
 
 export const TOOL_CATEGORIES: ToolCategory[] = [
+  { id: 'network', label: '网络与测速' },
   { id: 'document', label: '文档与图像' },
   { id: 'barcode', label: '条码与扫描' },
   { id: 'dev', label: '开发与文本' },
@@ -43,6 +45,31 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
 ]
 
 export const TOOLS: ToolDefinition[] = [
+  {
+    id: 'speedtest',
+    name: '网络测速',
+    shortName: '网络测速',
+    description: '测量下载与上传吞吐量、空闲及负载延迟、抖动，并检测本机 IP 与运营商归属。',
+    to: '/tools/speedtest',
+    category: 'network',
+    icon: Gauge,
+    keywords: [
+      'speedtest',
+      'speed',
+      'network',
+      'ping',
+      'latency',
+      'jitter',
+      'bandwidth',
+      'cloudflare',
+      '网速',
+      '测速',
+      '带宽',
+      '延迟',
+      '抖动',
+      'ip',
+    ],
+  },
   {
     id: 'pdf-merge',
     name: 'PDF 合并与旋转',

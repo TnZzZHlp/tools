@@ -1,21 +1,22 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
 
-const props = defineProps<{
-  class?: HTMLAttributes['class']
-}>()
+defineOptions({ inheritAttrs: false })
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <div
-    data-slot="alert-description"
-    :class="
-      cn(
-        'text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed',
-        props.class,
-      )
-    "
+    v-bind="forwarded"
+    :class="cn('text-[13px] leading-relaxed text-ink-muted', attrs.class as ClassValue)"
   >
     <slot />
   </div>

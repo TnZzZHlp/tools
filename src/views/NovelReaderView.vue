@@ -16,14 +16,13 @@ import {
   Settings2,
   LoaderCircle,
 } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogClose,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
@@ -34,6 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { useTheme } from '@/composables/useTheme'
 import ReaderText from '@/components/novels/ReaderText.vue'
 import ReaderDirectory from '@/components/novels/ReaderDirectory.vue'
 import { novelApi, errorMessage, type Novel, type Chapter } from '@/api/novels'
@@ -129,7 +130,7 @@ const mobileVersion = ref<'source' | 'target'>(
   preferences?.mobileVersion === 'source' ? 'source' : 'target',
 )
 const isMobile = useMediaQuery('(max-width: 1023px)')
-const systemDark = ref(document.documentElement.classList.contains('dark'))
+const { isDark: systemDark } = useTheme()
 const resolvedTheme = computed(() =>
   theme.value === 'system' ? (systemDark.value ? 'dark' : 'paper') : theme.value,
 )
@@ -184,7 +185,6 @@ const readerStyle = computed(() => ({
 }))
 let controller: AbortController | undefined
 let prefetchController: AbortController | undefined
-let themeObserver: MutationObserver | undefined
 let scrollTimer: ReturnType<typeof setTimeout> | undefined
 let layoutFrame = 0
 let restoring = true
@@ -539,10 +539,6 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('pagehide', saveProgress)
   window.addEventListener('keydown', onKeydown)
-  themeObserver = new MutationObserver(() => {
-    systemDark.value = document.documentElement.classList.contains('dark')
-  })
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 onBeforeUnmount(() => {
   unmounted = true
@@ -551,12 +547,48 @@ onBeforeUnmount(() => {
   controller?.abort()
   prefetchController?.abort()
   cancelChapterTransition()
-  themeObserver?.disconnect()
   clearTimeout(scrollTimer)
   cancelAnimationFrame(layoutFrame)
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('pagehide', saveProgress)
   window.removeEventListener('keydown', onKeydown)
+})
+
+const versionModel = computed<string>({
+  get: () => selectedVersion.value,
+  set: (val: string) => {
+    selectedVersion.value = val as ReadingMode
+  },
+})
+const layoutModel = computed<string>({
+  get: () => layout.value,
+  set: (val: string) => {
+    layout.value = val as Preferences['layout']
+  },
+})
+const readerThemeModel = computed<string>({
+  get: () => theme.value,
+  set: (val: string) => {
+    theme.value = val as Preferences['theme']
+  },
+})
+const fontModel = computed<string>({
+  get: () => font.value,
+  set: (val: string) => {
+    font.value = val as ReaderFont
+  },
+})
+const fontWeightModel = computed({
+  get: () => String(fontWeight.value),
+  set: (val: string) => {
+    fontWeight.value = Number(val)
+  },
+})
+const widthModel = computed({
+  get: () => String(width.value),
+  set: (val: string) => {
+    width.value = Number(val)
+  },
 })
 </script>
 
@@ -586,50 +618,59 @@ onBeforeUnmount(() => {
       :inert="!toolsVisible"
       :aria-hidden="!toolsVisible"
     >
-      <Button as-child variant="ghost" size="icon-lg">
-        <RouterLink :to="`/novels/${route.params.novelId}`" aria-label="返回目录"
-          ><ArrowLeft aria-hidden="true"
-        /></RouterLink>
+      <Button
+        :as="RouterLink"
+        :to="`/novels/${route.params.novelId}`"
+        variant="ghost"
+        size="sm"
+        class="w-10 px-0"
+        aria-label="返回目录"
+      >
+        <ArrowLeft class="size-4.5" aria-hidden="true" />
       </Button>
       <RouterLink
         v-if="novel"
         :to="`/novels/${novel.id}`"
-        class="min-w-0 flex-1 text-sm text-muted-foreground"
-        ><span class="block truncate">{{ novelTitle(novel) }}</span>
+        class="min-w-0 flex-1 text-sm text-ink-muted"
+      >
+        <span class="block truncate">{{ novelTitle(novel) }}</span>
         <span v-if="novelOriginalTitle(novel)" class="block truncate text-xs">{{
           novelOriginalTitle(novel)
-        }}</span></RouterLink
-      >
-      <span v-else class="flex-1 text-sm text-muted-foreground">小说阅读</span>
-      <span v-if="chapter" class="shrink-0 text-right text-xs text-muted-foreground">
+        }}</span>
+      </RouterLink>
+      <span v-else class="flex-1 text-sm text-ink-muted">小说阅读</span>
+      <span v-if="chapter" class="shrink-0 text-right text-xs text-ink-muted">
         <span class="block">第 {{ chapter.chapter_no }} 章</span>
         <output class="block" aria-label="本章阅读状态">{{ currentReadingStatus }}</output>
       </span>
       <Button
         variant="ghost"
-        size="icon-lg"
+        size="sm"
+        class="w-10 px-0"
         aria-label="打开目录"
         :disabled="!chapter"
         :aria-busy="loading && pendingAction === 'directory'"
         @click="directoryOpen = true"
-        ><LoaderCircle
+      >
+        <LoaderCircle
           v-if="loading && pendingAction === 'directory'"
-          class="animate-spin"
+          class="size-4.5 animate-spin"
           aria-hidden="true"
-          data-slot="chapter-spinner" /><List v-else aria-hidden="true"
-      /></Button>
+          data-slot="chapter-spinner"
+        />
+        <List v-else class="size-4.5" aria-hidden="true" />
+      </Button>
       <Dialog v-model:open="settingsOpen">
-        <DialogTrigger as-child
-          ><Button variant="ghost" size="icon-lg" aria-label="阅读设置"
-            ><Settings2 aria-hidden="true" /></Button
-        ></DialogTrigger>
-        <DialogContent :data-reader-theme="resolvedTheme" class="reader-dialog">
-          <DialogHeader
-            ><DialogTitle>阅读设置</DialogTitle
-            ><DialogDescription
-              >调整到适合你的阅读节奏，设置自动保存在此浏览器。</DialogDescription
-            ></DialogHeader
-          >
+        <DialogTrigger as-child>
+          <Button variant="ghost" size="sm" class="w-10 px-0" aria-label="阅读设置">
+            <Settings2 class="size-4.5" aria-hidden="true" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent :data-reader-theme="resolvedTheme" class="reader-dialog space-y-4">
+          <div>
+            <DialogTitle>阅读设置</DialogTitle>
+            <DialogDescription>调整到适合你的阅读节奏，设置自动保存在此浏览器。</DialogDescription>
+          </div>
           <section class="reader-font-preview" :style="readerStyle" aria-label="阅读效果预览">
             <p class="reader-preview-label">
               {{ selectedFont.label }} · {{ fontSize }}px · {{ fontWeightLabel }}
@@ -645,142 +686,221 @@ onBeforeUnmount(() => {
               字体加载失败，当前显示系统字体。
             </p>
           </section>
-          <div class="space-y-5">
+          <div class="space-y-4">
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium">阅读版本</span>
-              <Select v-model="selectedVersion">
-                <SelectTrigger class="w-44" aria-label="阅读版本"><SelectValue /></SelectTrigger>
-                <SelectContent :data-reader-theme="resolvedTheme"
-                  ><SelectItem value="target">译文</SelectItem
-                  ><SelectItem value="source">原文</SelectItem
-                  ><SelectItem v-if="!isMobile" value="parallel"
-                    >原文 / 译文对照</SelectItem
-                  ></SelectContent
-                >
+              <Select
+                :model-value="versionModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) versionModel = v
+                  }
+                "
+              >
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="阅读版本">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
+                  <SelectItem value="target">译文</SelectItem>
+                  <SelectItem value="source">原文</SelectItem>
+                  <SelectItem v-if="!isMobile" value="parallel">原文 / 译文对照</SelectItem>
+                </SelectContent>
               </Select>
             </div>
+
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium">阅读方式</span>
-              <Select v-model="layout"
-                ><SelectTrigger class="w-44" aria-label="阅读方式"><SelectValue /></SelectTrigger
-                ><SelectContent :data-reader-theme="resolvedTheme"
-                  ><SelectItem value="scroll">连续滚动</SelectItem
-                  ><SelectItem value="paged">分页阅读</SelectItem></SelectContent
-                ></Select
+              <Select
+                :model-value="layoutModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) layoutModel = v
+                  }
+                "
               >
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="阅读方式">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
+                  <SelectItem value="scroll">连续滚动</SelectItem>
+                  <SelectItem value="paged">分页阅读</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium">阅读配色</span>
-              <Select v-model="theme"
-                ><SelectTrigger class="w-44" aria-label="阅读配色"><SelectValue /></SelectTrigger
-                ><SelectContent :data-reader-theme="resolvedTheme"
-                  ><SelectItem value="system">跟随站点主题</SelectItem
-                  ><SelectItem value="paper">暖白纸色</SelectItem
-                  ><SelectItem value="dark">深色阅读</SelectItem></SelectContent
-                ></Select
+              <Select
+                :model-value="readerThemeModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) readerThemeModel = v
+                  }
+                "
               >
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="阅读配色">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
+                  <SelectItem value="system">跟随站点主题</SelectItem>
+                  <SelectItem value="paper">暖白纸色</SelectItem>
+                  <SelectItem value="dark">深色阅读</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium">字体</span>
-              <Select v-model="font"
-                ><SelectTrigger class="w-44" aria-label="阅读字体"><SelectValue /></SelectTrigger
-                ><SelectContent :data-reader-theme="resolvedTheme"
-                  ><SelectItem v-for="item in readerFonts" :key="item.value" :value="item.value">{{
-                    item.label
-                  }}</SelectItem></SelectContent
-                ></Select
+              <Select
+                :model-value="fontModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) fontModel = v
+                  }
+                "
               >
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="阅读字体">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
+                  <SelectItem v-for="item in readerFonts" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium">字体粗细</span>
               <Select
-                :model-value="String(fontWeight)"
-                @update:model-value="fontWeight = Number($event)"
+                :model-value="fontWeightModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) fontWeightModel = v
+                  }
+                "
               >
-                <SelectTrigger class="w-44" aria-label="字体粗细"><SelectValue /></SelectTrigger>
-                <SelectContent :data-reader-theme="resolvedTheme">
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="字体粗细">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
                   <SelectItem
                     v-for="item in fontWeights"
                     :key="item.value"
                     :value="String(item.value)"
-                    >{{ item.label }}</SelectItem
                   >
+                    {{ item.label }}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
             <div class="flex items-center justify-between gap-3" role="group" aria-label="字号调整">
               <span class="text-sm font-medium">字号</span>
               <div class="flex items-center gap-3">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   :disabled="fontSize <= 16"
                   aria-label="减小字号"
                   @click="fontSize = Math.max(16, fontSize - 2)"
-                  >A−</Button
-                ><output class="w-10 text-center text-sm" aria-label="当前字号"
-                  >{{ fontSize }}px</output
-                ><Button
-                  variant="outline"
+                >
+                  A−
+                </Button>
+                <output class="w-10 text-center text-sm tabular-nums" aria-label="当前字号">
+                  {{ fontSize }}px
+                </output>
+                <Button
+                  variant="secondary"
                   size="sm"
                   :disabled="fontSize >= 30"
                   aria-label="增大字号"
                   @click="fontSize = Math.min(30, fontSize + 2)"
-                  >A+</Button
                 >
+                  A+
+                </Button>
               </div>
             </div>
-            <label class="reader-setting"
-              ><span
+
+            <div class="reader-setting">
+              <span
                 >行距 <output>{{ lineHeight.toFixed(1) }}</output></span
-              ><input
-                v-model.number="lineHeight"
-                type="range"
-                min="1.5"
-                max="2.4"
-                step="0.1"
-                aria-label="阅读行距"
-            /></label>
-            <label class="reader-setting"
-              ><span
-                >段距 <output>{{ paragraphGap.toFixed(1) }}</output></span
-              ><input
-                v-model.number="paragraphGap"
-                type="range"
-                min="0.6"
-                max="1.4"
-                step="0.2"
-                aria-label="阅读段距"
-            /></label>
-            <div class="flex items-center justify-between gap-3">
-              <span class="text-sm font-medium">正文宽度</span
-              ><Select :model-value="String(width)" @update:model-value="width = Number($event)"
-                ><SelectTrigger class="w-44" aria-label="正文宽度"><SelectValue /></SelectTrigger
-                ><SelectContent :data-reader-theme="resolvedTheme"
-                  ><SelectItem value="640">紧凑</SelectItem><SelectItem value="760">舒适</SelectItem
-                  ><SelectItem value="900">宽松</SelectItem></SelectContent
-                ></Select
               >
+              <Slider
+                :model-value="[lineHeight]"
+                :min="1.5"
+                :max="2.4"
+                :step="0.1"
+                aria-label="阅读行距"
+                @update:model-value="
+                  (v) => {
+                    if (v?.[0] !== undefined) lineHeight = Number(v[0].toFixed(1))
+                  }
+                "
+              />
+            </div>
+
+            <div class="reader-setting">
+              <span
+                >段距 <output>{{ paragraphGap.toFixed(1) }}</output></span
+              >
+              <Slider
+                :model-value="[paragraphGap]"
+                :min="0.6"
+                :max="1.4"
+                :step="0.2"
+                aria-label="阅读段距"
+                @update:model-value="
+                  (v) => {
+                    if (v?.[0] !== undefined) paragraphGap = Number(v[0].toFixed(1))
+                  }
+                "
+              />
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm font-medium">正文宽度</span>
+              <Select
+                :model-value="widthModel"
+                @update:model-value="
+                  (v) => {
+                    if (v) widthModel = v
+                  }
+                "
+              >
+                <SelectTrigger class="h-9 w-44 text-[14px]" aria-label="正文宽度">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent :data-reader-theme="resolvedTheme" align="end">
+                  <SelectItem value="640">紧凑</SelectItem>
+                  <SelectItem value="760">舒适</SelectItem>
+                  <SelectItem value="900">宽松</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <DialogClose as-child><Button class="mt-2">完成</Button></DialogClose>
+          <DialogClose as-child>
+            <Button class="mt-2 w-full">完成</Button>
+          </DialogClose>
         </DialogContent>
       </Dialog>
     </header>
     <div v-if="!chapter && error" class="reader-status">
-      <Alert v-if="error" variant="destructive"
-        ><AlertDescription class="flex flex-wrap items-center justify-between gap-3"
-          ><span>{{ error }}</span
-          ><Button variant="outline" @click="load(true)">重试</Button></AlertDescription
-        ></Alert
-      >
+      <Alert v-if="error" variant="danger">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <AlertDescription>{{ error }}</AlertDescription>
+          <Button variant="secondary" size="sm" @click="load(true)">重试</Button>
+        </div>
+      </Alert>
     </div>
     <div v-if="chapter && error" class="reader-chapter-notice">
-      <Alert variant="destructive">
-        <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
-          <span>章节切换失败，仍显示第 {{ chapter.chapter_no }} 章。{{ error }}</span>
-          <Button variant="outline" @click="load(true)">重试</Button>
-        </AlertDescription>
+      <Alert variant="danger">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <AlertDescription>
+            章节切换失败，仍显示第 {{ chapter.chapter_no }} 章。{{ error }}
+          </AlertDescription>
+          <Button variant="secondary" size="sm" @click="load(true)">重试</Button>
+        </div>
       </Alert>
     </div>
     <div v-if="chapter && novel" class="reader-content" :aria-busy="loading">
@@ -817,10 +937,10 @@ onBeforeUnmount(() => {
       </header>
       <div v-if="effectiveMode === 'target' && !hasTarget" class="reader-empty" role="status">
         <p>本章暂无译文。</p>
-        <Button v-if="hasSource" variant="outline" @click="selectedVersion = 'source'"
+        <Button v-if="hasSource" variant="secondary" size="sm" @click="selectedVersion = 'source'"
           >阅读原文</Button
         >
-        <p v-else class="text-sm text-muted-foreground">本章暂无原文。</p>
+        <p v-else class="text-sm text-ink-muted">本章暂无原文。</p>
       </div>
       <p v-if="effectiveMode === 'source' && !hasSource" role="status" class="reader-empty">
         本章暂无原文。
@@ -888,11 +1008,12 @@ onBeforeUnmount(() => {
         >
           <Button
             variant="ghost"
-            size="icon-lg"
+            size="sm"
+            class="w-10 px-0"
             aria-label="上一页正文"
             :disabled="pageNumber === 0"
             @click="turnPage(-1)"
-            ><ChevronLeft aria-hidden="true"
+            ><ChevronLeft class="size-4.5" aria-hidden="true"
           /></Button>
           <output
             class="min-w-24 text-center text-xs tabular-nums"
@@ -902,60 +1023,74 @@ onBeforeUnmount(() => {
           >
           <Button
             variant="ghost"
-            size="icon-lg"
+            size="sm"
+            class="w-10 px-0"
             aria-label="下一页正文"
             :disabled="pageNumber >= totalPages - 1"
             @click="turnPage(1)"
-            ><ChevronRight aria-hidden="true"
+            ><ChevronRight class="size-4.5" aria-hidden="true"
           /></Button>
         </nav>
-        <p
-          v-else
-          class="text-center text-xs text-muted-foreground tabular-nums"
-          aria-label="本章阅读进度"
-        >
+        <p v-else class="text-center text-xs text-ink-muted tabular-nums" aria-label="本章阅读进度">
           本章已读 {{ progressPercent }}%
         </p>
         <nav aria-label="章节翻页" class="mt-2 flex items-center justify-between gap-2">
-          <Button v-if="chapter.previous" as-child variant="ghost"
-            ><RouterLink
-              :to="chapterPath(novel.id, chapter.previous.id)"
-              :title="chapterTitle(chapter.previous, effectiveMode)"
-              :aria-busy="loading && pendingAction === 'previous'"
-              ><LoaderCircle
-                v-if="loading && pendingAction === 'previous'"
-                class="animate-spin"
-                aria-hidden="true"
-                data-slot="chapter-spinner"
-              /><ChevronLeft v-else aria-hidden="true" />上一章</RouterLink
-            ></Button
-          ><Button v-else variant="ghost" disabled><ChevronLeft aria-hidden="true" />上一章</Button>
           <Button
+            v-if="chapter.previous"
+            :as="RouterLink"
+            :to="chapterPath(novel.id, chapter.previous.id)"
             variant="ghost"
-            :aria-busy="loading && pendingAction === 'directory'"
-            @click="directoryOpen = true"
-            ><LoaderCircle
-              v-if="loading && pendingAction === 'directory'"
-              class="animate-spin"
+            size="sm"
+            :title="chapterTitle(chapter.previous, effectiveMode)"
+            :aria-busy="loading && pendingAction === 'previous'"
+          >
+            <LoaderCircle
+              v-if="loading && pendingAction === 'previous'"
+              class="size-4 animate-spin"
               aria-hidden="true"
               data-slot="chapter-spinner"
-            />目录</Button
+            />
+            <ChevronLeft v-else class="size-4" aria-hidden="true" />
+            上一章
+          </Button>
+          <Button v-else variant="ghost" size="sm" disabled>
+            <ChevronLeft class="size-4" aria-hidden="true" />上一章
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            :aria-busy="loading && pendingAction === 'directory'"
+            @click="directoryOpen = true"
           >
-          <Button v-if="chapter.next" as-child variant="ghost"
-            ><RouterLink
-              :to="chapterPath(novel.id, chapter.next.id)"
-              :title="chapterTitle(chapter.next, effectiveMode)"
-              :aria-busy="loading && pendingAction === 'next'"
-              >下一章<LoaderCircle
-                v-if="loading && pendingAction === 'next'"
-                class="animate-spin"
-                aria-hidden="true"
-                data-slot="chapter-spinner" /><ChevronRight
-                v-else
-                aria-hidden="true" /></RouterLink></Button
-          ><Button v-else variant="ghost" disabled
-            >下一章<ChevronRight aria-hidden="true"
-          /></Button>
+            <LoaderCircle
+              v-if="loading && pendingAction === 'directory'"
+              class="size-4 animate-spin"
+              aria-hidden="true"
+              data-slot="chapter-spinner"
+            />
+            目录
+          </Button>
+          <Button
+            v-if="chapter.next"
+            :as="RouterLink"
+            :to="chapterPath(novel.id, chapter.next.id)"
+            variant="ghost"
+            size="sm"
+            :title="chapterTitle(chapter.next, effectiveMode)"
+            :aria-busy="loading && pendingAction === 'next'"
+          >
+            下一章
+            <LoaderCircle
+              v-if="loading && pendingAction === 'next'"
+              class="size-4 animate-spin"
+              aria-hidden="true"
+              data-slot="chapter-spinner"
+            />
+            <ChevronRight v-else class="size-4" aria-hidden="true" />
+          </Button>
+          <Button v-else variant="ghost" size="sm" disabled>
+            下一章<ChevronRight class="size-4" aria-hidden="true" />
+          </Button>
         </nav>
       </div>
     </footer>

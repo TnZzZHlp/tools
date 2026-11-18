@@ -15,9 +15,7 @@ export function extractMacSuffix(input: string): string | null {
     .replace(/[IL|]/g, '1')
     .replace(/[^0-9A-F:\-\s]/g, ' ')
 
-  const sequences = normalized.match(
-    new RegExp(`${HEX_PAIR}(?:[-:\\s]+${HEX_PAIR}){3,}`, 'g'),
-  )
+  const sequences = normalized.match(new RegExp(`${HEX_PAIR}(?:[-:\\s]+${HEX_PAIR}){3,}`, 'g'))
 
   if (sequences?.length) {
     const lastSequence = sequences[sequences.length - 1]
@@ -34,18 +32,18 @@ export function extractMacSuffix(input: string): string | null {
   if (!compactSequence) return null
 
   const compactOctets = compactSequence.match(/[0-9A-F]{2}/g)
-  return compactOctets && compactOctets.length >= 4
-    ? compactOctets.slice(-4).join('-')
-    : null
+  return compactOctets && compactOctets.length >= 4 ? compactOctets.slice(-4).join('-') : null
 }
 
 export function normalizeMacPrefix(input: string): string {
-  return input
-    .toUpperCase()
-    .replace(/[^0-9A-F]/g, '')
-    .slice(0, 4)
-    .match(/.{1,2}/g)
-    ?.join('-') ?? ''
+  return (
+    input
+      .toUpperCase()
+      .replace(/[^0-9A-F]/g, '')
+      .slice(0, 4)
+      .match(/.{1,2}/g)
+      ?.join('-') ?? ''
+  )
 }
 
 export function buildMacAddress(prefix: string, suffix: string): string {

@@ -5,7 +5,15 @@ import type { Component } from 'vue'
 import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Activity,
@@ -775,21 +783,21 @@ function resetStats() {
 
 function optionButtonClass(option: QuizOption) {
   return {
-    'border-primary bg-primary text-primary-foreground hover:bg-primary/90':
+    'border-ink bg-ink text-surface hover:bg-ink':
       answerStatus.value !== 'idle' && option.value === currentQuestion.value.answer,
-    'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/10':
+    'border-danger bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))] text-danger hover:bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))]':
       answerStatus.value === 'wrong' &&
       selectedAnswer.value === option.value &&
       option.value !== currentQuestion.value.answer,
-    'ring-2 ring-ring/50': answerStatus.value === 'idle' && selectedAnswer.value === option.value,
+    'ring-2 ring-ink': answerStatus.value === 'idle' && selectedAnswer.value === option.value,
   }
 }
 
 function fretOptionButtonClass(answer: FretAnswer) {
   return {
-    'border-primary bg-primary text-primary-foreground hover:bg-primary/90':
+    'border-ink bg-ink text-surface hover:bg-ink':
       fretAnswerStatus.value !== 'idle' && answer === selectedInterval.value.frets,
-    'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/10':
+    'border-danger bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))] text-danger hover:bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))]':
       fretAnswerStatus.value === 'wrong' &&
       selectedFretAnswer.value === answer &&
       answer !== selectedInterval.value.frets,
@@ -798,9 +806,9 @@ function fretOptionButtonClass(answer: FretAnswer) {
 
 function earOptionButtonClass(option: EarOption) {
   return {
-    'border-primary bg-primary text-primary-foreground hover:bg-primary/90':
+    'border-ink bg-ink text-surface hover:bg-ink':
       earAnswerStatus.value !== 'idle' && option.value === earQuestion.value.answer,
-    'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/10':
+    'border-danger bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))] text-danger hover:bg-[color-mix(in_oklab,var(--color-danger)_12%,var(--color-raised))]':
       earAnswerStatus.value === 'wrong' &&
       selectedEarAnswer.value === option.value &&
       option.value !== earQuestion.value.answer,
@@ -983,6 +991,13 @@ function createId() {
 function toSafeNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
 }
+
+const modeModel = computed({
+  get: () => currentMode.value,
+  set: (val: string | number | undefined) => {
+    if (val !== undefined) selectMode(val)
+  },
+})
 </script>
 
 <template>
@@ -995,37 +1010,41 @@ function toSafeNumber(value: unknown) {
       <template #actions>
         <div class="flex flex-wrap items-center gap-2">
           <div
-            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+            class="inline-flex items-center gap-1.5 rounded-control border border-line bg-raised px-2.5 py-1.5 text-[12px]"
           >
-            <Activity class="size-3.5 text-orange-500" />
-            <span class="text-muted-foreground">正确率</span>
-            <strong class="tabular-nums font-semibold">{{ accuracy }}%</strong>
-            <span class="text-muted-foreground tabular-nums"
-              >({{ stats.correct }}/{{ stats.total }})</span
+            <Activity class="size-3.5 text-[var(--p0seid0n-upload)]" />
+            <span class="text-ink-muted">正确率</span>
+            <strong class="font-condensed tabular-nums font-medium text-ink"
+              >{{ accuracy }}%</strong
             >
+            <span class="text-ink-muted tabular-nums">({{ stats.correct }}/{{ stats.total }})</span>
           </div>
 
           <div
-            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+            class="inline-flex items-center gap-1.5 rounded-control border border-line bg-raised px-2.5 py-1.5 text-[12px]"
           >
-            <Target class="size-3.5 text-sky-500" />
-            <span class="text-muted-foreground">连击</span>
-            <strong class="tabular-nums font-semibold">{{ stats.currentStreak }}</strong>
+            <Target class="size-3.5 text-accent" />
+            <span class="text-ink-muted">连击</span>
+            <strong class="font-condensed tabular-nums font-medium text-ink">{{
+              stats.currentStreak
+            }}</strong>
           </div>
 
           <div
-            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+            class="inline-flex items-center gap-1.5 rounded-control border border-line bg-raised px-2.5 py-1.5 text-[12px]"
           >
-            <Trophy class="size-3.5 text-amber-500" />
-            <span class="text-muted-foreground">最高</span>
-            <strong class="tabular-nums font-semibold">{{ stats.bestStreak }}</strong>
+            <Trophy class="size-3.5 text-[var(--p0seid0n-upload)]" />
+            <span class="text-ink-muted">最高</span>
+            <strong class="font-condensed tabular-nums font-medium text-ink">{{
+              stats.bestStreak
+            }}</strong>
           </div>
 
           <Button
             v-if="stats.total > 0"
             variant="ghost"
             size="sm"
-            class="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            class="text-ink-muted hover:text-ink"
             @click="resetStats"
           >
             <RotateCcw class="size-3.5" />
@@ -1036,14 +1055,9 @@ function toSafeNumber(value: unknown) {
     </ToolPageHeader>
 
     <!-- Mode Switcher Tabs -->
-    <Tabs :model-value="currentMode" @update:model-value="selectMode">
-      <TabsList class="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:inline-flex sm:h-10 sm:w-auto">
-        <TabsTrigger
-          v-for="mode in modes"
-          :key="mode.id"
-          :value="mode.id"
-          class="gap-1.5 px-3.5 py-2 text-xs sm:py-1.5 sm:text-sm"
-        >
+    <Tabs v-model="modeModel">
+      <TabsList class="flex-wrap">
+        <TabsTrigger v-for="mode in modes" :key="mode.id" :value="mode.id">
           <component :is="mode.icon" class="size-4 shrink-0" />
           <span>{{ mode.label }}</span>
         </TabsTrigger>
@@ -1053,22 +1067,26 @@ function toSafeNumber(value: unknown) {
     <Transition name="mode-fade" mode="out-in">
       <section v-if="currentMode === 'reference'" key="reference" class="space-y-4">
         <Card>
-          <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2">
-                <CardTitle class="text-lg sm:text-xl">对照学习面板</CardTitle>
-                <Badge variant="secondary" class="font-normal">点击卡片试听音高</Badge>
-              </div>
-              <CardDescription class="max-w-2xl leading-6">
+          <CardHeader class="flex-col gap-3 lg:flex-row lg:items-start">
+            <template #title>
+              <span class="inline-flex items-center gap-2 text-lg">
+                <span>对照学习面板</span>
+                <Badge variant="neutral">点击卡片试听音高</Badge>
+              </span>
+            </template>
+            <template #description>
+              <p class="max-w-2xl text-[14px] leading-6 text-ink-muted">
                 点击任意音符卡片试听吉他拨弦音高，或点击音程胶囊查看相邻音之间的全音、半音关系。
-              </CardDescription>
-            </div>
-            <div
-              class="rounded-xl border bg-muted/35 px-4 py-3 text-sm leading-6 text-muted-foreground"
-            >
-              <strong class="text-foreground">核心口诀：</strong>
-              3-4（E-F）和 7-1̇（B-C）是半音（1 品）；其余相邻自然音都是全音（2 品）。
-            </div>
+              </p>
+            </template>
+            <template #action>
+              <div
+                class="rounded-control border border-line bg-surface px-4 py-3 text-[13px] leading-6 text-ink-muted"
+              >
+                <strong class="text-ink">核心口诀：</strong>
+                3-4（E-F）和 7-1̇（B-C）是半音（1 品）；其余相邻自然音都是全音（2 品）。
+              </div>
+            </template>
           </CardHeader>
 
           <CardContent class="space-y-6">
@@ -1077,29 +1095,31 @@ function toSafeNumber(value: unknown) {
                 <template v-for="(note, index) in notes" :key="note.id">
                   <button
                     type="button"
-                    class="note-card group w-[8.25rem] rounded-xl border bg-background p-4 text-left transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98] sm:w-[9rem]"
+                    class="note-card group w-[8.25rem] rounded-panel border border-line bg-surface p-4 text-left transition-all hover:-translate-y-1 active:scale-[0.98] sm:w-[9rem]"
                     :class="{
-                      'border-primary ring-2 ring-primary/20': selectedNoteIndex === index,
-                      'border-orange-400 bg-orange-50/70 dark:bg-orange-950/20':
+                      'border-ink ring-2 ring-ink/20': selectedNoteIndex === index,
+                      'border-[var(--p0seid0n-upload)] bg-[color-mix(in_oklab,var(--p0seid0n-upload)_10%,var(--color-surface))]':
                         isNoteInActiveInterval(index),
                     }"
                     @click="selectNote(index)"
                   >
                     <div class="flex items-start justify-between">
-                      <span class="block text-3xl font-black tracking-tight sm:text-4xl">
+                      <span
+                        class="block font-condensed text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+                      >
                         {{ note.number }}
                       </span>
                       <Volume2
-                        class="size-3.5 text-muted-foreground/50 transition-colors group-hover:text-orange-500"
+                        class="size-3.5 text-ink-faint transition-colors group-hover:text-[var(--p0seid0n-upload)]"
                       />
                     </div>
-                    <span class="mt-2.5 block text-xl font-semibold sm:text-2xl">{{
+                    <span class="mt-2.5 block text-xl font-semibold text-ink sm:text-2xl">{{
                       note.letter
                     }}</span>
-                    <span class="block text-sm font-medium text-orange-600 dark:text-orange-400">
+                    <span class="block text-[14px] font-medium text-[var(--p0seid0n-upload)]">
                       {{ note.solfege }}
                     </span>
-                    <span class="mt-2.5 block text-xs leading-5 text-muted-foreground">
+                    <span class="mt-2.5 block text-[12px] leading-5 text-ink-muted">
                       {{ note.hint }}
                     </span>
                   </button>
@@ -1108,13 +1128,13 @@ function toSafeNumber(value: unknown) {
                     v-if="index < intervals.length"
                     :key="intervals[index]?.id"
                     type="button"
-                    class="interval-pill self-center rounded-full border px-3 py-2 text-center text-xs font-semibold transition-all hover:-translate-y-0.5 active:scale-95 sm:px-4"
+                    class="interval-pill self-center rounded-full border px-3 py-2 text-center text-[12px] font-semibold transition-all hover:-translate-y-0.5 active:scale-95 sm:px-4"
                     :class="[
                       intervals[index]?.kind === 'half'
-                        ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300'
-                        : 'border-border bg-muted/50 text-muted-foreground',
+                        ? 'border-[var(--p0seid0n-upload)] bg-[color-mix(in_oklab,var(--p0seid0n-upload)_12%,var(--color-surface))] text-danger'
+                        : 'border-line bg-control text-ink-muted',
                       intervals[index] && isIntervalHighlighted(intervals[index])
-                        ? 'scale-105 shadow-md ring-2 ring-orange-500/25'
+                        ? 'scale-105 ring-2 ring-[var(--p0seid0n-upload)]'
                         : '',
                     ]"
                     @click="intervals[index] && selectInterval(intervals[index])"
@@ -1131,47 +1151,47 @@ function toSafeNumber(value: unknown) {
             </div>
 
             <div
-              class="grid gap-4 rounded-xl border p-4 sm:grid-cols-[auto_1fr] sm:items-center"
+              class="grid gap-4 rounded-panel border p-4 sm:grid-cols-[auto_1fr] sm:items-center"
               :class="
                 selectedInterval.kind === 'half'
-                  ? 'border-orange-300 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/20'
-                  : 'bg-muted/30'
+                  ? 'border-[var(--p0seid0n-upload)] bg-[color-mix(in_oklab,var(--p0seid0n-upload)_10%,var(--color-surface))]'
+                  : 'border-line bg-surface'
               "
             >
-              <div class="flex flex-wrap items-center gap-3 text-lg font-semibold">
+              <div class="flex flex-wrap items-center gap-3 text-lg font-semibold text-ink">
                 <span>{{ noteSignature(selectedIntervalFromNote) }}</span>
-                <ArrowRight class="size-5 text-muted-foreground" />
+                <ArrowRight class="size-5 text-ink-muted" />
                 <span>{{ noteSignature(selectedIntervalToNote) }}</span>
               </div>
               <div class="space-y-1">
-                <Badge :variant="selectedInterval.kind === 'half' ? 'default' : 'outline'">
+                <Badge :variant="selectedInterval.kind === 'half' ? 'accent-alt' : 'outline'">
                   {{ intervalLabel(selectedInterval) }}
                 </Badge>
-                <p class="text-sm leading-6 text-muted-foreground">
+                <p class="text-[14px] leading-6 text-ink-muted">
                   {{ intervalTheory(selectedInterval) }}
                 </p>
               </div>
             </div>
 
-            <div class="overflow-hidden rounded-xl border">
-              <div
-                class="grid grid-cols-4 bg-muted/60 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:text-sm"
-              >
-                <span>简谱</span>
-                <span>音名</span>
-                <span>唱名</span>
-                <span>记忆提示</span>
-              </div>
-              <div
-                v-for="note in notes"
-                :key="note.id"
-                class="grid grid-cols-4 border-t px-4 py-2.5 text-sm"
-              >
-                <span class="font-semibold">{{ note.number }}</span>
-                <span>{{ note.letter }}</span>
-                <span>{{ note.solfege }}</span>
-                <span class="text-muted-foreground">{{ note.hint }}</span>
-              </div>
+            <div class="overflow-hidden rounded-panel border border-line">
+              <Table>
+                <TableHeader class="bg-control">
+                  <TableRow class="hover:bg-transparent">
+                    <TableHead>简谱</TableHead>
+                    <TableHead>音名</TableHead>
+                    <TableHead>唱名</TableHead>
+                    <TableHead>记忆提示</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="note in notes" :key="note.id">
+                    <TableCell class="font-semibold">{{ note.number }}</TableCell>
+                    <TableCell>{{ note.letter }}</TableCell>
+                    <TableCell>{{ note.solfege }}</TableCell>
+                    <TableCell class="text-ink-muted">{{ note.hint }}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
@@ -1187,27 +1207,35 @@ function toSafeNumber(value: unknown) {
             :key="quizCardKey"
             class="quiz-card overflow-hidden"
             :class="{
-              'border-emerald-500': answerStatus === 'correct',
-              'border-destructive': answerStatus === 'wrong',
+              'border-accent': answerStatus === 'correct',
+              'border-danger': answerStatus === 'wrong',
               'animate-correct-flash': answerStatus === 'correct',
               'animate-wrong-shake': answerStatus === 'wrong',
             }"
           >
-            <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-              <div class="space-y-1.5">
-                <Badge variant="secondary" class="w-fit font-normal">随机问答</Badge>
-                <CardTitle class="text-lg sm:text-xl">盲听 / 盲看测试</CardTitle>
-                <CardDescription class="leading-6">
+            <CardHeader>
+              <template #title>
+                <span class="flex flex-col gap-1.5">
+                  <Badge variant="neutral" class="w-fit">随机问答</Badge>
+                  <span class="text-lg">盲听 / 盲看测试</span>
+                </span>
+              </template>
+              <template #description>
+                <p class="text-[14px] leading-6 text-ink-muted">
                   {{ currentQuestion.title }}。答错后会立即显示正确答案与推导逻辑。
-                </CardDescription>
-              </div>
-              <Badge variant="outline" class="text-base">{{ currentQuestion.promptBadge }}</Badge>
+                </p>
+              </template>
+              <template #action>
+                <Badge variant="outline" class="text-[14px]">{{
+                  currentQuestion.promptBadge
+                }}</Badge>
+              </template>
             </CardHeader>
 
             <CardContent class="space-y-5">
-              <div class="rounded-xl bg-muted/50 p-5">
-                <p class="text-xs text-muted-foreground">题目</p>
-                <h2 class="mt-1.5 text-xl font-semibold tracking-tight sm:text-2xl">
+              <div class="rounded-panel border border-line bg-surface p-5">
+                <p class="text-[12px] text-ink-muted">题目</p>
+                <h2 class="mt-1.5 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
                   {{ currentQuestion.prompt }}
                 </h2>
               </div>
@@ -1217,8 +1245,8 @@ function toSafeNumber(value: unknown) {
                   v-for="option in currentQuestion.options"
                   :key="option.id"
                   type="button"
-                  variant="outline"
-                  class="h-auto min-h-14 justify-center rounded-xl px-4 py-3.5 text-base font-semibold transition-all hover:-translate-y-0.5 sm:text-lg"
+                  variant="secondary"
+                  class="min-h-14 justify-center rounded-panel border border-line px-4 py-3.5 text-[16px] font-semibold sm:text-[17px]"
                   :class="optionButtonClass(option)"
                   :disabled="answerStatus !== 'idle'"
                   @click="chooseAnswer(option)"
@@ -1230,20 +1258,23 @@ function toSafeNumber(value: unknown) {
               <Transition name="feedback">
                 <div
                   v-if="answerStatus !== 'idle'"
-                  class="flex gap-3 rounded-xl border p-4"
+                  class="flex gap-3 rounded-panel border p-4"
                   :class="
                     answerStatus === 'correct'
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                      : 'border-destructive/40 bg-destructive/10 text-destructive'
+                      ? 'border-accent bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] text-ink'
+                      : 'border-danger bg-[color-mix(in_oklab,var(--color-danger)_10%,var(--color-surface))] text-danger'
                   "
                   role="status"
                   aria-live="polite"
                 >
-                  <CheckCircle2 v-if="answerStatus === 'correct'" class="mt-0.5 size-5 shrink-0" />
-                  <XCircle v-else class="mt-0.5 size-5 shrink-0" />
+                  <CheckCircle2
+                    v-if="answerStatus === 'correct'"
+                    class="mt-0.5 size-5 shrink-0 text-accent"
+                  />
+                  <XCircle v-else class="mt-0.5 size-5 shrink-0 text-danger" />
                   <div class="space-y-1">
                     <p class="font-semibold">{{ feedbackTitle }}</p>
-                    <p class="text-sm leading-6 opacity-90">
+                    <p class="text-[14px] leading-6 text-ink-muted">
                       {{ currentQuestion.explanation }}
                     </p>
                   </div>
@@ -1251,10 +1282,10 @@ function toSafeNumber(value: unknown) {
               </Transition>
 
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-sm text-muted-foreground">
+                <p class="text-[14px] text-ink-muted">
                   当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
                 </p>
-                <Button @click="nextQuestion">
+                <Button size="sm" @click="nextQuestion">
                   <RefreshCcw class="size-4" />
                   {{ answerStatus === 'idle' ? '换一题' : '下一题' }}
                 </Button>
@@ -1266,13 +1297,17 @@ function toSafeNumber(value: unknown) {
         <div class="space-y-4">
           <Card>
             <CardHeader>
-              <Badge variant="secondary" class="w-fit font-normal">记忆口诀</Badge>
-              <CardTitle class="flex items-center gap-2 text-base sm:text-lg">
-                <Lightbulb class="size-5 text-orange-500" />
-                两个特殊半音
-              </CardTitle>
+              <template #title>
+                <span class="flex flex-col gap-1.5">
+                  <Badge variant="neutral" class="w-fit">记忆口诀</Badge>
+                  <span class="inline-flex items-center gap-2">
+                    <Lightbulb class="size-5 text-[var(--p0seid0n-upload)]" />
+                    <span>两个特殊半音</span>
+                  </span>
+                </span>
+              </template>
             </CardHeader>
-            <CardContent class="space-y-2.5 text-sm leading-6 text-muted-foreground">
+            <CardContent class="space-y-2.5 pt-0 text-[14px] leading-6 text-ink-muted">
               <p>只要记住 3-4 是 E-F，7-1̇ 是 B-C，就能快速判断所有相邻自然音。</p>
               <p>吉他同弦上：半音移动 1 个品格，全音移动 2 个品格。</p>
             </CardContent>
@@ -1280,9 +1315,17 @@ function toSafeNumber(value: unknown) {
 
           <Card v-if="currentQuestion.kind === 'D'">
             <CardHeader>
-              <Badge variant="outline" class="w-fit font-normal">指板示意</Badge>
-              <CardTitle class="text-base sm:text-lg">本题指板提示</CardTitle>
-              <CardDescription>假设起点音在 0 品，观察目标音落在哪个品格。</CardDescription>
+              <template #title>
+                <span class="flex flex-col gap-1.5">
+                  <Badge variant="outline" class="w-fit">指板示意</Badge>
+                  <span>本题指板提示</span>
+                </span>
+              </template>
+              <template #description>
+                <p class="text-[13px] text-ink-muted">
+                  假设起点音在 0 品，观察目标音落在哪个品格。
+                </p>
+              </template>
             </CardHeader>
             <CardContent class="space-y-4">
               <div class="fretboard-track">
@@ -1302,7 +1345,7 @@ function toSafeNumber(value: unknown) {
                   </span>
                 </div>
               </div>
-              <p class="text-sm leading-6 text-muted-foreground">{{ fretboardDescription }}</p>
+              <p class="text-[14px] leading-6 text-ink-muted">{{ fretboardDescription }}</p>
             </CardContent>
           </Card>
         </div>
@@ -1315,14 +1358,20 @@ function toSafeNumber(value: unknown) {
       >
         <Card>
           <CardHeader>
-            <Badge variant="secondary" class="w-fit font-normal">答题格式</Badge>
-            <CardTitle class="flex items-center gap-2 text-lg sm:text-xl">
-              <Volume2 class="size-5 text-orange-500" />
-              听音识别模式
-            </CardTitle>
-            <CardDescription class="leading-6">
-              先听吉他拨弦音，再选择对应音名、简谱或唱名。点击选项也会播放该选项的实际音高以便对比。
-            </CardDescription>
+            <template #title>
+              <span class="flex flex-col gap-1.5">
+                <Badge variant="neutral" class="w-fit">答题格式</Badge>
+                <span class="inline-flex items-center gap-2 text-lg">
+                  <Volume2 class="size-5 text-[var(--p0seid0n-upload)]" />
+                  <span>听音识别模式</span>
+                </span>
+              </span>
+            </template>
+            <template #description>
+              <p class="text-[14px] leading-6 text-ink-muted">
+                先听吉他拨弦音，再选择对应音名、简谱或唱名。点击选项也会播放该选项的实际音高以便对比。
+              </p>
+            </template>
           </CardHeader>
           <CardContent class="space-y-4">
             <div class="grid gap-2">
@@ -1330,22 +1379,18 @@ function toSafeNumber(value: unknown) {
                 v-for="answerMode in earAnswerModes"
                 :key="answerMode.id"
                 type="button"
-                class="rounded-xl border p-3.5 text-left transition-all hover:bg-muted/60 active:scale-[0.99]"
+                class="rounded-panel border p-3.5 text-left transition-all active:scale-[0.99]"
                 :class="
                   earAnswerMode === answerMode.id
-                    ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
-                    : 'border-border bg-background'
+                    ? 'border-ink bg-ink text-surface'
+                    : 'border-line bg-surface text-ink hover:bg-control'
                 "
                 @click="selectEarAnswerMode(answerMode.id)"
               >
-                <p class="text-sm font-semibold sm:text-base">{{ answerMode.label }}</p>
+                <p class="text-[15px] font-semibold">{{ answerMode.label }}</p>
                 <p
-                  class="mt-1 text-xs leading-5"
-                  :class="
-                    earAnswerMode === answerMode.id
-                      ? 'text-primary-foreground/75'
-                      : 'text-muted-foreground'
-                  "
+                  class="mt-1 text-[12px] leading-5"
+                  :class="earAnswerMode === answerMode.id ? 'opacity-80' : 'text-ink-muted'"
                 >
                   {{ answerMode.description }}
                 </p>
@@ -1353,9 +1398,9 @@ function toSafeNumber(value: unknown) {
             </div>
 
             <div
-              class="rounded-xl border bg-muted/35 p-3.5 text-sm leading-6 text-muted-foreground"
+              class="rounded-panel border border-line bg-surface p-3.5 text-[13px] leading-6 text-ink-muted"
             >
-              <strong class="text-foreground">音域范围：</strong>
+              <strong class="text-ink">音域范围：</strong>
               C D E F G A B 高音 C，对应 1 2 3 4 5 6 7 1̇，以及 do re mi fa sol la si 高音 do。
             </div>
           </CardContent>
@@ -1364,39 +1409,45 @@ function toSafeNumber(value: unknown) {
         <Card
           class="overflow-hidden"
           :class="{
-            'border-emerald-500': earAnswerStatus === 'correct',
-            'border-destructive': earAnswerStatus === 'wrong',
+            'border-accent': earAnswerStatus === 'correct',
+            'border-danger': earAnswerStatus === 'wrong',
             'animate-correct-flash': earAnswerStatus === 'correct',
             'animate-wrong-shake': earAnswerStatus === 'wrong',
           }"
         >
-          <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-            <div class="space-y-1.5">
-              <Badge variant="outline" class="w-fit font-normal">听音辨位</Badge>
-              <CardTitle class="text-lg sm:text-xl">听到的是哪个音？</CardTitle>
-              <CardDescription class="leading-6">
+          <CardHeader>
+            <template #title>
+              <span class="flex flex-col gap-1.5">
+                <Badge variant="outline" class="w-fit">听音辨位</Badge>
+                <span class="text-lg">听到的是哪个音？</span>
+              </span>
+            </template>
+            <template #description>
+              <p class="text-[14px] leading-6 text-ink-muted">
                 点击喇叭按钮重播题目音，从下方按钮组中选出答案。
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" @click="playEarQuestion">
-              <Volume2 class="size-4" />
-              重播题目音
-            </Button>
+              </p>
+            </template>
+            <template #action>
+              <Button variant="secondary" size="sm" @click="playEarQuestion">
+                <Volume2 class="size-4" />
+                重播题目音
+              </Button>
+            </template>
           </CardHeader>
 
           <CardContent class="space-y-5">
-            <div class="rounded-xl bg-muted/45 p-5 text-center">
+            <div class="rounded-panel border border-line bg-surface p-5 text-center">
               <div class="flex justify-center">
                 <button
                   type="button"
-                  class="grid size-20 place-items-center rounded-full border bg-background shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-95"
+                  class="grid size-20 place-items-center rounded-full border border-line bg-raised transition-all hover:-translate-y-0.5 hover:bg-control active:scale-95"
                   aria-label="播放题目音"
                   @click="playEarQuestion"
                 >
-                  <Volume2 class="size-9 text-orange-500" />
+                  <Volume2 class="size-9 text-[var(--p0seid0n-upload)]" />
                 </button>
               </div>
-              <p class="mt-3 text-xs text-muted-foreground">点击图标播放吉他音色，凭听觉判断音级</p>
+              <p class="mt-3 text-[12px] text-ink-muted">点击图标播放吉他音色，凭听觉判断音级</p>
             </div>
 
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -1404,8 +1455,8 @@ function toSafeNumber(value: unknown) {
                 v-for="option in earQuestion.options"
                 :key="option.id"
                 type="button"
-                variant="outline"
-                class="h-12 rounded-xl text-base font-semibold"
+                variant="secondary"
+                class="min-h-12 rounded-panel border border-line text-[16px] font-semibold"
                 :class="earOptionButtonClass(option)"
                 :disabled="earAnswerStatus !== 'idle'"
                 @click="chooseEarAnswer(option)"
@@ -1417,20 +1468,23 @@ function toSafeNumber(value: unknown) {
             <Transition name="feedback">
               <div
                 v-if="earAnswerStatus !== 'idle'"
-                class="flex gap-3 rounded-xl border p-4"
+                class="flex gap-3 rounded-panel border p-4"
                 :class="
                   earAnswerStatus === 'correct'
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                    : 'border-destructive/40 bg-destructive/10 text-destructive'
+                    ? 'border-accent bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] text-ink'
+                    : 'border-danger bg-[color-mix(in_oklab,var(--color-danger)_10%,var(--color-surface))] text-danger'
                 "
                 role="status"
                 aria-live="polite"
               >
-                <CheckCircle2 v-if="earAnswerStatus === 'correct'" class="mt-0.5 size-5 shrink-0" />
-                <XCircle v-else class="mt-0.5 size-5 shrink-0" />
+                <CheckCircle2
+                  v-if="earAnswerStatus === 'correct'"
+                  class="mt-0.5 size-5 shrink-0 text-accent"
+                />
+                <XCircle v-else class="mt-0.5 size-5 shrink-0 text-danger" />
                 <div class="space-y-1">
                   <p class="font-semibold">{{ earFeedbackTitle }}</p>
-                  <p class="text-sm leading-6 opacity-90">
+                  <p class="text-[14px] leading-6 text-ink-muted">
                     {{ noteSignature(earQuestionNote) }}。可点击上方重播题目音对比音高。
                   </p>
                 </div>
@@ -1438,10 +1492,10 @@ function toSafeNumber(value: unknown) {
             </Transition>
 
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-sm text-muted-foreground">
+              <p class="text-[14px] text-ink-muted">
                 当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
               </p>
-              <Button @click="nextEarQuestion(true)">
+              <Button size="sm" @click="nextEarQuestion(true)">
                 <RefreshCcw class="size-4" />
                 {{ earAnswerStatus === 'idle' ? '换一个音' : '下一题' }}
               </Button>
@@ -1452,18 +1506,24 @@ function toSafeNumber(value: unknown) {
 
       <section v-else key="fretboard" class="space-y-4">
         <Card>
-          <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
-            <div class="space-y-1.5">
-              <Badge variant="secondary" class="w-fit font-normal">同弦品格换算</Badge>
-              <CardTitle class="text-lg sm:text-xl">指板大闯关</CardTitle>
-              <CardDescription class="max-w-2xl leading-6">
+          <CardHeader>
+            <template #title>
+              <span class="flex flex-col gap-1.5">
+                <Badge variant="neutral" class="w-fit">同弦品格换算</Badge>
+                <span class="text-lg">指板大闯关</span>
+              </span>
+            </template>
+            <template #description>
+              <p class="max-w-2xl text-[14px] leading-6 text-ink-muted">
                 选择或随机生成一组相邻自然音，把音程关系换算成同一根琴弦上的品格移动距离。
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" @click="nextFretChallenge">
-              <RefreshCcw class="size-4" />
-              随机一关
-            </Button>
+              </p>
+            </template>
+            <template #action>
+              <Button variant="secondary" size="sm" @click="nextFretChallenge">
+                <RefreshCcw class="size-4" />
+                随机一关
+              </Button>
+            </template>
           </CardHeader>
 
           <CardContent class="space-y-6">
@@ -1472,13 +1532,13 @@ function toSafeNumber(value: unknown) {
                 v-for="interval in intervals"
                 :key="interval.id"
                 type="button"
-                class="rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.98]"
+                class="rounded-panel border p-3 text-left transition-all hover:-translate-y-0.5 active:scale-[0.98]"
                 :class="[
                   selectedInterval.id === interval.id
-                    ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
-                    : 'border-border bg-background',
+                    ? 'border-ink bg-ink text-surface'
+                    : 'border-line bg-surface text-ink hover:bg-control',
                   interval.kind === 'half' && selectedInterval.id !== interval.id
-                    ? 'border-orange-300 bg-orange-50/70 text-orange-800 dark:border-orange-900 dark:bg-orange-950/20 dark:text-orange-300'
+                    ? 'border-[var(--p0seid0n-upload)] bg-[color-mix(in_oklab,var(--p0seid0n-upload)_10%,var(--color-surface))]'
                     : '',
                 ]"
                 @click="selectInterval(interval)"
@@ -1488,12 +1548,8 @@ function toSafeNumber(value: unknown) {
                   {{ noteDisplayName(noteByIndex(interval.toIndex)) }}
                 </p>
                 <p
-                  class="mt-1 text-xs"
-                  :class="
-                    selectedInterval.id === interval.id
-                      ? 'text-primary-foreground/75'
-                      : 'text-muted-foreground'
-                  "
+                  class="mt-1 text-[12px]"
+                  :class="selectedInterval.id === interval.id ? 'opacity-80' : 'text-ink-muted'"
                 >
                   {{ intervalLabel(interval) }}
                 </p>
@@ -1501,15 +1557,15 @@ function toSafeNumber(value: unknown) {
             </div>
 
             <div class="grid gap-4 lg:grid-cols-[1fr_340px]">
-              <div class="space-y-4 rounded-xl border bg-muted/20 p-4">
+              <div class="space-y-4 rounded-panel border border-line bg-surface p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs text-muted-foreground">当前关卡</p>
-                    <h3 class="text-xl font-semibold tracking-tight sm:text-2xl">
+                    <p class="text-[12px] text-ink-muted">当前关卡</p>
+                    <h3 class="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
                       {{ fretboardTitle }}
                     </h3>
                   </div>
-                  <Badge :variant="fretboardInterval.kind === 'half' ? 'default' : 'outline'">
+                  <Badge :variant="fretboardInterval.kind === 'half' ? 'accent-alt' : 'outline'">
                     {{ intervalLabel(fretboardInterval) }}
                   </Badge>
                 </div>
@@ -1532,16 +1588,24 @@ function toSafeNumber(value: unknown) {
                   </div>
                 </div>
 
-                <p class="text-sm leading-6 text-muted-foreground">
+                <p class="text-[14px] leading-6 text-ink-muted">
                   {{ fretboardDescription }}
                 </p>
               </div>
 
-              <Card class="shadow-none">
+              <Card appearance="surface">
                 <CardHeader>
-                  <Badge variant="outline" class="w-fit font-normal">品格挑战</Badge>
-                  <CardTitle class="text-base sm:text-lg">从起点到目标要移动几品？</CardTitle>
-                  <CardDescription>先根据 3-4、7-1̇ 判断半音，再换算成品格。</CardDescription>
+                  <template #title>
+                    <span class="flex flex-col gap-1.5">
+                      <Badge variant="outline" class="w-fit">品格挑战</Badge>
+                      <span>从起点到目标要移动几品？</span>
+                    </span>
+                  </template>
+                  <template #description>
+                    <p class="text-[13px] text-ink-muted">
+                      先根据 3-4、7-1̇ 判断半音，再换算成品格。
+                    </p>
+                  </template>
                 </CardHeader>
                 <CardContent class="space-y-4">
                   <div class="grid grid-cols-3 gap-2">
@@ -1549,8 +1613,8 @@ function toSafeNumber(value: unknown) {
                       v-for="answer in fretAnswerOptions"
                       :key="answer"
                       type="button"
-                      variant="outline"
-                      class="h-12 rounded-xl text-base font-semibold"
+                      variant="secondary"
+                      class="min-h-12 rounded-panel border border-line text-[16px] font-semibold"
                       :class="fretOptionButtonClass(answer)"
                       :disabled="fretAnswerStatus !== 'idle'"
                       @click="answerFretChallenge(answer)"
@@ -1562,17 +1626,17 @@ function toSafeNumber(value: unknown) {
                   <Transition name="feedback">
                     <div
                       v-if="fretAnswerStatus !== 'idle'"
-                      class="rounded-xl border p-4 text-sm leading-6"
+                      class="rounded-panel border p-4 text-[14px] leading-6"
                       :class="
                         fretAnswerStatus === 'correct'
-                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                          : 'border-destructive/40 bg-destructive/10 text-destructive'
+                          ? 'border-accent bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] text-ink'
+                          : 'border-danger bg-[color-mix(in_oklab,var(--color-danger)_10%,var(--color-surface))] text-danger'
                       "
                       role="status"
                       aria-live="polite"
                     >
                       <p class="font-semibold">{{ fretFeedbackTitle }}</p>
-                      <p class="mt-1 opacity-90">{{ intervalTheory(selectedInterval) }}</p>
+                      <p class="mt-1 text-ink-muted">{{ intervalTheory(selectedInterval) }}</p>
                     </div>
                   </Transition>
 
@@ -1677,8 +1741,8 @@ function toSafeNumber(value: unknown) {
 }
 
 .fret-marker.end {
-  color: white;
-  background: #f97316;
+  color: var(--p0seid0n-surface);
+  background: var(--p0seid0n-upload);
 }
 
 .mode-fade-enter-active,

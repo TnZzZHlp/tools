@@ -21,22 +21,22 @@ const props = defineProps<{
     <div class="flex min-w-0 items-start gap-3">
       <div
         v-if="icon"
-        class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card text-foreground shadow-xs sm:size-10"
+        class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-control border border-line bg-raised text-ink sm:size-10"
         aria-hidden="true"
       >
         <component :is="icon" class="size-4.5 sm:size-5" />
       </div>
       <div class="min-w-0 space-y-1">
         <div class="flex flex-wrap items-center gap-2">
-          <h1 class="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <h1 class="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
             {{ title }}
           </h1>
-          <Badge v-if="badge" variant="secondary" class="font-normal">
+          <Badge v-if="badge" variant="neutral">
             {{ badge }}
           </Badge>
           <slot name="badges" />
         </div>
-        <p v-if="description" class="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p v-if="description" class="max-w-2xl text-[14px] leading-relaxed text-ink-muted">
           {{ description }}
         </p>
       </div>

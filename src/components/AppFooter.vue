@@ -7,7 +7,7 @@ const text = beianText()
 <template>
   <footer
     v-if="text"
-    class="mt-auto shrink-0 border-t border-border/60 py-4 text-center text-xs text-muted-foreground"
+    class="mt-auto shrink-0 border-t border-line py-4 text-center text-[12px] text-ink-muted"
   >
     {{ text }}
   </footer>

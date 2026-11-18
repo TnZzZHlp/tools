@@ -1,22 +1,23 @@
 <script setup lang="ts">
-import type { DialogTitleProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
-import { DialogTitle, useForwardProps } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { DialogTitle } from 'reka-ui'
 
-const props = defineProps<DialogTitleProps & { class?: HTMLAttributes['class'] }>()
+defineOptions({ inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, 'class')
-
-const forwardedProps = useForwardProps(delegatedProps)
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <DialogTitle
-    data-slot="dialog-title"
-    v-bind="forwardedProps"
-    :class="cn('text-lg leading-none font-semibold', props.class)"
+    v-bind="forwarded"
+    :class="cn('text-[17px] font-medium text-ink', attrs.class as ClassValue)"
   >
     <slot />
   </DialogTitle>

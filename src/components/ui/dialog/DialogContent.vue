@@ -1,53 +1,76 @@
 <script setup lang="ts">
-import type { DialogContentEmits, DialogContentProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { X } from 'lucide-vue-next'
-import { reactiveOmit } from '@vueuse/core'
-import { DialogClose, DialogContent, DialogPortal, useForwardPropsEmits } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import DialogOverlay from './DialogOverlay.vue'
+import { DialogClose, DialogContent, DialogOverlay, DialogPortal } from 'reka-ui'
+import type { PointerDownOutsideEvent } from 'reka-ui'
+import { useDialogBehaviour } from './behaviour'
+import { closeButton } from './styles'
 
-defineOptions({
-  inheritAttrs: false,
+defineOptions({ inheritAttrs: false })
+
+export type DialogContentProps = {
+  /** Hides the built-in close button when the panel supplies its own. */
+  hideClose?: boolean
+}
+
+withDefaults(defineProps<DialogContentProps>(), {
+  hideClose: false,
 })
 
-const props = withDefaults(
-  defineProps<
-    DialogContentProps & { class?: HTMLAttributes['class']; showCloseButton?: boolean }
-  >(),
-  {
-    showCloseButton: true,
-  },
-)
-const emits = defineEmits<DialogContentEmits>()
+const behaviour = useDialogBehaviour()
 
-const delegatedProps = reactiveOmit(props, 'class')
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const emit = defineEmits<{
+  escapeKeyDown: [event: KeyboardEvent]
+  pointerDownOutside: [event: PointerDownOutsideEvent]
+  interactOutside: [event: Event]
+}>()
+
+function onEscapeKeyDown(event: KeyboardEvent): void {
+  if (!behaviour.closeOnEsc.value) event.preventDefault()
+  emit('escapeKeyDown', event)
+}
+
+function onPointerDownOutside(event: PointerDownOutsideEvent): void {
+  if (!behaviour.closeOnOutside.value) event.preventDefault()
+  emit('pointerDownOutside', event)
+}
+
+function onInteractOutside(event: Event): void {
+  emit('interactOutside', event)
+}
 </script>
 
 <template>
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay
+      class="fixed inset-0 z-40 bg-[color-mix(in_oklab,var(--color-ink)_45%,transparent)] motion-safe:animate-fade-in data-[state=closed]:motion-safe:animate-fade-out"
+    />
     <DialogContent
-      data-slot="dialog-content"
-      v-bind="{ ...$attrs, ...forwarded }"
+      v-bind="forwarded"
+      aria-modal="true"
       :class="
         cn(
-          'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
-          props.class,
+          'fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2',
+          'rounded-panel border border-line bg-raised p-6 shadow-popup outline-none',
+          'motion-safe:animate-dialog-in data-[state=closed]:motion-safe:animate-dialog-out',
+          attrs.class as ClassValue,
         )
       "
+      @escape-key-down="onEscapeKeyDown"
+      @pointer-down-outside="onPointerDownOutside"
+      @interact-outside="onInteractOutside"
     >
       <slot />
-
-      <DialogClose
-        v-if="showCloseButton"
-        data-slot="dialog-close"
-        class="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-      >
-        <X />
-        <span class="sr-only">Close</span>
+      <DialogClose v-if="!hideClose" aria-label="Close" :class="closeButton">
+        <span aria-hidden="true">&#215;</span>
       </DialogClose>
     </DialogContent>
   </DialogPortal>

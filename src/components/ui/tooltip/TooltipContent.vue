@@ -1,44 +1,61 @@
 <script setup lang="ts">
-import type { TooltipContentEmits, TooltipContentProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
-import { TooltipArrow, TooltipContent, TooltipPortal, useForwardPropsEmits } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TooltipContent, TooltipPortal } from 'reka-ui'
 
-defineOptions({
-  inheritAttrs: false,
+defineOptions({ inheritAttrs: false })
+
+export type TooltipContentProps = {
+  side?: 'top' | 'right' | 'bottom' | 'left'
+  align?: 'start' | 'center' | 'end'
+  sideOffset?: number
+  /** Keyboard shortcut hint appended after the label. */
+  shortcut?: string
+}
+
+withDefaults(defineProps<TooltipContentProps>(), {
+  side: 'top',
+  align: 'center',
+  sideOffset: 6,
+  shortcut: undefined,
 })
 
-const props = withDefaults(
-  defineProps<TooltipContentProps & { class?: HTMLAttributes['class'] }>(),
-  {
-    sideOffset: 4,
-  },
-)
-
-const emits = defineEmits<TooltipContentEmits>()
-
-const delegatedProps = reactiveOmit(props, 'class')
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <TooltipPortal>
     <TooltipContent
-      data-slot="tooltip-content"
-      v-bind="{ ...forwarded, ...$attrs }"
+      v-bind="forwarded"
+      :side="side"
+      :align="align"
+      :side-offset="sideOffset"
       :class="
         cn(
-          'bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance',
-          props.class,
+          'z-50 flex items-center gap-2 rounded-[10px] border border-line bg-raised px-2.5 py-1.5',
+          'text-[12px] font-medium text-ink shadow-popup',
+          'origin-[var(--reka-tooltip-content-transform-origin)]',
+          'data-[side=bottom]:[--p0seid0n-pop-y:-4px]',
+          'data-[side=top]:[--p0seid0n-pop-y:4px]',
+          'data-[side=left]:[--p0seid0n-pop-x:4px] data-[side=left]:[--p0seid0n-pop-y:0px]',
+          'data-[side=right]:[--p0seid0n-pop-x:-4px] data-[side=right]:[--p0seid0n-pop-y:0px]',
+          'motion-safe:animate-pop-in data-[state=closed]:motion-safe:animate-pop-out',
+          attrs.class as ClassValue,
         )
       "
     >
       <slot />
-
-      <TooltipArrow
-        class="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-xs"
-      />
+      <kbd
+        v-if="shortcut"
+        class="rounded-[6px] border border-line px-1.5 py-0.5 font-sans text-[11px] text-ink-muted"
+        >{{ shortcut }}</kbd
+      >
     </TooltipContent>
   </TooltipPortal>
 </template>

@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import type { SelectValueProps } from 'reka-ui'
 import { SelectValue } from 'reka-ui'
 
-const props = defineProps<SelectValueProps>()
+defineOptions({ inheritAttrs: false })
+
+export type SelectValueProps = {
+  placeholder?: string
+}
+
+withDefaults(defineProps<SelectValueProps>(), {
+  placeholder: undefined,
+})
 </script>
 
 <template>
-  <SelectValue data-slot="select-value" v-bind="props">
-    <slot />
+  <SelectValue v-if="$slots.default" v-slot="slotProps" :placeholder="placeholder" v-bind="$attrs">
+    <slot v-bind="slotProps" />
   </SelectValue>
+  <SelectValue v-else :placeholder="placeholder" v-bind="$attrs" />
 </template>

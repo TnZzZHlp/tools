@@ -42,6 +42,7 @@ const SIZE_PRESETS = [
   { label: '60×40', w: 60, h: 40 },
 ]
 
+const mobileTab = ref('edit')
 const input = ref('')
 const width = ref<string | number>(40)
 const height = ref<string | number>(20)
@@ -111,7 +112,7 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
 </script>
 
 <template>
-  <Tabs default-value="edit" class="flex flex-col gap-0 pb-6">
+  <Tabs v-model="mobileTab" class="flex flex-col gap-0 pb-6">
     <ToolPageHeader
       title="条形码批量生成"
       description="按换行或逗号批量输入 ASCII 编码，按毫米尺寸在 A4 纸张自动网格排版并导出。"
@@ -119,19 +120,21 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
       :icon="Barcode"
     >
       <template #actions>
-        <Button type="button" variant="outline" size="sm" @click="input = SAMPLE_BARCODES">
+        <Button type="button" variant="secondary" size="sm" @click="input = SAMPLE_BARCODES">
           <Sparkles class="size-4" />
           填入示例
         </Button>
 
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="outline" size="sm" class="gap-1.5">
+            <Button variant="ghost" size="sm">
               <Info class="size-4" />
               打印说明
             </Button>
           </TooltipTrigger>
-          <TooltipContent class="max-w-72 space-y-1 text-xs leading-5">
+          <TooltipContent
+            class="max-w-72 flex-col items-start gap-1 py-2 text-[12px] leading-5 font-normal"
+          >
             <p>按换行或中英文逗号分隔，仅支持标准 ASCII 字符。</p>
             <p>
               条码尺寸包含文字与留白。A4 页边距 10 mm，间距 5 mm，自动分页且不缩放；打印时请选择
@@ -142,8 +145,8 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
         </Tooltip>
 
         <TabsList class="md:hidden">
-          <TabsTrigger value="edit" class="px-3 text-xs">编辑</TabsTrigger>
-          <TabsTrigger value="preview" class="px-3 text-xs">
+          <TabsTrigger value="edit">编辑</TabsTrigger>
+          <TabsTrigger value="preview">
             预览{{ sheets.length ? ` (${sheets.length})` : '' }}
           </TabsTrigger>
         </TabsList>
@@ -159,15 +162,15 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
         force-mount
         class="mt-0 flex min-h-0 min-w-0 flex-col data-[state=inactive]:hidden md:data-[state=inactive]:flex"
       >
-        <Card class="flex min-h-0 flex-1 flex-col py-4">
-          <CardContent class="flex min-h-0 flex-1 flex-col gap-3.5 px-4">
+        <Card class="min-h-0 flex-1">
+          <CardContent class="flex min-h-0 flex-1 flex-col gap-3.5 px-4 py-4">
             <div class="flex min-h-44 flex-1 flex-col gap-2 md:min-h-0">
               <div class="flex shrink-0 items-center justify-between gap-2">
                 <Label for="barcode-contents">条码内容列表</Label>
                 <Button
                   variant="ghost"
                   size="sm"
-                  class="h-7 px-2 text-xs"
+                  class="min-h-7 px-2 text-[12px]"
                   :disabled="!input"
                   @click="input = ''"
                 >
@@ -178,7 +181,7 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
               <Textarea
                 id="barcode-contents"
                 v-model="input"
-                class="min-h-40 flex-1 resize-none bg-muted/20 field-sizing-fixed font-mono text-sm leading-6 md:min-h-0"
+                class="min-h-40 flex-1 resize-none field-sizing-fixed font-mono text-[14px] leading-6 md:min-h-0"
                 placeholder="按换行或逗号分隔，例如：&#10;ABC123，ITEM-001&#10;1234567890"
                 spellcheck="false"
               />
@@ -186,7 +189,7 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
 
             <div class="shrink-0 space-y-2">
               <div class="flex flex-wrap items-center justify-between gap-1.5">
-                <span class="text-xs text-muted-foreground">快捷尺寸 (mm)</span>
+                <span class="text-[12px] text-ink-muted">快捷尺寸 (mm)</span>
                 <div class="flex flex-wrap gap-1">
                   <Button
                     v-for="preset in SIZE_PRESETS"
@@ -195,10 +198,10 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
                     size="sm"
                     :variant="
                       Number(width) === preset.w && Number(height) === preset.h
-                        ? 'secondary'
-                        : 'outline'
+                        ? 'primary'
+                        : 'secondary'
                     "
-                    class="h-6 rounded-full px-2.5 font-mono text-[11px]"
+                    class="min-h-6 rounded-full px-2.5 font-mono text-[11px]"
                     @click="applySizePreset(preset.w, preset.h)"
                   >
                     {{ preset.label }}
@@ -208,7 +211,7 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
 
               <div class="grid grid-cols-3 gap-2.5">
                 <div class="space-y-1.5">
-                  <Label for="barcode-width" class="text-xs">宽度 mm</Label>
+                  <Label for="barcode-width">宽度 mm</Label>
                   <Input
                     id="barcode-width"
                     v-model="width"
@@ -216,11 +219,11 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
                     min="1"
                     max="1000"
                     step="0.1"
-                    :aria-invalid="!validSize"
+                    :invalid="!validSize"
                   />
                 </div>
                 <div class="space-y-1.5">
-                  <Label for="barcode-height" class="text-xs">高度 mm</Label>
+                  <Label for="barcode-height">高度 mm</Label>
                   <Input
                     id="barcode-height"
                     v-model="height"
@@ -228,16 +231,24 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
                     min="1"
                     max="1000"
                     step="0.1"
-                    :aria-invalid="!validSize"
+                    :invalid="!validSize"
                   />
                 </div>
                 <div class="space-y-1.5">
-                  <Label for="barcode-format" class="text-xs">导出格式</Label>
-                  <Select v-model="format" :disabled="exporting">
-                    <SelectTrigger id="barcode-format" class="w-full">
+                  <Label for="barcode-format">导出格式</Label>
+                  <Select
+                    :model-value="format"
+                    :disabled="exporting"
+                    @update:model-value="
+                      (v) => {
+                        if (v) format = v as BarcodeExportFormat
+                      }
+                    "
+                  >
+                    <SelectTrigger id="barcode-format">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent align="end">
                       <SelectItem value="pdf">PDF</SelectItem>
                       <SelectItem value="jpg">JPG</SelectItem>
                       <SelectItem value="svg">SVG</SelectItem>
@@ -248,31 +259,34 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
             </div>
 
             <div
-              class="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/35 px-3 py-2 text-xs text-muted-foreground"
+              class="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-control border border-line bg-surface px-3 py-2 text-[12px] text-ink-muted"
               aria-live="polite"
             >
               <span>
-                有效 <strong class="text-foreground">{{ validBarcodes.length }}</strong> 条
-                <span v-if="barcodes.length > validBarcodes.length" class="text-destructive">
+                有效 <strong class="text-ink">{{ validBarcodes.length }}</strong> 条
+                <span v-if="barcodes.length > validBarcodes.length" class="text-danger">
                   · 无效 {{ barcodes.length - validBarcodes.length }} 条
                 </span>
               </span>
-              <Badge
-                v-if="sheetLayout.layout"
-                variant="outline"
-                class="font-mono text-[11px] font-normal"
-              >
+              <Badge v-if="sheetLayout.layout" variant="outline" class="font-mono tabular-nums">
                 {{ sheetLayout.layout.columns }}×{{ sheetLayout.layout.rows }} / 页 · 共
                 {{ sheets.length }} 页
               </Badge>
             </div>
 
-            <p v-if="errorMessage" class="shrink-0 text-xs text-destructive" role="alert">
+            <p v-if="errorMessage" class="shrink-0 text-[12px] text-danger" role="alert">
               {{ errorMessage }}
             </p>
 
             <div v-if="barcodes.length" class="flex shrink-0 gap-2">
-              <Select v-model="selected">
+              <Select
+                :model-value="selected"
+                @update:model-value="
+                  (v) => {
+                    if (v) selected = v
+                  }
+                "
+              >
                 <SelectTrigger class="min-w-0 flex-1" aria-label="选择单个条码">
                   <SelectValue />
                 </SelectTrigger>
@@ -282,14 +296,13 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
                     :key="index"
                     :value="String(index)"
                   >
-                    <span class="block max-w-56 truncate">
-                      {{ index + 1 }}. {{ barcode.content }}
-                    </span>
+                    {{ index + 1 }}. {{ barcode.content }}
                   </SelectItem>
                 </SelectContent>
               </Select>
+
               <Button
-                variant="outline"
+                variant="secondary"
                 class="shrink-0"
                 :disabled="!selectedBarcode || !!selectedBarcode.error || !validSize || exporting"
                 @click="selectedBarcode && exportBarcodes([selectedBarcode], Number(selected))"
@@ -301,6 +314,7 @@ async function exportBarcodes(items: GeneratedBarcode[], index?: number) {
             <Button
               class="w-full shrink-0"
               :disabled="!sheets.length || exporting"
+              :loading="exporting"
               @click="exportBarcodes(validBarcodes)"
             >
               <Download class="size-4" />

@@ -21,7 +21,7 @@ import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -62,6 +62,13 @@ const fullResults = computed(() =>
 const latestResult = computed(() => fullResults.value[0] ?? '')
 const canExport = computed(() => fullResults.value.length > 0)
 const displayPrefix = computed(() => normalizeMacPrefix(prefix.value) || '未设置')
+
+const modeModel = computed({
+  get: () => inputMode.value,
+  set: (val: string | number | undefined) => {
+    if (val !== undefined) switchMode(val)
+  },
+})
 
 watch(prefix, (value) => {
   prefix.value = normalizeMacPrefix(value)
@@ -413,13 +420,13 @@ function removeResult(suffix: string) {
       :icon="Cpu"
     >
       <template #actions>
-        <Tabs :model-value="inputMode" @update:model-value="switchMode">
+        <Tabs v-model="modeModel">
           <TabsList>
-            <TabsTrigger value="camera" class="gap-1.5 px-3 text-xs sm:text-sm">
+            <TabsTrigger value="camera">
               <Camera class="size-3.5" />
               摄像头拍照
             </TabsTrigger>
-            <TabsTrigger value="image" class="gap-1.5 px-3 text-xs sm:text-sm">
+            <TabsTrigger value="image">
               <FileImage class="size-3.5" />
               图片上传
             </TabsTrigger>
@@ -430,30 +437,30 @@ function removeResult(suffix: string) {
 
     <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.95fr)]">
       <!-- Left Card: Scanner Viewfinder -->
-      <Card class="py-5">
-        <CardHeader class="px-5">
-          <div class="flex items-center justify-between gap-2">
-            <CardTitle class="text-base">
-              {{ inputMode === 'camera' ? '摄像头取景识别' : '照片识别' }}
-            </CardTitle>
-            <Badge v-if="workerReady" variant="outline" class="gap-1 font-normal">
-              <Check class="size-3 text-emerald-600 dark:text-emerald-400" />
+      <Card>
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>
+            {{ inputMode === 'camera' ? '摄像头取景识别' : '照片识别' }}
+          </template>
+          <template #action>
+            <Badge v-if="workerReady" variant="outline">
+              <Check class="size-3 text-accent" />
               OCR 模型就绪
             </Badge>
-            <Badge v-else variant="secondary" class="font-normal">首次识别加载模型</Badge>
-          </div>
+            <Badge v-else variant="neutral">首次识别加载模型</Badge>
+          </template>
         </CardHeader>
 
-        <CardContent class="space-y-4 px-5">
+        <CardContent class="space-y-4 px-5 pt-2 pb-5">
           <div
             v-if="inputMode === 'camera'"
-            class="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-950"
+            class="relative aspect-[4/3] overflow-hidden rounded-panel bg-[#121419]"
           >
             <video ref="video" class="h-full w-full object-cover" muted autoplay playsinline />
 
             <div
               v-if="cameraStarting"
-              class="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm text-white"
+              class="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-[14px] text-white"
             >
               <LoaderCircle class="size-5 animate-spin" />
               正在启动摄像头…
@@ -462,7 +469,7 @@ function removeResult(suffix: string) {
             <button
               v-if="!cameraActive && !cameraStarting"
               type="button"
-              class="absolute inset-0 flex w-full cursor-pointer flex-col items-center justify-center bg-black/70 p-6 text-center text-sm text-white/85 transition-colors hover:bg-black/60"
+              class="absolute inset-0 flex w-full cursor-pointer flex-col items-center justify-center bg-black/70 p-6 text-center text-[14px] text-white/85 transition-colors hover:bg-black/60"
               @click="startCamera"
             >
               <Camera class="mb-2.5 size-8 opacity-85" />
@@ -477,10 +484,10 @@ function removeResult(suffix: string) {
                 <div class="absolute top-[34%] right-0 bottom-[34%] w-[15%] bg-black/35" />
               </div>
               <div
-                class="pointer-events-none absolute top-[34%] left-[15%] h-[32%] w-[70%] rounded-lg border-2 border-emerald-400"
+                class="pointer-events-none absolute top-[34%] left-[15%] h-[32%] w-[70%] rounded-[8px] border-2 border-accent"
               >
                 <span
-                  class="absolute -top-7 left-0 rounded bg-emerald-400 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-emerald-950"
+                  class="absolute -top-7 left-0 rounded bg-accent px-2 py-0.5 text-[12px] font-medium whitespace-nowrap text-white"
                 >
                   将 MAC 后四段放入框内
                 </span>
@@ -490,7 +497,7 @@ function removeResult(suffix: string) {
 
           <div
             v-else
-            class="relative aspect-[4/3] overflow-hidden rounded-xl border-2 border-dashed bg-muted/25"
+            class="relative aspect-[4/3] overflow-hidden rounded-panel border-2 border-dashed border-line bg-surface"
           >
             <img
               v-if="previewUrl"
@@ -502,16 +509,16 @@ function removeResult(suffix: string) {
             <button
               v-else
               type="button"
-              class="flex h-full w-full cursor-pointer flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/40"
+              class="flex h-full w-full cursor-pointer flex-col items-center justify-center p-6 text-center text-[14px] text-ink-muted transition-colors hover:bg-control"
               @click="fileInput?.click()"
             >
               <Upload class="mb-2.5 size-8" />
-              <span class="font-medium text-foreground">点击选择一张设备屏幕照片</span>
-              <span class="mt-1 text-xs">优先裁剪中央区域识别，失败时自动全图重试</span>
+              <span class="font-medium text-ink">点击选择一张设备屏幕照片</span>
+              <span class="mt-1 text-[12px]">优先裁剪中央区域识别，失败时自动全图重试</span>
             </button>
             <div
               v-if="previewUrl"
-              class="pointer-events-none absolute top-[34%] left-[15%] h-[32%] w-[70%] rounded-lg border-2 border-emerald-400"
+              class="pointer-events-none absolute top-[34%] left-[15%] h-[32%] w-[70%] rounded-[8px] border-2 border-accent"
             />
           </div>
 
@@ -529,7 +536,7 @@ function removeResult(suffix: string) {
             <Button
               v-if="inputMode === 'camera' && !cameraActive"
               class="flex-1"
-              :disabled="cameraStarting"
+              :loading="cameraStarting"
               @click="startCamera"
             >
               <Camera class="size-4" />
@@ -538,7 +545,7 @@ function removeResult(suffix: string) {
             <Button
               v-if="inputMode === 'camera' && cameraActive"
               class="flex-1"
-              :disabled="scanInProgress"
+              :loading="scanInProgress"
               @click="captureCameraFrame"
             >
               <LoaderCircle v-if="scanInProgress" class="size-4 animate-spin" />
@@ -547,7 +554,7 @@ function removeResult(suffix: string) {
             </Button>
             <Button
               v-if="inputMode === 'camera' && cameraActive"
-              variant="outline"
+              variant="secondary"
               :disabled="scanInProgress"
               @click="stopCamera"
             >
@@ -558,7 +565,7 @@ function removeResult(suffix: string) {
             <Button
               v-if="inputMode === 'image'"
               class="flex-1"
-              :disabled="loadingImage"
+              :loading="loadingImage"
               @click="fileInput?.click()"
             >
               <LoaderCircle v-if="loadingImage" class="size-4 animate-spin" />
@@ -567,7 +574,7 @@ function removeResult(suffix: string) {
             </Button>
             <Button
               v-if="inputMode === 'image' && previewUrl"
-              variant="outline"
+              variant="secondary"
               @click="releasePreviewUrl"
             >
               <RotateCcw class="size-4" />
@@ -576,17 +583,17 @@ function removeResult(suffix: string) {
           </div>
 
           <!-- Status Banner -->
-          <div class="rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
-            <p class="text-xs text-muted-foreground">{{ info }}</p>
+          <div class="rounded-control border border-line bg-surface px-3.5 py-2.5">
+            <p class="text-[12px] text-ink-muted">{{ info }}</p>
             <p
               v-if="currentRead"
-              class="mt-1 font-mono text-base font-semibold tracking-wider text-foreground"
+              class="mt-1 font-mono text-[15px] font-semibold tracking-wider text-ink"
             >
               本次读取：{{ currentRead }}
             </p>
           </div>
 
-          <Alert v-if="error" variant="destructive">
+          <Alert v-if="error" variant="danger" class="bg-surface">
             <AlertTitle>操作提示</AlertTitle>
             <AlertDescription>{{ error }}</AlertDescription>
           </Alert>
@@ -594,22 +601,24 @@ function removeResult(suffix: string) {
       </Card>
 
       <!-- Right Card: Prefix & Collected MAC List -->
-      <Card class="min-w-0 py-5">
-        <CardHeader class="gap-3 px-5">
-          <div class="flex items-center justify-between gap-2">
-            <CardTitle class="flex items-center gap-2 text-base">
+      <Card class="min-w-0">
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>
+            <span class="inline-flex items-center gap-2">
               <ListChecks class="size-4.5" />
-              已录入列表
-            </CardTitle>
-            <Badge variant="secondary" class="tabular-nums font-normal">
-              {{ results.length }} 条
-            </Badge>
-          </div>
+              <span>已录入列表</span>
+            </span>
+          </template>
+          <template #action>
+            <Badge variant="neutral" class="tabular-nums">{{ results.length }} 条</Badge>
+          </template>
+        </CardHeader>
 
+        <CardContent class="space-y-3.5 px-5 pt-1 pb-5">
           <div class="space-y-1.5">
             <div class="flex items-center justify-between">
               <Label for="mac-prefix-input">固定前缀（前两段）</Label>
-              <span class="font-mono text-xs text-muted-foreground">当前：{{ displayPrefix }}</span>
+              <span class="font-mono text-[12px] text-ink-muted">当前：{{ displayPrefix }}</span>
             </div>
             <Input
               id="mac-prefix-input"
@@ -619,20 +628,16 @@ function removeResult(suffix: string) {
               class="font-mono uppercase"
             />
           </div>
-        </CardHeader>
 
-        <CardContent class="space-y-3.5 px-5">
           <div
             v-if="latestResult"
-            class="rounded-lg border border-emerald-500/35 bg-emerald-500/8 px-3.5 py-2.5"
+            class="rounded-control border border-accent bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] px-3.5 py-2.5"
           >
-            <div
-              class="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-            >
+            <div class="flex items-center gap-1.5 text-[12px] font-medium text-accent">
               <Check class="size-3.5" />
               最新录入
             </div>
-            <p class="mt-0.5 break-all font-mono text-base font-semibold tracking-wider">
+            <p class="mt-0.5 break-all font-mono text-[15px] font-semibold tracking-wider text-ink">
               {{ latestResult }}
             </p>
           </div>
@@ -640,13 +645,10 @@ function removeResult(suffix: string) {
           <div class="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               class="flex-1"
               :disabled="!canExport"
-              :class="
-                copySuccessIndex === -1 &&
-                'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-              "
+              :class="copySuccessIndex === -1 && 'text-accent'"
               @click="copyResults"
             >
               <Check v-if="copySuccessIndex === -1" class="size-3.5" />
@@ -655,7 +657,7 @@ function removeResult(suffix: string) {
             </Button>
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               class="flex-1"
               :disabled="!canExport"
               @click="exportCsv"
@@ -666,7 +668,7 @@ function removeResult(suffix: string) {
             <Button
               size="sm"
               variant="ghost"
-              class="text-muted-foreground hover:text-destructive"
+              class="text-ink-muted hover:text-danger"
               :disabled="!canExport"
               @click="clearResults"
             >
@@ -675,30 +677,30 @@ function removeResult(suffix: string) {
             </Button>
           </div>
 
-          <div class="max-h-96 overflow-y-auto rounded-xl border bg-muted/15">
+          <div class="max-h-96 overflow-y-auto rounded-control border border-line bg-surface">
             <div
               v-if="!fullResults.length"
-              class="flex min-h-48 flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground"
+              class="flex min-h-48 flex-col items-center justify-center p-6 text-center text-[14px] text-ink-muted"
             >
-              <ScanLine class="mb-2 size-7 opacity-45" />
+              <ScanLine class="mb-2 size-7 text-ink-faint" />
               <p>识别到的 MAC 地址会自动去重并排列在此处</p>
             </div>
 
-            <ol v-else class="divide-y">
+            <ol v-else class="divide-y divide-line">
               <li
                 v-for="(mac, index) in fullResults"
                 :key="mac"
-                class="flex items-center gap-2.5 px-3 py-2 font-mono text-sm transition-colors hover:bg-muted/40"
+                class="flex items-center gap-2.5 px-3 py-2 font-mono text-[14px] text-ink transition-colors hover:bg-control"
               >
-                <span class="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                <span class="w-6 shrink-0 text-right text-[12px] tabular-nums text-ink-muted">
                   {{ index + 1 }}
                 </span>
                 <span class="min-w-0 flex-1 break-all">{{ mac }}</span>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  class="size-7 shrink-0"
-                  :class="copySuccessIndex === index && 'text-emerald-600 dark:text-emerald-400'"
+                  size="sm"
+                  class="min-h-7 w-7 shrink-0 px-0"
+                  :class="copySuccessIndex === index && 'text-accent'"
                   :aria-label="`复制 ${mac}`"
                   @click="copySingle(mac, index)"
                 >
@@ -707,8 +709,8 @@ function removeResult(suffix: string) {
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  class="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  size="sm"
+                  class="min-h-7 w-7 shrink-0 px-0 text-ink-muted hover:text-danger"
                   aria-label="删除此条结果"
                   @click="removeResult(results[index]!)"
                 >

@@ -30,6 +30,7 @@ describe('Tools registry & HomeView UX', () => {
     })
 
     const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'))
+    expect(hrefs).toContain('/tools/speedtest')
     expect(hrefs).toContain('/tools/files/pdf-merge')
     expect(hrefs).not.toContain('/tools/files')
     expect(hrefs).not.toContain('/novels')
@@ -53,6 +54,11 @@ describe('Tools registry & HomeView UX', () => {
 
   it('resolves breadcrumbs and tracks recent tools', () => {
     expect(resolveRouteBreadcrumbs('/')).toEqual([])
+    expect(resolveRouteBreadcrumbs('/tools/speedtest')).toEqual([
+      { label: '首页', to: '/' },
+      { label: '网络与测速' },
+      { label: '网络测速' },
+    ])
     expect(resolveRouteBreadcrumbs('/tools/files/pdf-merge')).toEqual([
       { label: '首页', to: '/' },
       { label: '文档与图像' },

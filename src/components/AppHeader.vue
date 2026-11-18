@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { Blocks, ChevronLeft, ChevronRight, Moon, Search, Sun } from 'lucide-vue-next'
+import { Blocks, ChevronLeft, ChevronRight, Monitor, Moon, Search, Sun } from 'lucide-vue-next'
 
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ThemeSwitcher } from '@/components/ui/theme-switcher'
 import { useTheme } from '@/composables/useTheme'
 import { resolveBackTarget, resolveRouteBreadcrumbs } from '@/lib/tools'
 
@@ -14,7 +22,8 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
-const { isDark, toggleTheme } = useTheme()
+// Keep theme-color meta synced across all pages
+useTheme()
 
 const isHome = computed(() => route.path === '/')
 const breadcrumbs = computed(() => resolveRouteBreadcrumbs(route.path))
@@ -26,11 +35,17 @@ const backTarget = computed(() => resolveBackTarget(route.path))
 const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || '')
 const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
+
+const themeLabels = {
+  system: '跟随系统',
+  light: '浅色模式',
+  dark: '深色模式',
+} as const
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-40 shrink-0 border-b border-border/75 bg-background/85 backdrop-blur-md"
+    class="sticky top-0 z-40 shrink-0 border-b border-line bg-[color-mix(in_oklab,var(--color-surface)_86%,transparent)] backdrop-blur-md"
   >
     <div
       class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
@@ -39,8 +54,8 @@ const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
         <Button
           v-if="!isHome"
           variant="ghost"
-          size="icon"
-          class="size-8 shrink-0 sm:hidden"
+          size="sm"
+          class="w-8 shrink-0 px-0 sm:hidden"
           aria-label="返回上一级"
           @click="router.push(backTarget)"
         >
@@ -49,55 +64,59 @@ const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
 
         <RouterLink
           to="/"
-          class="group flex shrink-0 items-center gap-2 rounded-md py-1 pr-1.5 text-foreground transition-colors hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          class="group flex shrink-0 items-center gap-2 rounded-[10px] py-1 pr-1.5 text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid"
         >
           <span
-            class="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-2xs transition-transform group-hover:scale-[1.03]"
+            class="flex size-7 items-center justify-center rounded-[9px] bg-ink text-surface transition-transform duration-[var(--p0seid0n-duration-fast)] ease-spring group-hover:scale-[1.03]"
           >
             <Blocks class="size-4" />
           </span>
-          <span class="text-base font-semibold tracking-tight">Tools</span>
+          <span class="font-condensed text-[20px] leading-none font-medium tracking-[-0.01em]">
+            Tools
+          </span>
         </RouterLink>
 
-        <span v-if="!isHome" class="truncate text-sm font-medium text-muted-foreground sm:hidden">
+        <span v-if="!isHome" class="truncate text-[13px] font-medium text-ink-muted sm:hidden">
           / {{ currentCrumbLabel }}
         </span>
 
-        <nav
+        <Breadcrumb
           v-if="!isHome && breadcrumbs.length"
           aria-label="面包屑导航"
-          class="hidden min-w-0 items-center gap-1 text-sm sm:flex"
+          class="hidden min-w-0 sm:block"
         >
-          <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`">
-            <ChevronRight class="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-            <RouterLink
-              v-if="crumb.to"
-              :to="crumb.to"
-              class="rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {{ crumb.label }}
-            </RouterLink>
-            <span
-              v-else
-              class="truncate px-1.5 py-0.5"
-              :class="
-                index === breadcrumbs.length - 1
-                  ? 'font-medium text-foreground'
-                  : 'text-muted-foreground'
-              "
-            >
-              {{ crumb.label }}
-            </span>
-          </template>
-        </nav>
+          <BreadcrumbList class="flex-nowrap gap-1 sm:gap-1">
+            <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`">
+              <BreadcrumbSeparator>
+                <ChevronRight class="size-3.5 shrink-0" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem class="min-w-0">
+                <BreadcrumbLink v-if="crumb.to" as-child>
+                  <RouterLink :to="crumb.to" class="px-1.5 py-0.5">
+                    {{ crumb.label }}
+                  </RouterLink>
+                </BreadcrumbLink>
+                <BreadcrumbPage
+                  v-else-if="index === breadcrumbs.length - 1"
+                  class="truncate px-1.5 py-0.5"
+                >
+                  {{ crumb.label }}
+                </BreadcrumbPage>
+                <span v-else class="truncate px-1.5 py-0.5 text-ink-muted">
+                  {{ crumb.label }}
+                </span>
+              </BreadcrumbItem>
+            </template>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
-          class="hidden h-8 w-52 justify-between gap-2 bg-muted/40 px-2.5 text-xs font-normal text-muted-foreground shadow-none hover:bg-muted/80 hover:text-foreground sm:inline-flex lg:w-60"
+          class="hidden w-52 justify-between gap-2 px-2.5 text-[12px] font-normal text-ink-muted hover:text-ink sm:inline-flex lg:w-60"
           @click="emit('openSearch')"
         >
           <span class="flex items-center gap-2">
@@ -105,7 +124,7 @@ const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
             <span>搜索或切换工具…</span>
           </span>
           <kbd
-            class="pointer-events-none rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
+            class="pointer-events-none rounded-[6px] border border-line bg-raised px-1.5 py-0.5 font-sans text-[11px] font-medium text-ink-muted"
           >
             {{ shortcutLabel }}
           </kbd>
@@ -114,32 +133,22 @@ const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          class="size-8 sm:hidden"
+          size="sm"
+          class="w-8 px-0 sm:hidden"
           aria-label="搜索或切换工具"
           @click="emit('openSearch')"
         >
           <Search class="size-4" />
         </Button>
 
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              class="size-8"
-              :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
-              @click="toggleTheme"
-            >
-              <Sun v-if="isDark" class="size-4" />
-              <Moon v-else class="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {{ isDark ? '切换到浅色模式' : '切换到深色模式' }}
-          </TooltipContent>
-        </Tooltip>
+        <ThemeSwitcher label="切换外观主题" :labels="themeLabels">
+          <template #icon="{ theme }">
+            <Sun v-if="theme === 'light'" class="size-4" aria-hidden="true" />
+            <Moon v-else-if="theme === 'dark'" class="size-4" aria-hidden="true" />
+            <Monitor v-else class="size-4" aria-hidden="true" />
+            <span class="hidden text-[13px] sm:inline">{{ themeLabels[theme] }}</span>
+          </template>
+        </ThemeSwitcher>
       </div>
     </div>
   </header>

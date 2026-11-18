@@ -6,7 +6,7 @@ import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { parseTracingMacro } from '@/utils/parseTracingMacro'
 
@@ -55,11 +55,11 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       :icon="Braces"
     >
       <template #actions>
-        <Button type="button" variant="outline" size="sm" @click="source = exampleInput">
+        <Button type="button" variant="secondary" size="sm" @click="source = exampleInput">
           <Sparkles class="size-4" />
           恢复示例
         </Button>
-        <Button type="button" variant="outline" size="sm" :disabled="!source" @click="source = ''">
+        <Button type="button" variant="ghost" size="sm" :disabled="!source" @click="source = ''">
           <Eraser class="size-4" />
           清空
         </Button>
@@ -70,21 +70,21 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       class="grid gap-4 lg:grid-cols-2 xl:h-[calc(100dvh-11.5rem)] xl:min-h-[28rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_21rem]"
     >
       <!-- Rust Input Card -->
-      <Card class="flex min-h-72 min-w-0 flex-col gap-3 py-4 xl:min-h-0">
-        <CardHeader class="px-4">
-          <div class="flex items-center justify-between gap-2">
-            <CardTitle class="text-sm font-semibold sm:text-base">
-              <label for="tracing-source">Rust 宏代码</label>
-            </CardTitle>
-            <Badge variant="secondary" class="font-normal">支持多条批量粘贴</Badge>
-          </div>
+      <Card class="min-h-72 min-w-0 xl:min-h-0">
+        <CardHeader class="px-4 pt-4 pb-2">
+          <template #title>
+            <label for="tracing-source">Rust 宏代码</label>
+          </template>
+          <template #action>
+            <Badge variant="neutral">支持多条批量粘贴</Badge>
+          </template>
         </CardHeader>
-        <CardContent class="flex min-h-0 flex-1 flex-col px-4">
+        <CardContent class="flex min-h-0 flex-1 flex-col px-4 pt-1 pb-4">
           <Textarea
             id="tracing-source"
             v-model="source"
             data-testid="tracing-input"
-            class="h-full min-h-56 flex-1 resize-none bg-muted/20 font-mono text-sm leading-6 xl:min-h-0"
+            class="h-full min-h-56 flex-1 resize-none font-mono text-[14px] leading-6 xl:min-h-0"
             :placeholder="exampleInput"
             spellcheck="false"
           />
@@ -92,54 +92,44 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       </Card>
 
       <!-- LogQL Output Card -->
-      <Card class="flex min-h-72 min-w-0 flex-col gap-3 py-4 xl:min-h-0">
-        <CardHeader class="px-4">
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <CardTitle class="text-sm font-semibold sm:text-base">
-                <label for="logql-output">LogQL 模板字符串</label>
-              </CardTitle>
-              <Badge v-if="parsedMacros.length" variant="outline" class="font-normal tabular-nums">
+      <Card class="min-h-72 min-w-0 xl:min-h-0">
+        <CardHeader class="px-4 pt-4 pb-2">
+          <template #title>
+            <span class="inline-flex items-center gap-2">
+              <label for="logql-output">LogQL 模板字符串</label>
+              <Badge v-if="parsedMacros.length" variant="outline" class="tabular-nums">
                 {{ parsedMacros.length }} 行
               </Badge>
-            </div>
+            </span>
+          </template>
+          <template #action>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
-              class="h-8 text-xs"
               :disabled="!output"
               :aria-label="copySuccess ? '已复制' : '复制到剪贴板'"
-              :class="
-                copySuccess &&
-                'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-              "
+              :class="copySuccess && 'text-accent'"
               @click="copyOutput"
             >
               <Check v-if="copySuccess" class="size-3.5" />
               <ClipboardCopy v-else class="size-3.5" />
               {{ copySuccess ? '已复制' : '复制模板' }}
             </Button>
-          </div>
+          </template>
         </CardHeader>
 
-        <CardContent class="flex min-h-0 flex-1 flex-col gap-3 px-4">
+        <CardContent class="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-1 pb-4">
           <Textarea
             id="logql-output"
             :model-value="output"
             data-testid="logql-output"
-            class="h-full min-h-56 flex-1 resize-none bg-muted/20 font-mono text-sm leading-6 xl:min-h-0"
+            class="h-full min-h-56 flex-1 resize-none font-mono text-[14px] leading-6 xl:min-h-0"
             placeholder="解析生成的 LogQL line_format 模板将显示在这里…"
             readonly
           />
 
-          <Alert
-            v-if="parseResult.error"
-            variant="destructive"
-            class="shrink-0"
-            role="alert"
-            aria-live="polite"
-          >
+          <Alert v-if="parseResult.error" variant="danger" class="shrink-0 bg-surface">
             <AlertTitle>解析失败</AlertTitle>
             <AlertDescription>{{ parseResult.error }}</AlertDescription>
           </Alert>
@@ -147,37 +137,35 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       </Card>
 
       <!-- Parsed Structure Details Card -->
-      <Card class="flex min-w-0 flex-col gap-3 py-4 lg:col-span-2 xl:col-span-1 xl:min-h-0">
-        <CardHeader class="px-4">
-          <div class="flex items-center justify-between gap-2">
-            <CardTitle class="text-sm font-semibold sm:text-base">解析字段明细</CardTitle>
-            <Badge variant="secondary" class="font-normal tabular-nums">
-              {{ parsedMacros.length }} 条宏
-            </Badge>
-          </div>
+      <Card class="min-w-0 lg:col-span-2 xl:col-span-1 xl:min-h-0">
+        <CardHeader class="px-4 pt-4 pb-2">
+          <template #title>解析字段明细</template>
+          <template #action>
+            <Badge variant="neutral" class="tabular-nums">{{ parsedMacros.length }} 条宏</Badge>
+          </template>
         </CardHeader>
 
-        <CardContent class="min-h-0 flex-1 overflow-y-auto px-4">
+        <CardContent class="min-h-0 flex-1 overflow-y-auto px-4 pt-1 pb-4">
           <div v-if="parsedMacros.length" class="space-y-3">
             <article
               v-for="(macro, index) in parsedMacros"
               :key="`${macro.macroName}-${index}`"
-              class="space-y-2.5 rounded-lg border bg-muted/20 p-3"
+              class="space-y-2.5 rounded-control border border-line bg-surface p-3"
             >
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <Badge class="font-mono">{{ macro.macroName }}!</Badge>
-                <span class="text-xs text-muted-foreground">#{{ index + 1 }}</span>
+                <Badge variant="accent" class="font-mono">{{ macro.macroName }}!</Badge>
+                <span class="text-[12px] tabular-nums text-ink-muted">#{{ index + 1 }}</span>
               </div>
 
               <div v-if="macro.message" class="space-y-1">
-                <p class="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                <p class="text-[11px] font-medium tracking-wider text-ink-faint uppercase">
                   Message
                 </p>
-                <p class="text-sm leading-relaxed text-foreground">{{ macro.message }}</p>
+                <p class="text-[14px] leading-relaxed text-ink">{{ macro.message }}</p>
               </div>
 
               <div v-if="macro.fields.length" class="space-y-1.5">
-                <p class="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                <p class="text-[11px] font-medium tracking-wider text-ink-faint uppercase">
                   Fields ({{ macro.fields.length }})
                 </p>
                 <div class="flex flex-wrap gap-1.5">
@@ -185,7 +173,7 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
                     v-for="field in macro.fields"
                     :key="field.key"
                     variant="outline"
-                    class="bg-background font-mono text-xs"
+                    class="bg-raised font-mono text-[12px]"
                   >
                     {{ field.key }}
                   </Badge>
@@ -194,11 +182,11 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
             </article>
           </div>
 
-          <Alert v-else class="border-dashed bg-transparent">
+          <Alert v-else variant="neutral" class="bg-surface">
             <AlertTitle>等待输入</AlertTitle>
-            <AlertDescription
-              >粘贴一段合法的 Rust tracing 宏后，提取出的消息与字段将展示在此处。</AlertDescription
-            >
+            <AlertDescription>
+              粘贴一段合法的 Rust tracing 宏后，提取出的消息与字段将展示在此处。
+            </AlertDescription>
           </Alert>
         </CardContent>
       </Card>

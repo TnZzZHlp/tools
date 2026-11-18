@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -45,6 +39,12 @@ const error = ref('')
 const list = ref<HTMLElement>()
 let controller: AbortController | undefined
 let locateCurrent = false
+
+const totalPageCount = computed(() => Math.max(1, Math.ceil(total.value / 100)))
+const pageModel = computed({
+  get: () => String(page.value),
+  set: (val: string) => setPage(Number(val)),
+})
 
 async function load(refresh = false) {
   controller?.abort()
@@ -86,12 +86,14 @@ async function load(refresh = false) {
     if (!current.signal.aborted) loading.value = false
   }
 }
+
 function setPage(value: number) {
   if (!Number.isInteger(value) || value < 1 || value > Math.ceil(total.value / 100)) return
   page.value = value
   locateCurrent = false
   void load()
 }
+
 watch(open, (value) => {
   if (value) {
     page.value = Math.max(1, Math.min(1_000_000, Math.ceil(props.chapterNo / 100)))
@@ -99,39 +101,44 @@ watch(open, (value) => {
     void load()
   } else controller?.abort()
 })
+
 onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent :data-reader-theme="theme" class="reader-dialog sm:max-w-xl">
-      <DialogHeader>
+    <DialogContent
+      :data-reader-theme="theme"
+      class="reader-dialog w-[min(36rem,calc(100vw-2rem))] space-y-4"
+    >
+      <div>
         <DialogTitle>章节目录</DialogTitle>
-        <DialogDescription class="pr-5 break-words"
-          ><span class="block">{{ title }} · 当前第 {{ chapterNo }} 章</span>
-          <span v-if="originalTitle" class="block text-xs">{{
-            originalTitle
-          }}</span></DialogDescription
-        >
-      </DialogHeader>
-      <p v-if="loading" role="status" class="text-sm text-muted-foreground">目录加载中…</p>
-      <Alert v-if="error" variant="destructive">
-        <AlertDescription class="flex items-center justify-between gap-3">
-          <span>{{ error }}</span
-          ><Button variant="outline" @click="load(true)">重试</Button>
-        </AlertDescription>
+        <DialogDescription class="pr-6 break-words">
+          <span class="block">{{ title }} · 当前第 {{ chapterNo }} 章</span>
+          <span v-if="originalTitle" class="block text-[12px]">{{ originalTitle }}</span>
+        </DialogDescription>
+      </div>
+
+      <p v-if="loading" role="status" class="text-[14px] text-ink-muted">目录加载中…</p>
+
+      <Alert v-if="error" variant="danger">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <AlertDescription>{{ error }}</AlertDescription>
+          <Button variant="secondary" size="sm" @click="load(true)">重试</Button>
+        </div>
       </Alert>
+
       <ol v-else ref="list" class="reader-directory-list space-y-1" aria-label="本书章节">
         <li v-for="item in chapters" :key="item.id">
           <RouterLink
             :to="chapterPath(novelId, item.id)"
             :aria-current="item.id === chapterId ? 'location' : undefined"
-            class="flex items-start gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=location]:bg-accent aria-[current=location]:font-semibold"
+            class="flex items-start gap-3 rounded-[10px] px-3 py-3 text-[14px] outline-none transition-colors hover:bg-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid aria-[current=location]:bg-control aria-[current=location]:font-semibold"
             @click="open = false"
           >
-            <span class="w-8 shrink-0 text-muted-foreground">{{ item.chapter_no }}</span>
+            <span class="w-8 shrink-0 tabular-nums text-ink-muted">{{ item.chapter_no }}</span>
             <span class="min-w-0 flex-1 break-words">{{ chapterTitle(item, mode) }}</span>
-            <span class="shrink-0 text-right text-xs text-muted-foreground">
+            <span class="shrink-0 text-right text-[12px] text-ink-muted">
               <span class="block" data-reading-status>{{
                 chapterReadingStatus(history[item.id])
               }}</span>
@@ -142,31 +149,55 @@ onBeforeUnmount(() => controller?.abort())
           </RouterLink>
         </li>
       </ol>
-      <p v-if="!loading && !error && !total" role="status" class="text-sm text-muted-foreground">
+
+      <p v-if="!loading && !error && !total" role="status" class="text-[14px] text-ink-muted">
         暂无章节。
       </p>
+
       <nav
         v-if="total > 100"
         aria-label="页内目录分页"
-        class="flex items-center justify-between gap-2 border-t pt-4"
+        class="flex items-center justify-between gap-2 border-t border-line pt-4"
       >
-        <Button variant="outline" :disabled="loading || page === 1" @click="setPage(page - 1)"
-          >上一页</Button
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="loading || page === 1"
+          @click="setPage(page - 1)"
         >
-        <Select :model-value="String(page)" @update:model-value="setPage(Number($event))">
-          <SelectTrigger class="w-28" aria-label="跳转目录页"><SelectValue /></SelectTrigger>
-          <SelectContent :data-reader-theme="theme">
-            <SelectItem v-for="index in Math.ceil(total / 100)" :key="index" :value="String(index)"
-              >{{ index }} / {{ Math.ceil(total / 100) }} 页</SelectItem
-            >
+          上一页
+        </Button>
+
+        <Select
+          :model-value="pageModel"
+          :disabled="loading"
+          @update:model-value="
+            (v) => {
+              if (v) pageModel = v
+            }
+          "
+        >
+          <SelectTrigger
+            class="h-9 w-auto min-w-28 px-3 text-[13px] tabular-nums"
+            aria-label="跳转目录页"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent :data-reader-theme="theme" align="center">
+            <SelectItem v-for="index in totalPageCount" :key="index" :value="String(index)">
+              {{ index }} / {{ totalPageCount }} 页
+            </SelectItem>
           </SelectContent>
         </Select>
+
         <Button
-          variant="outline"
+          variant="secondary"
+          size="sm"
           :disabled="loading || page * 100 >= total"
           @click="setPage(page + 1)"
-          >下一页</Button
         >
+          下一页
+        </Button>
       </nav>
     </DialogContent>
   </Dialog>

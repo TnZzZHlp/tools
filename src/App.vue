@@ -6,7 +6,8 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import RouteTransition from '@/components/RouteTransition.vue'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import { ThemeProvider } from '@/components/ui/theme-provider'
+import { ToastProvider } from '@/components/ui/toast'
 import { findToolByPath, recordRecentTool } from '@/lib/tools'
 
 const route = useRoute()
@@ -38,22 +39,26 @@ watch(
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="250">
-    <RouterView v-if="isFullscreen" />
-    <div v-else class="flex min-h-[100dvh] flex-col bg-background text-foreground">
-      <AppHeader @open-search="commandOpen = true" />
+  <ThemeProvider default-theme="system">
+    <ToastProvider>
+      <RouterView v-if="isFullscreen" />
+      <div v-else class="flex min-h-[100dvh] flex-col bg-surface text-ink">
+        <AppHeader @open-search="commandOpen = true" />
 
-      <main class="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-        <RouterView v-slot="{ Component, route: currentRoute }">
-          <RouteTransition :route-key="currentRoute.path" :appear="shellAppear">
-            <component :is="Component" class="w-full flex-1" />
-          </RouteTransition>
-        </RouterView>
-      </main>
+        <main
+          class="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8"
+        >
+          <RouterView v-slot="{ Component, route: currentRoute }">
+            <RouteTransition :route-key="currentRoute.path" :appear="shellAppear">
+              <component :is="Component" class="w-full flex-1" />
+            </RouteTransition>
+          </RouterView>
+        </main>
 
-      <AppFooter />
-    </div>
+        <AppFooter />
+      </div>
 
-    <CommandPalette v-model:open="commandOpen" />
-  </TooltipProvider>
+      <CommandPalette v-model:open="commandOpen" />
+    </ToastProvider>
+  </ThemeProvider>
 </template>

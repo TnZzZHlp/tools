@@ -1,20 +1,35 @@
 <script setup lang="ts">
-import type { TabsContentProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
-import { TabsContent } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TabsContent } from 'reka-ui'
+import { tabPanel } from './styles'
 
-const props = defineProps<TabsContentProps & { class?: HTMLAttributes['class'] }>()
+defineOptions({ inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, 'class')
+export type TabsContentProps = {
+  value: string | number
+  forceMount?: boolean
+}
+
+withDefaults(defineProps<TabsContentProps>(), {
+  forceMount: false,
+})
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <TabsContent
-    data-slot="tabs-content"
-    :class="cn('flex-1 outline-none', props.class)"
-    v-bind="delegatedProps"
+    v-bind="forwarded"
+    :value="value"
+    :force-mount="forceMount"
+    :class="cn(tabPanel, attrs.class as ClassValue)"
   >
     <slot />
   </TabsContent>

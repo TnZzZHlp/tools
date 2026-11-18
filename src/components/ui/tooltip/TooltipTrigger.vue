@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import type { TooltipTriggerProps } from 'reka-ui'
 import { TooltipTrigger } from 'reka-ui'
 
-const props = defineProps<TooltipTriggerProps>()
+defineOptions({ inheritAttrs: false })
+
+export type TooltipTriggerProps = {
+  as?: string | object
+  asChild?: boolean
+}
+
+withDefaults(defineProps<TooltipTriggerProps>(), {
+  as: 'button',
+  asChild: false,
+})
 </script>
 
 <template>
-  <TooltipTrigger data-slot="tooltip-trigger" v-bind="props">
+  <TooltipTrigger :as="as" :as-child="asChild" v-bind="$attrs">
     <slot />
   </TooltipTrigger>
 </template>

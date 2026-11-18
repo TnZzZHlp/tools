@@ -1,38 +1,63 @@
 <script setup lang="ts">
-import type { SwitchRootEmits, SwitchRootProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import {
-  SwitchRoot,
-  SwitchThumb,
-  useForwardPropsEmits,
-} from "reka-ui"
-import { cn } from "@/lib/utils"
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
+import { cn } from '@/lib/utils'
+import { SwitchRoot, SwitchThumb } from 'reka-ui'
 
-const props = defineProps<SwitchRootProps & { class?: HTMLAttributes["class"] }>()
+defineOptions({ name: 'UiSwitch', inheritAttrs: false })
 
-const emits = defineEmits<SwitchRootEmits>()
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 
-const delegatedProps = reactiveOmit(props, "class")
+export type SwitchProps = {
+  disabled?: boolean
+  size?: 'md' | 'lg'
+}
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const props = withDefaults(defineProps<SwitchProps>(), {
+  disabled: false,
+  size: 'md',
+})
+
+const model = defineModel<boolean>({ default: false })
+const isLarge = computed(() => props.size === 'lg')
 </script>
 
 <template>
   <SwitchRoot
-    v-slot="slotProps"
-    data-slot="switch"
+    v-model="model"
     v-bind="forwarded"
-    :class="cn(
-      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
-      props.class,
-    )"
+    :disabled="disabled"
+    :class="
+      cn(
+        'group relative inline-flex shrink-0 items-center rounded-full border border-line bg-control',
+        'outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink',
+        'data-[state=checked]:border-ink data-[state=checked]:bg-ink',
+        'transition-[background-color,border-color,box-shadow] duration-[var(--p0seid0n-duration-normal)] ease-spring motion-reduce:transition-none',
+        'disabled:cursor-default disabled:opacity-55',
+        isLarge ? 'h-10 w-16 p-[3px]' : 'h-7 w-11 p-px',
+        attrs.class as ClassValue,
+      )
+    "
   >
     <SwitchThumb
-      data-slot="switch-thumb"
-      :class="cn('bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0')"
+      :class="
+        cn(
+          'pointer-events-none flex items-center justify-center rounded-full bg-surface text-ink-muted shadow',
+          'transition-transform duration-[var(--p0seid0n-duration-normal)] ease-spring motion-reduce:transition-none',
+          'group-active:group-enabled:scale-x-105 motion-reduce:group-active:scale-x-100',
+          'data-[state=checked]:text-ink',
+          isLarge
+            ? 'size-8 data-[state=checked]:translate-x-6'
+            : 'size-6 data-[state=checked]:translate-x-4',
+        )
+      "
     >
-      <slot name="thumb" v-bind="slotProps" />
+      <slot name="thumb" />
     </SwitchThumb>
   </SwitchRoot>
 </template>

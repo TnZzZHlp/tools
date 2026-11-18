@@ -1,6 +1,6 @@
 {
   "$schema": "https://shadcn-vue.com/schema.json",
-  "style": "new-york",
+  "style": "p0seid0n",
   "typescript": true,
   "tailwind": {
     "config": "",
@@ -17,5 +17,7 @@
     "lib": "@/lib",
     "composables": "@/composables"
   },
-  "registries": {}
+  "registries": {
+    "@p0seid0n": "https://p0seid0n.tnzzzhlp.workers.dev/r/{name}.json"
+  }
 }

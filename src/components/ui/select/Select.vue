@@ -1,15 +1,44 @@
 <script setup lang="ts">
-import type { SelectRootEmits, SelectRootProps } from 'reka-ui'
-import { SelectRoot, useForwardPropsEmits } from 'reka-ui'
+import { SelectRoot } from 'reka-ui'
 
-const props = defineProps<SelectRootProps>()
-const emits = defineEmits<SelectRootEmits>()
+defineOptions({ name: 'UiSelect', inheritAttrs: false })
 
-const forwarded = useForwardPropsEmits(props, emits)
+export type SelectProps = {
+  /** Initial value when uncontrolled. */
+  defaultValue?: string
+  /** Initial open state when uncontrolled. */
+  defaultOpen?: boolean
+  disabled?: boolean
+  name?: string
+  required?: boolean
+  autocomplete?: string
+}
+
+withDefaults(defineProps<SelectProps>(), {
+  defaultValue: undefined,
+  defaultOpen: undefined,
+  disabled: false,
+  name: undefined,
+  required: false,
+  autocomplete: undefined,
+})
+
+const model = defineModel<string>()
+const open = defineModel<boolean>('open')
 </script>
 
 <template>
-  <SelectRoot v-slot="slotProps" data-slot="select" v-bind="forwarded">
-    <slot v-bind="slotProps" />
+  <SelectRoot
+    v-model="model"
+    v-model:open="open"
+    :default-value="defaultValue"
+    :default-open="defaultOpen"
+    :disabled="disabled"
+    :name="name"
+    :required="required"
+    :autocomplete="autocomplete"
+    v-bind="$attrs"
+  >
+    <slot />
   </SelectRoot>
 </template>

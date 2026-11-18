@@ -1,24 +1,33 @@
 <script setup lang="ts">
-import type { TabsRootEmits, TabsRootProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
-import { TabsRoot, useForwardPropsEmits } from 'reka-ui'
-import { cn } from '@/lib/utils'
+import { TabsRoot } from 'reka-ui'
 
-const props = defineProps<TabsRootProps & { class?: HTMLAttributes['class'] }>()
-const emits = defineEmits<TabsRootEmits>()
+defineOptions({ name: 'UiTabs', inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, 'class')
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+export type TabsProps = {
+  orientation?: 'horizontal' | 'vertical'
+  /** 'automatic' follows arrow keys; 'manual' waits for Enter or Space. */
+  activationMode?: 'automatic' | 'manual'
+  /** Unmounts inactive panels instead of hiding them. */
+  unmountOnHide?: boolean
+}
+
+withDefaults(defineProps<TabsProps>(), {
+  orientation: 'horizontal',
+  activationMode: 'automatic',
+  unmountOnHide: false,
+})
+
+const model = defineModel<string | number>()
 </script>
 
 <template>
   <TabsRoot
-    v-slot="slotProps"
-    data-slot="tabs"
-    v-bind="forwarded"
-    :class="cn('flex flex-col gap-2', props.class)"
+    v-model="model"
+    v-bind="$attrs"
+    :orientation="orientation"
+    :activation-mode="activationMode"
+    :unmount-on-hide="unmountOnHide"
   >
-    <slot v-bind="slotProps" />
+    <slot />
   </TabsRoot>
 </template>

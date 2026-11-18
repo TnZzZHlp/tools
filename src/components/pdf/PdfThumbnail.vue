@@ -68,12 +68,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="container" class="space-y-2 rounded-lg border p-2">
+  <div ref="container" class="space-y-2 rounded-control border border-line bg-surface p-2">
     <div
-      class="relative flex h-48 items-center justify-center overflow-hidden rounded bg-muted/50"
+      class="relative flex h-48 items-center justify-center overflow-hidden rounded-[8px] bg-control"
       :aria-label="`第 ${page} 页预览`"
     >
-      <span v-if="!ready" class="absolute text-xs text-muted-foreground">正在加载预览</span>
+      <span v-if="!ready" class="absolute text-[12px] text-ink-muted">正在加载预览</span>
       <canvas
         ref="canvas"
         class="max-h-40 max-w-40 object-contain transition-transform"
@@ -82,15 +82,17 @@ onBeforeUnmount(() => {
       />
     </div>
     <div class="flex items-center justify-between gap-1">
-      <span class="text-xs text-muted-foreground">第 {{ page }} 页</span>
+      <span class="text-[12px] tabular-nums text-ink-muted">第 {{ page }} 页</span>
       <Button
         variant="ghost"
-        size="icon"
+        size="sm"
+        class="w-8 px-0"
         :disabled="disabled"
         :aria-label="`第 ${page} 页顺时针旋转 90°`"
         @click="emit('rotate')"
-        ><RotateCw class="size-4"
-      /></Button>
+      >
+        <RotateCw class="size-4" />
+      </Button>
     </div>
   </div>
 </template>

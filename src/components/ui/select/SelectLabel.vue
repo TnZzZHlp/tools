@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import type { SelectLabelProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { SelectLabel } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { SelectLabel } from 'reka-ui'
+import { selectLabel } from './styles'
 
-const props = defineProps<SelectLabelProps & { class?: HTMLAttributes['class'] }>()
+defineOptions({ inheritAttrs: false })
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
-  <SelectLabel
-    data-slot="select-label"
-    :class="cn('text-muted-foreground px-2 py-1.5 text-xs', props.class)"
-  >
+  <SelectLabel v-bind="forwarded" :class="cn(selectLabel, attrs.class as ClassValue)">
     <slot />
   </SelectLabel>
 </template>

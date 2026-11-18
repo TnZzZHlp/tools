@@ -1,0 +1,6 @@
+export { default as ThemeProvider } from './ThemeProvider.vue'
+export { useTheme, DEFAULT_STORAGE_KEY } from './context'
+export { applyThemeToDocument, readStoredTheme, systemTheme, themeScript } from './theme'
+export type { ThemeApi } from './context'
+export type { ThemeProviderProps } from './ThemeProvider.vue'
+export type { ResolvedTheme, ThemeChoice } from './theme'

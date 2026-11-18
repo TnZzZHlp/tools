@@ -1,35 +1,72 @@
 <script setup lang="ts">
-import type { SelectTriggerProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
-import { reactiveOmit } from '@vueuse/core'
-import { SelectIcon, SelectTrigger, useForwardProps } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { SelectIcon, SelectTrigger } from 'reka-ui'
 
-const props = withDefaults(
-  defineProps<SelectTriggerProps & { class?: HTMLAttributes['class']; size?: 'sm' | 'default' }>(),
-  { size: 'default' },
-)
+defineOptions({ inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, 'class', 'size')
-const forwardedProps = useForwardProps(delegatedProps)
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  delete rest['aria-invalid']
+  return rest
+})
+
+export type SelectTriggerProps = {
+  disabled?: boolean
+  /** Marks the control as invalid and paints the border with the danger colour. */
+  invalid?: boolean
+  id?: string
+}
+
+const props = withDefaults(defineProps<SelectTriggerProps>(), {
+  disabled: false,
+  invalid: false,
+  id: undefined,
+})
+
+const ariaInvalid = computed(() => {
+  if (props.invalid) return 'true'
+  return attrs['aria-invalid'] as 'true' | 'false' | 'grammar' | 'spelling' | undefined
+})
 </script>
 
 <template>
   <SelectTrigger
-    data-slot="select-trigger"
-    :data-size="size"
-    v-bind="forwardedProps"
+    v-bind="forwarded"
+    :id="id"
+    :disabled="disabled"
+    :aria-invalid="ariaInvalid"
     :class="
       cn(
-        `border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
-        props.class,
+        'inline-flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-control border border-line bg-control px-3 text-[15px] text-ink',
+        'data-[placeholder]:text-ink-muted [&>span]:line-clamp-1',
+        'outline-none focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink',
+        'aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:outline-danger',
+        'disabled:cursor-default disabled:opacity-55',
+        'transition-[background-color,color,border-color,outline-color,box-shadow] duration-[var(--p0seid0n-duration-normal)] ease-out-expo motion-reduce:transition-none',
+        attrs.class as ClassValue,
       )
     "
   >
     <slot />
     <SelectIcon as-child>
-      <ChevronDown class="size-4 opacity-50" />
+      <slot name="icon">
+        <svg
+          class="size-4 shrink-0 text-ink-muted"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </slot>
     </SelectIcon>
   </SelectTrigger>
 </template>

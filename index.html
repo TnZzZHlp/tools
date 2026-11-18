@@ -4,19 +4,34 @@
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#f8fafc">
+    <meta name="theme-color" content="#F5F6F8">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="description" content="个人工具集 - 实用在线小工具集合">
     <title>Tools · 实用工具集</title>
     <script>
-      ;(function () {
+      ;(() => {
         try {
-          var saved = localStorage.getItem('tools:theme')
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-          var dark = saved === 'dark' || (saved !== 'light' && prefersDark)
-          document.documentElement.classList.toggle('dark', dark)
+          var r = document.documentElement
+          var k = 'p0seid0n-theme'
+          var legacy = localStorage.getItem('tools:theme')
+          var s = localStorage.getItem(k)
+          if (!s && (legacy === 'light' || legacy === 'dark')) {
+            s = legacy
+            localStorage.setItem(k, s)
+          }
+          var c = s === 'light' || s === 'dark' || s === 'system' ? s : 'system'
+          r.classList.remove('light', 'dark')
+          if (c === 'light' || c === 'dark') {
+            r.classList.add(c)
+            r.setAttribute('data-theme', c)
+          } else {
+            r.removeAttribute('data-theme')
+          }
+          var dark =
+            c === 'dark' ||
+            (c === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
           var meta = document.querySelector('meta[name="theme-color"]')
-          if (meta) meta.setAttribute('content', dark ? '#11141c' : '#f8fafc')
+          if (meta) meta.setAttribute('content', dark ? '#121419' : '#F5F6F8')
         } catch {}
       })()
     </script>

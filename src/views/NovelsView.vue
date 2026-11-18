@@ -7,8 +7,16 @@ import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  Pagination,
+  PaginationEllipsis,
+  PaginationList,
+  PaginationListItem,
+  PaginationNext,
+  PaginationPrev,
+} from '@/components/ui/pagination'
 import { errorMessage, novelApi, type Novel } from '@/api/novels'
 import { novelOriginalTitle, novelTitle } from '@/lib/novel-reader'
 
@@ -45,11 +53,6 @@ function search() {
   void load()
 }
 
-function changePage(delta: number) {
-  page.value += delta
-  void load()
-}
-
 onBeforeUnmount(() => controller?.abort())
 void load()
 </script>
@@ -64,7 +67,7 @@ void load()
       <template #actions>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           aria-label="刷新小说列表"
           :disabled="loading"
@@ -83,66 +86,90 @@ void load()
         maxlength="200"
         aria-label="搜索小说标题"
         placeholder="搜索小说标题…"
-        class="min-w-0 flex-1 bg-card"
+        class="min-w-0 flex-1 bg-raised"
       />
-      <Button type="submit" :disabled="loading">
+      <Button type="submit" :loading="loading">
         <Search class="size-4" />
         搜索
       </Button>
     </form>
 
-    <p v-if="loading" role="status" class="text-sm text-muted-foreground">小说加载中…</p>
+    <p v-if="loading" role="status" class="text-[14px] text-ink-muted">小说加载中…</p>
 
-    <Alert v-if="error" variant="destructive">
-      <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
-        <span>{{ error }}</span>
-        <Button variant="outline" size="sm" @click="load(true)">重试</Button>
-      </AlertDescription>
+    <Alert v-if="error" variant="danger">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <AlertDescription>{{ error }}</AlertDescription>
+        <Button variant="secondary" size="sm" @click="load(true)">重试</Button>
+      </div>
     </Alert>
 
     <template v-else-if="!loading || novels.length">
-      <p class="text-sm text-muted-foreground">共 {{ total }} 部小说</p>
-      <p v-if="!novels.length" class="py-12 text-center text-muted-foreground">
+      <p class="text-[13px] text-ink-muted">共 {{ total }} 部小说</p>
+      <p v-if="!novels.length" class="py-12 text-center text-[14px] text-ink-muted">
         {{ appliedQuery ? '没有找到匹配的小说。' : '暂无小说。' }}
       </p>
 
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card v-for="novel in novels" :key="novel.id" class="flex min-w-0 flex-col justify-between">
+        <Card v-for="novel in novels" :key="novel.id" class="min-w-0 justify-between">
           <div>
             <CardHeader>
-              <CardTitle class="break-words leading-relaxed">
-                <RouterLink :to="`/novels/${novel.id}`" class="hover:underline">
+              <template #title>
+                <RouterLink :to="`/novels/${novel.id}`" class="break-words hover:underline">
                   {{ novelTitle(novel) }}
                 </RouterLink>
-              </CardTitle>
-              <p v-if="novelOriginalTitle(novel)" class="break-words text-sm text-muted-foreground">
-                {{ novelOriginalTitle(novel) }}
-              </p>
+              </template>
+              <template v-if="novelOriginalTitle(novel)" #description>
+                <p class="break-words text-[13px] text-ink-muted">
+                  {{ novelOriginalTitle(novel) }}
+                </p>
+              </template>
             </CardHeader>
-            <CardContent class="space-y-3 pt-2">
+            <CardContent class="space-y-3 pt-0">
               <div class="flex flex-wrap gap-2">
-                <Badge variant="secondary">{{ novel.source_language }}</Badge>
+                <Badge variant="neutral">{{ novel.source_language }}</Badge>
                 <Badge variant="outline">{{ novel.chapter_count }} 章</Badge>
               </div>
-              <p class="text-sm text-muted-foreground">已有译文 {{ novel.translated_count }} 章</p>
+              <p class="text-[13px] text-ink-muted">已有译文 {{ novel.translated_count }} 章</p>
             </CardContent>
           </div>
 
-          <CardFooter class="pt-2">
-            <Button as-child variant="outline" class="w-full">
-              <RouterLink :to="`/novels/${novel.id}`">查看目录</RouterLink>
+          <CardFooter>
+            <Button
+              :as="RouterLink"
+              :to="`/novels/${novel.id}`"
+              variant="secondary"
+              size="sm"
+              class="w-full"
+            >
+              查看目录
             </Button>
           </CardFooter>
         </Card>
       </div>
 
-      <nav v-if="total > 20" aria-label="小说分页" class="flex items-center justify-center gap-3">
-        <Button variant="outline" :disabled="page === 1" @click="changePage(-1)">上一页</Button>
-        <span class="text-sm tabular-nums">{{ page }} / {{ Math.ceil(total / 20) }}</span>
-        <Button variant="outline" :disabled="page * 20 >= total" @click="changePage(1)">
-          下一页
-        </Button>
-      </nav>
+      <Pagination
+        v-if="total > 20"
+        :page="page"
+        :total="total"
+        :items-per-page="20"
+        aria-label="小说分页"
+        @update:page="
+          (nextPage) => {
+            if (nextPage === undefined) return
+            page = nextPage
+            void load()
+          }
+        "
+      >
+        <PaginationList v-slot="{ items }">
+          <PaginationPrev />
+          <template v-for="(item, index) in items" :key="index">
+            <PaginationListItem v-if="item.type === 'page'" :value="item.value" />
+            <PaginationEllipsis v-else :index="index" />
+          </template>
+          <PaginationNext />
+        </PaginationList>
+      </Pagination>
     </template>
   </div>
 </template>

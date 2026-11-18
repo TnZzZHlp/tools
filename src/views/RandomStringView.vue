@@ -5,7 +5,7 @@ import { Check, ClipboardCopy, RefreshCw, Shuffle, Sparkles } from 'lucide-vue-n
 import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -230,7 +230,7 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       :icon="Shuffle"
     >
       <template #actions>
-        <Button type="button" :disabled="!canGenerate" @click="generate">
+        <Button type="button" size="sm" :disabled="!canGenerate" @click="generate">
           <RefreshCw class="size-4" />
           重新生成
         </Button>
@@ -241,41 +241,44 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       class="grid items-start gap-5 lg:grid-cols-[23rem_minmax(0,1fr)] xl:grid-cols-[25rem_minmax(0,1fr)]"
     >
       <!-- Configuration Card -->
-      <Card class="py-5">
-        <CardHeader class="gap-3 px-5">
-          <div class="flex items-center justify-between">
-            <CardTitle class="text-base">生成规则</CardTitle>
-            <Badge variant="outline" class="font-mono text-xs font-normal">
+      <Card>
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>生成规则</template>
+          <template #action>
+            <Badge variant="outline" class="font-mono tabular-nums">
               字符池 {{ charset.length }}
             </Badge>
-          </div>
-
-          <div class="space-y-1.5">
-            <span class="flex items-center gap-1 text-xs text-muted-foreground">
-              <Sparkles class="size-3" />
-              常用预设
-            </span>
-            <div class="flex flex-wrap gap-1.5">
-              <Button
-                v-for="preset in presets"
-                :key="preset.id"
-                type="button"
-                variant="outline"
-                size="sm"
-                class="h-7 rounded-full px-2.5 text-xs font-normal"
-                @click="preset.apply"
-              >
-                {{ preset.label }}
-              </Button>
+          </template>
+          <template #description>
+            <div class="mt-2 space-y-1.5">
+              <span class="flex items-center gap-1 text-[12px] text-ink-muted">
+                <Sparkles class="size-3" />
+                常用预设
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                <Button
+                  v-for="preset in presets"
+                  :key="preset.id"
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  class="min-h-7 rounded-full px-2.5 text-[12px]"
+                  @click="preset.apply"
+                >
+                  {{ preset.label }}
+                </Button>
+              </div>
             </div>
-          </div>
+          </template>
         </CardHeader>
 
-        <CardContent class="space-y-5 px-5">
-          <div class="flex items-center justify-between rounded-lg border bg-muted/35 p-3.5">
+        <CardContent class="space-y-5 px-5 pt-2 pb-5">
+          <div
+            class="flex items-center justify-between rounded-control border border-line bg-surface p-3.5"
+          >
             <div class="space-y-0.5 pr-3">
-              <Label for="uuid-mode" class="cursor-pointer">UUID v4 模式</Label>
-              <p class="text-xs text-muted-foreground">生成固定 36 位标准唯一标识符</p>
+              <Label for="uuid-mode" class="cursor-pointer text-ink">UUID v4 模式</Label>
+              <p class="text-[12px] text-ink-muted">生成固定 36 位标准唯一标识符</p>
             </div>
             <Switch id="uuid-mode" v-model="uuidMode" />
           </div>
@@ -286,38 +289,54 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
               <div class="grid grid-cols-2 gap-2.5">
                 <label
                   for="digits"
-                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
-                  :class="useDigits && 'border-primary/40 bg-accent/40'"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-control border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:bg-control"
+                  :class="useDigits && 'bg-surface'"
                 >
-                  <Checkbox id="digits" v-model="useDigits" />
-                  <span>数字 <code class="text-xs text-muted-foreground">0-9</code></span>
+                  <Checkbox
+                    id="digits"
+                    :model-value="useDigits"
+                    @update:model-value="useDigits = $event === true"
+                  />
+                  <span>数字 <code class="text-[12px] text-ink-muted">0-9</code></span>
                 </label>
 
                 <label
                   for="lowercase"
-                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
-                  :class="useLowercase && 'border-primary/40 bg-accent/40'"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-control border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:bg-control"
+                  :class="useLowercase && 'bg-surface'"
                 >
-                  <Checkbox id="lowercase" v-model="useLowercase" />
-                  <span>小写 <code class="text-xs text-muted-foreground">a-z</code></span>
+                  <Checkbox
+                    id="lowercase"
+                    :model-value="useLowercase"
+                    @update:model-value="useLowercase = $event === true"
+                  />
+                  <span>小写 <code class="text-[12px] text-ink-muted">a-z</code></span>
                 </label>
 
                 <label
                   for="uppercase"
-                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
-                  :class="useUppercase && 'border-primary/40 bg-accent/40'"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-control border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:bg-control"
+                  :class="useUppercase && 'bg-surface'"
                 >
-                  <Checkbox id="uppercase" v-model="useUppercase" />
-                  <span>大写 <code class="text-xs text-muted-foreground">A-Z</code></span>
+                  <Checkbox
+                    id="uppercase"
+                    :model-value="useUppercase"
+                    @update:model-value="useUppercase = $event === true"
+                  />
+                  <span>大写 <code class="text-[12px] text-ink-muted">A-Z</code></span>
                 </label>
 
                 <label
                   for="special"
-                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
-                  :class="useSpecial && 'border-primary/40 bg-accent/40'"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-control border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:bg-control"
+                  :class="useSpecial && 'bg-surface'"
                 >
-                  <Checkbox id="special" v-model="useSpecial" />
-                  <span>符号 <code class="text-xs text-muted-foreground">!@#…</code></span>
+                  <Checkbox
+                    id="special"
+                    :model-value="useSpecial"
+                    @update:model-value="useSpecial = $event === true"
+                  />
+                  <span>符号 <code class="text-[12px] text-ink-muted">!@#…</code></span>
                 </label>
               </div>
             </div>
@@ -367,59 +386,56 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
       </Card>
 
       <!-- Results Card -->
-      <Card class="min-w-0 py-5">
-        <CardHeader class="px-5">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <CardTitle class="text-base">生成结果</CardTitle>
-              <Badge v-if="results.length" variant="secondary" class="tabular-nums font-normal">
+      <Card class="min-w-0">
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>
+            <span class="inline-flex items-center gap-2">
+              <span>生成结果</span>
+              <Badge v-if="results.length" variant="neutral" class="tabular-nums">
                 {{ results.length }} 条 · {{ uuidMode ? 36 : safeLength }} 位
               </Badge>
-            </div>
-
+            </span>
+          </template>
+          <template #action>
             <Button
               v-if="results.length"
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
-              :class="
-                copySuccess === -1 &&
-                'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-              "
+              :class="copySuccess === -1 && 'text-accent'"
               @click="copyAll"
             >
               <Check v-if="copySuccess === -1" class="size-4" />
               <ClipboardCopy v-else class="size-4" />
               {{ copySuccess === -1 ? '已复制全部' : '复制全部' }}
             </Button>
-          </div>
+          </template>
         </CardHeader>
 
-        <CardContent class="px-5">
+        <CardContent class="px-5 pt-2 pb-5">
           <ul v-if="results.length" class="space-y-2">
             <li v-for="(result, index) in results" :key="index">
               <button
                 type="button"
-                class="group flex w-full items-center gap-3 rounded-lg border bg-muted/25 px-3.5 py-2.5 text-left transition-all hover:border-foreground/25 hover:bg-muted/55 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                :class="
-                  copySuccess === index &&
-                  'border-emerald-500/60 bg-emerald-500/8 dark:border-emerald-400/50'
-                "
+                class="group flex w-full items-center gap-3 rounded-control border border-line bg-surface px-3.5 py-2.5 text-left outline-none transition-[border-color,background-color] duration-[var(--p0seid0n-duration-fast)] hover:bg-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid"
+                :class="copySuccess === index && 'border-accent'"
                 :aria-label="`复制第 ${index + 1} 条字符串`"
                 @click="copySingle(index)"
               >
-                <span class="w-5 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                <span class="w-5 shrink-0 font-mono text-[12px] tabular-nums text-ink-muted">
                   {{ index + 1 }}
                 </span>
-                <code class="min-w-0 flex-1 break-all font-mono text-sm leading-relaxed">
+                <code
+                  class="min-w-0 flex-1 break-all font-mono text-[14px] leading-relaxed text-ink"
+                >
                   {{ result }}
                 </code>
                 <span
-                  class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors"
+                  class="inline-flex shrink-0 items-center gap-1 rounded-[8px] px-2 py-1 text-[12px] transition-colors"
                   :class="
                     copySuccess === index
-                      ? 'font-medium text-emerald-600 dark:text-emerald-400'
-                      : 'text-muted-foreground group-hover:bg-background group-hover:text-foreground'
+                      ? 'font-medium text-accent'
+                      : 'text-ink-muted group-hover:bg-raised group-hover:text-ink'
                   "
                 >
                   <Check v-if="copySuccess === index" class="size-3.5" />
@@ -434,9 +450,9 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
 
           <div
             v-else
-            class="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground"
+            class="flex min-h-56 flex-col items-center justify-center rounded-control border border-dashed border-line p-6 text-center text-[14px] text-ink-muted"
           >
-            <p>请至少勾选一种字符类型（或调整排除字符）以生成结果。</p>
+            <p>请至少开启一种字符类型（或调整排除字符）以生成结果。</p>
           </div>
         </CardContent>
       </Card>

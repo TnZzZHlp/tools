@@ -1,55 +1,93 @@
 <script setup lang="ts">
-import type { SelectContentEmits, SelectContentProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
-import { SelectContent, SelectPortal, SelectViewport, useForwardPropsEmits } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { SelectScrollDownButton, SelectScrollUpButton } from '.'
+import {
+  SelectContent,
+  SelectPortal,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectViewport,
+} from 'reka-ui'
+import { selectSurface } from './styles'
 
-defineOptions({
-  inheritAttrs: false,
+defineOptions({ inheritAttrs: false })
+
+export type SelectContentProps = {
+  position?: 'popper' | 'item-aligned'
+  side?: 'top' | 'right' | 'bottom' | 'left'
+  sideOffset?: number
+  align?: 'start' | 'center' | 'end'
+}
+
+const props = withDefaults(defineProps<SelectContentProps>(), {
+  position: 'popper',
+  side: 'bottom',
+  sideOffset: 6,
+  align: 'start',
 })
 
-const props = withDefaults(
-  defineProps<SelectContentProps & { class?: HTMLAttributes['class'] }>(),
-  {
-    position: 'popper',
-  },
-)
-const emits = defineEmits<SelectContentEmits>()
-
-const delegatedProps = reactiveOmit(props, 'class')
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <SelectPortal>
     <SelectContent
-      data-slot="select-content"
-      v-bind="{ ...$attrs, ...forwarded }"
-      :class="
-        cn(
-          'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--reka-select-content-available-height) min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border shadow-md',
-          position === 'popper' &&
-            'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
-          props.class,
-        )
-      "
+      v-bind="forwarded"
+      :position="props.position"
+      :side="props.side"
+      :side-offset="props.sideOffset"
+      :align="props.align"
+      :class="cn(selectSurface, attrs.class as ClassValue)"
     >
-      <SelectScrollUpButton />
+      <SelectScrollUpButton
+        class="flex cursor-default items-center justify-center py-1 text-ink-muted"
+      >
+        <svg
+          class="size-3.5"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m4 10 4-4 4 4" />
+        </svg>
+      </SelectScrollUpButton>
       <SelectViewport
         :class="
           cn(
-            'p-1',
-            position === 'popper' &&
-              'h-(--reka-select-trigger-height) w-full min-w-(--reka-select-trigger-width) scroll-my-1',
+            'p-1.5',
+            props.position === 'popper' &&
+              'h-[var(--reka-select-trigger-height)] w-full min-w-[var(--reka-select-trigger-width)]',
           )
         "
       >
         <slot />
       </SelectViewport>
-      <SelectScrollDownButton />
+      <SelectScrollDownButton
+        class="flex cursor-default items-center justify-center py-1 text-ink-muted"
+      >
+        <svg
+          class="size-3.5"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </SelectScrollDownButton>
     </SelectContent>
   </SelectPortal>
 </template>

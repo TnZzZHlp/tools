@@ -1,15 +1,34 @@
 <script setup lang="ts">
-import type { DialogRootEmits, DialogRootProps } from 'reka-ui'
-import { DialogRoot, useForwardPropsEmits } from 'reka-ui'
+import { DialogRoot } from 'reka-ui'
+import { provideDialogBehaviour } from './behaviour'
 
-const props = defineProps<DialogRootProps>()
-const emits = defineEmits<DialogRootEmits>()
+defineOptions({ name: 'UiDialog', inheritAttrs: false })
 
-const forwarded = useForwardPropsEmits(props, emits)
+export type DialogProps = {
+  /** Initial open state when uncontrolled. */
+  defaultOpen?: boolean
+  /** Closes when the pointer goes down outside the panel. */
+  closeOnOutside?: boolean
+  closeOnEsc?: boolean
+}
+
+const props = withDefaults(defineProps<DialogProps>(), {
+  defaultOpen: undefined,
+  closeOnOutside: true,
+  closeOnEsc: true,
+})
+
+// Passed as thunks rather than as props so the flags are read at event time.
+provideDialogBehaviour({
+  closeOnOutside: () => props.closeOnOutside,
+  closeOnEsc: () => props.closeOnEsc,
+})
+
+const open = defineModel<boolean>('open')
 </script>
 
 <template>
-  <DialogRoot v-slot="slotProps" data-slot="dialog" v-bind="forwarded">
-    <slot v-bind="slotProps" />
+  <DialogRoot v-model:open="open" :default-open="defaultOpen" modal v-bind="$attrs">
+    <slot />
   </DialogRoot>
 </template>

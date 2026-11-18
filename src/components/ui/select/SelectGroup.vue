@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import type { SelectGroupProps } from 'reka-ui'
 import { SelectGroup } from 'reka-ui'
 
-const props = defineProps<SelectGroupProps>()
+defineOptions({ inheritAttrs: false })
 </script>
 
 <template>
-  <SelectGroup data-slot="select-group" v-bind="props">
+  <SelectGroup v-bind="$attrs">
     <slot />
   </SelectGroup>
 </template>

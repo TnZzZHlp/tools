@@ -1,0 +1,11 @@
+export { default as Popover } from './Popover.vue'
+export { default as PopoverTrigger } from './PopoverTrigger.vue'
+export { default as PopoverAnchor } from './PopoverAnchor.vue'
+export { default as PopoverClose } from './PopoverClose.vue'
+export { default as PopoverContent } from './PopoverContent.vue'
+
+export type { PopoverProps } from './Popover.vue'
+export type { PopoverTriggerProps } from './PopoverTrigger.vue'
+export type { PopoverAnchorProps } from './PopoverAnchor.vue'
+export type { PopoverCloseProps } from './PopoverClose.vue'
+export type { PopoverContentProps } from './PopoverContent.vue'

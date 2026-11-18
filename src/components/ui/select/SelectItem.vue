@@ -1,37 +1,51 @@
 <script setup lang="ts">
-import type { SelectItemProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
-import { Check } from 'lucide-vue-next'
-import { reactiveOmit } from '@vueuse/core'
-import { SelectItem, SelectItemIndicator, SelectItemText, useForwardProps } from 'reka-ui'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { SelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui'
+import { selectItem } from './styles'
 
-const props = defineProps<SelectItemProps & { class?: HTMLAttributes['class'] }>()
+defineOptions({ inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, 'class')
+export type SelectItemProps = {
+  value: string
+  disabled?: boolean
+  textValue?: string
+}
 
-const forwardedProps = useForwardProps(delegatedProps)
+withDefaults(defineProps<SelectItemProps>(), {
+  disabled: false,
+  textValue: undefined,
+})
+
+const emit = defineEmits<{ select: [event: Event] }>()
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
 </script>
 
 <template>
   <SelectItem
-    data-slot="select-item"
-    v-bind="forwardedProps"
-    :class="
-      cn(
-        `focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2`,
-        props.class,
-      )
-    "
+    v-bind="forwarded"
+    :value="value"
+    :disabled="disabled"
+    :text-value="textValue"
+    :class="cn(selectItem, attrs.class as ClassValue)"
+    @select="emit('select', $event)"
   >
-    <span class="absolute right-2 flex size-3.5 items-center justify-center">
-      <SelectItemIndicator>
-        <slot name="indicator-icon">
-          <Check class="size-4" />
+    <span class="flex size-3.5 shrink-0 items-center justify-center">
+      <SelectItemIndicator
+        class="flex items-center justify-center text-ink motion-safe:animate-check-in data-[state=unchecked]:motion-safe:animate-check-out"
+      >
+        <slot name="indicator">
+          <span class="size-1.5 rounded-full bg-ink" />
         </slot>
       </SelectItemIndicator>
     </span>
-
     <SelectItemText>
       <slot />
     </SelectItemText>

@@ -19,7 +19,7 @@ import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface BarcodeResult {
@@ -89,6 +89,13 @@ const fileSize = computed(() => {
   if (!file.value) return ''
   const mb = file.value.size / 1024 / 1024
   return mb >= 1 ? `${mb.toFixed(2)} MB` : `${Math.ceil(file.value.size / 1024)} KB`
+})
+
+const modeModel = computed({
+  get: () => inputMode.value,
+  set: (val: string | number | undefined) => {
+    if (val !== undefined) switchInputMode(val)
+  },
 })
 
 onMounted(() => {
@@ -515,14 +522,14 @@ function drawPreview(image: HTMLImageElement, barcodes: BarcodeResult[]) {
     const width = Math.min(canvas.width - x - lineWidth, bounds.width + paddingX * 2)
     const height = Math.min(canvas.height - y - lineWidth, bounds.height + paddingY * 2)
 
-    context.strokeStyle = '#16a34a'
-    context.fillStyle = 'rgba(22, 163, 74, 0.12)'
+    context.strokeStyle = '#2F6FE4'
+    context.fillStyle = 'rgba(47, 111, 228, 0.14)'
     context.fillRect(x, y, width, height)
     context.strokeRect(x, y, width, height)
 
     const label = `${index + 1}`
     const labelSize = Math.max(24, lineWidth * 7)
-    context.fillStyle = '#16a34a'
+    context.fillStyle = '#2F6FE4'
     context.fillRect(x, y, labelSize, labelSize)
     context.fillStyle = '#fff'
     context.fillText(label, x + labelSize * 0.3, y + labelSize * 0.52)
@@ -566,13 +573,13 @@ async function copyAll() {
       :icon="QrCode"
     >
       <template #actions>
-        <Tabs :model-value="inputMode" @update:model-value="switchInputMode">
+        <Tabs v-model="modeModel">
           <TabsList>
-            <TabsTrigger value="image" class="gap-1.5 px-3 text-xs sm:text-sm">
+            <TabsTrigger value="image">
               <FileImage class="size-3.5" />
               图片识别
             </TabsTrigger>
-            <TabsTrigger value="camera" class="gap-1.5 px-3 text-xs sm:text-sm">
+            <TabsTrigger value="camera">
               <Camera class="size-3.5" />
               摄像头扫码
             </TabsTrigger>
@@ -583,22 +590,22 @@ async function copyAll() {
 
     <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <!-- Left Card: Viewfinder / Image Canvas -->
-      <Card class="py-5">
-        <CardHeader class="px-5">
-          <div class="flex items-center justify-between gap-2">
-            <CardTitle class="text-base">
-              {{ inputMode === 'image' ? '条码图片画面' : '实时摄像头取景' }}
-            </CardTitle>
+      <Card>
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>
+            {{ inputMode === 'image' ? '条码图片画面' : '实时摄像头取景' }}
+          </template>
+          <template #action>
             <Badge
               v-if="inputMode === 'camera' && cameraActive"
-              :variant="cameraDetected ? 'default' : 'secondary'"
+              :variant="cameraDetected ? 'accent' : 'neutral'"
             >
               {{ cameraDetected ? '已捕获条码' : '实时扫描中' }}
             </Badge>
-          </div>
+          </template>
         </CardHeader>
 
-        <CardContent class="space-y-4 px-5">
+        <CardContent class="space-y-4 px-5 pt-2 pb-5">
           <input
             ref="fileInput"
             class="hidden"
@@ -611,11 +618,11 @@ async function copyAll() {
             <!-- Canvas Preview when Image Selected -->
             <div v-if="previewUrl" class="space-y-3">
               <div
-                class="relative flex min-h-64 items-center justify-center overflow-hidden rounded-xl border bg-muted/35 p-3"
+                class="relative flex min-h-64 items-center justify-center overflow-hidden rounded-panel border border-line bg-surface p-3"
               >
                 <canvas
                   ref="previewCanvas"
-                  class="max-h-[54dvh] max-w-full rounded-md object-contain"
+                  class="max-h-[54dvh] max-w-full rounded-[8px] object-contain"
                   role="img"
                   :aria-label="
                     results.length
@@ -625,37 +632,31 @@ async function copyAll() {
                 />
                 <div
                   v-if="loading"
-                  class="absolute inset-0 flex items-center justify-center gap-2 bg-background/70 text-sm font-medium backdrop-blur-[2px]"
+                  class="absolute inset-0 flex items-center justify-center gap-2 bg-[color-mix(in_oklab,var(--color-surface)_75%,transparent)] text-[14px] font-medium text-ink backdrop-blur-[2px]"
                 >
-                  <LoaderCircle class="size-5 animate-spin text-primary" />
+                  <LoaderCircle class="size-5 animate-spin text-accent" />
                   正在识别条码…
                 </div>
               </div>
 
               <div
                 v-if="file"
-                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/25 px-3 py-2"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line bg-surface px-3 py-2"
               >
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-medium">{{ file.name }}</p>
-                  <p class="text-xs text-muted-foreground">{{ file.type }} · {{ fileSize }}</p>
+                  <p class="truncate text-[14px] font-medium text-ink">{{ file.name }}</p>
+                  <p class="text-[12px] text-ink-muted">{{ file.type }} · {{ fileSize }}</p>
                 </div>
                 <div class="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    class="h-8 text-xs"
-                    @click="fileInput?.click()"
-                  >
+                  <Button type="button" variant="secondary" size="sm" @click="fileInput?.click()">
                     <Upload class="size-3.5" />
                     更换图片
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    class="size-8 text-muted-foreground hover:text-destructive"
+                    size="sm"
+                    class="w-8 px-0 text-ink-muted hover:text-danger"
                     aria-label="移除图片"
                     @click="clearFile"
                   >
@@ -664,7 +665,7 @@ async function copyAll() {
                 </div>
               </div>
 
-              <Button type="button" class="w-full" :disabled="loading" @click="recognize">
+              <Button type="button" class="w-full" :loading="loading" @click="recognize">
                 <LoaderCircle v-if="loading" class="size-4 animate-spin" />
                 <ScanLine v-else class="size-4" />
                 {{ loading ? '识别中…' : '重新扫描图片' }}
@@ -676,11 +677,11 @@ async function copyAll() {
               v-else
               role="button"
               tabindex="0"
-              class="group flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              class="group flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-panel border-2 border-dashed p-6 text-center outline-none transition-[border-color,background-color] duration-[var(--p0seid0n-duration-normal)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:outline-solid"
               :class="
                 dragging
-                  ? 'border-primary bg-accent/60'
-                  : 'border-border hover:border-foreground/30 hover:bg-muted/35'
+                  ? 'border-ink bg-control'
+                  : 'border-line hover:border-[color-mix(in_oklab,var(--color-ink)_35%,var(--color-line))] hover:bg-surface'
               "
               @click="fileInput?.click()"
               @keydown.enter.prevent="fileInput?.click()"
@@ -691,20 +692,20 @@ async function copyAll() {
               @drop.prevent="handleDrop"
             >
               <div
-                class="mb-3 flex size-12 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+                class="mb-3 flex size-12 items-center justify-center rounded-full border border-line bg-control text-ink-muted transition-colors group-hover:border-ink group-hover:bg-ink group-hover:text-surface"
               >
                 <Upload class="size-5" />
               </div>
-              <p class="text-base font-medium text-foreground">粘贴截图、拖放或点击选择图片</p>
-              <p class="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              <p class="text-[15px] font-medium text-ink">粘贴截图、拖放或点击选择图片</p>
+              <p class="mt-1 max-w-xs text-[13px] leading-relaxed text-ink-muted">
                 支持 QR Code、Code 128、EAN-13、Data Matrix 等常见一维与二维条码
               </p>
             </div>
           </template>
 
-          <!-- Live Camera Viewfinder directly in Left Card -->
+          <!-- Live Camera Viewfinder -->
           <template v-else>
-            <div class="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-950">
+            <div class="relative aspect-[4/3] overflow-hidden rounded-panel bg-[#121419]">
               <video
                 ref="cameraVideo"
                 class="h-full w-full object-cover"
@@ -716,22 +717,20 @@ async function copyAll() {
 
               <div
                 v-if="cameraActive"
-                class="pointer-events-none absolute inset-[15%] rounded-xl border-2 transition-colors"
+                class="pointer-events-none absolute inset-[15%] rounded-panel border-2 transition-colors"
                 :class="
                   cameraDetected
-                    ? 'border-emerald-400 bg-emerald-400/10'
+                    ? 'border-accent bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)]'
                     : 'border-white/80 bg-transparent'
                 "
                 aria-hidden="true"
               >
-                <span
-                  class="absolute top-1/2 left-1/2 h-px w-3/4 -translate-x-1/2 bg-emerald-400/90"
-                />
+                <span class="absolute top-1/2 left-1/2 h-px w-3/4 -translate-x-1/2 bg-accent" />
               </div>
 
               <div
                 v-if="!cameraActive && !cameraStarting"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-sm text-white/85"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-[14px] text-white/85"
               >
                 <CameraOff class="mb-2.5 size-8 opacity-80" />
                 <p>摄像头已停止，点击下方按钮启动扫码</p>
@@ -739,7 +738,7 @@ async function copyAll() {
 
               <div
                 v-else-if="cameraStarting"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-sm text-white"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-[14px] text-white"
               >
                 <LoaderCircle class="mb-2.5 size-8 animate-spin" />
                 <p>正在请求摄像头权限…</p>
@@ -749,7 +748,7 @@ async function copyAll() {
             <Button
               v-if="cameraActive"
               type="button"
-              variant="outline"
+              variant="secondary"
               class="w-full"
               @click="stopCamera"
             >
@@ -760,7 +759,7 @@ async function copyAll() {
               v-else
               type="button"
               class="w-full"
-              :disabled="cameraStarting"
+              :loading="cameraStarting"
               @click="startCamera"
             >
               <LoaderCircle v-if="cameraStarting" class="size-4 animate-spin" />
@@ -769,7 +768,7 @@ async function copyAll() {
             </Button>
           </template>
 
-          <Alert v-if="error" variant="destructive">
+          <Alert v-if="error" variant="danger" class="bg-surface">
             <AlertTitle>{{ inputMode === 'camera' ? '无法使用摄像头' : '识别未成功' }}</AlertTitle>
             <AlertDescription>{{ error }}</AlertDescription>
           </Alert>
@@ -777,26 +776,21 @@ async function copyAll() {
       </Card>
 
       <!-- Right Card: Decoded Results -->
-      <Card class="min-w-0 py-5">
-        <CardHeader class="px-5">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <CardTitle class="text-base">识别结果</CardTitle>
-              <Badge variant="secondary" class="tabular-nums font-normal">
-                {{ results.length }} 条
-              </Badge>
-            </div>
-
+      <Card class="min-w-0">
+        <CardHeader class="px-5 pt-5 pb-3">
+          <template #title>
+            <span class="inline-flex items-center gap-2">
+              <span>识别结果</span>
+              <Badge variant="neutral" class="tabular-nums">{{ results.length }} 条</Badge>
+            </span>
+          </template>
+          <template #action>
             <div v-if="results.length" class="flex items-center gap-1.5">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                class="h-8 text-xs"
-                :class="
-                  copySuccessIndex === -1 &&
-                  'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-                "
+                :class="copySuccessIndex === -1 && 'text-accent'"
                 @click="copyAll"
               >
                 <Check v-if="copySuccessIndex === -1" class="size-3.5" />
@@ -807,39 +801,35 @@ async function copyAll() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                class="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                class="text-ink-muted hover:text-danger"
                 @click="results = []"
               >
                 <Trash2 class="size-3.5" />
                 清空
               </Button>
             </div>
-          </div>
+          </template>
         </CardHeader>
 
-        <CardContent class="px-5">
+        <CardContent class="px-5 pt-2 pb-5">
           <ul v-if="results.length" class="space-y-2.5">
             <li
               v-for="(item, index) in results"
               :key="`${item.format}-${item.text}-${index}`"
-              class="rounded-xl border bg-muted/20 p-3.5 transition-colors hover:bg-muted/40"
+              class="rounded-control border border-line bg-surface p-3.5 transition-colors hover:bg-control"
             >
               <div class="mb-2 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
-                  <Badge variant="secondary" class="font-mono text-xs tabular-nums">
-                    #{{ index + 1 }}
-                  </Badge>
-                  <Badge variant="outline" class="font-normal">
-                    {{ item.formatLabel }}
-                  </Badge>
+                  <Badge variant="neutral" class="font-mono tabular-nums">#{{ index + 1 }}</Badge>
+                  <Badge variant="outline">{{ item.formatLabel }}</Badge>
                 </div>
 
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  class="h-7 px-2 text-xs"
-                  :class="copySuccessIndex === index && 'text-emerald-600 dark:text-emerald-400'"
+                  class="min-h-7 px-2 text-[12px]"
+                  :class="copySuccessIndex === index && 'text-accent'"
                   @click="copySingle(item.text, index)"
                 >
                   <Check v-if="copySuccessIndex === index" class="size-3.5" />
@@ -848,7 +838,7 @@ async function copyAll() {
                 </Button>
               </div>
 
-              <p class="break-all font-mono text-sm leading-relaxed text-foreground">
+              <p class="break-all font-mono text-[14px] leading-relaxed text-ink">
                 {{ item.text }}
               </p>
             </li>
@@ -856,11 +846,11 @@ async function copyAll() {
 
           <div
             v-else
-            class="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center text-muted-foreground"
+            class="flex min-h-72 flex-col items-center justify-center rounded-panel border border-dashed border-line p-6 text-center text-ink-muted"
           >
-            <ScanLine class="mb-3 size-8 opacity-50" aria-hidden="true" />
-            <p class="text-sm font-medium text-foreground">等待识别结果</p>
-            <p class="mt-1 max-w-xs text-xs leading-relaxed">
+            <ScanLine class="mb-3 size-8 text-ink-faint" aria-hidden="true" />
+            <p class="text-[14px] font-medium text-ink">等待识别结果</p>
+            <p class="mt-1 max-w-xs text-[12px] leading-relaxed">
               {{
                 inputMode === 'camera'
                   ? '将条码或二维码对准左侧取景框中央，识别结果会自动追加到此处。'

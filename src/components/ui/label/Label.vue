@@ -1,26 +1,42 @@
 <script setup lang="ts">
-import type { LabelProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import { Label } from "reka-ui"
-import { cn } from "@/lib/utils"
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
+import { cn } from '@/lib/utils'
 
-const props = defineProps<LabelProps & { class?: HTMLAttributes["class"] }>()
+defineOptions({ name: 'UiLabel', inheritAttrs: false })
 
-const delegatedProps = reactiveOmit(props, "class")
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
+
+export type LabelProps = {
+  /** Id of the control this label describes; rendered as the `for` attribute. */
+  for?: string
+  /** Appends a decorative required marker. */
+  required?: boolean
+}
+
+withDefaults(defineProps<LabelProps>(), {
+  for: undefined,
+  required: false,
+})
 </script>
 
 <template>
-  <Label
-    data-slot="label"
-    v-bind="delegatedProps"
+  <label
+    v-bind="forwarded"
+    :for="$props.for"
     :class="
       cn(
-        'flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
-        props.class,
+        'inline-flex items-center gap-1 text-[13px] font-medium text-ink-muted',
+        attrs.class as ClassValue,
       )
     "
   >
     <slot />
-  </Label>
+    <span v-if="required" aria-hidden="true" class="text-danger">*</span>
+  </label>
 </template>

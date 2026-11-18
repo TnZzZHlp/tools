@@ -16,8 +16,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
       :icon="FileStack"
     >
       <template #badges>
-        <Badge variant="outline" class="gap-1 font-normal">
-          <ShieldCheck class="size-3.5 text-emerald-600 dark:text-emerald-400" />
+        <Badge variant="outline">
+          <ShieldCheck class="size-3.5 text-accent" />
           本地离线处理
         </Badge>
       </template>
@@ -25,12 +25,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
       <template #actions>
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="outline" size="sm" class="gap-1.5">
+            <Button variant="secondary" size="sm">
               <Info class="size-4" />
               兼容性说明
             </Button>
           </TooltipTrigger>
-          <TooltipContent class="max-w-80 space-y-1.5 text-xs leading-5">
+          <TooltipContent
+            class="max-w-80 flex-col items-start gap-1.5 py-2 text-[12px] leading-5 font-normal"
+          >
             <p>所有文件仅在浏览器内存中处理，绝不上传至任何服务器。</p>
             <p>
               按文件顺序合并并保留内部页序；旋转角度会直接写入导出的

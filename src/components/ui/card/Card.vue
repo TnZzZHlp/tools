@@ -1,19 +1,39 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { computed, useAttrs } from 'vue'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
 
-const props = defineProps<{
-  class?: HTMLAttributes['class']
-}>()
+defineOptions({ name: 'UiCard', inheritAttrs: false })
+
+const attrs = useAttrs()
+const forwarded = computed(() => {
+  const rest = { ...attrs }
+  delete rest.class
+  return rest
+})
+
+export type CardProps = {
+  /** raised sits on the page surface; surface sits on a raised panel. */
+  appearance?: 'raised' | 'surface'
+}
+
+const props = withDefaults(defineProps<CardProps>(), {
+  appearance: 'raised',
+})
+
+const appearanceClass = computed(() =>
+  props.appearance === 'surface' ? 'bg-surface' : 'bg-raised',
+)
 </script>
 
 <template>
   <div
-    data-slot="card"
+    v-bind="forwarded"
     :class="
       cn(
-        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
-        props.class,
+        'flex flex-col rounded-panel border border-line',
+        appearanceClass,
+        attrs.class as ClassValue,
       )
     "
   >
