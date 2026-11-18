@@ -57,6 +57,8 @@ const UPLOAD_TARGET_SECONDS = 1
 export const LATENCY_BUDGET = 2000
 const LATENCY_PING_INTERVAL = 50
 export const LATENCY_PINGS = LATENCY_BUDGET / LATENCY_PING_INTERVAL
+const MIN_VALID_IDLE_PINGS = 5
+const EARLY_ABORT_PING_FAILURES = 8
 const LOADED_PING_INTERVAL = 200
 export const LOADED_POINTS = 40
 const LOADED_PING_GRACE = 1500
@@ -169,6 +171,7 @@ export async function ping(targetUrl: string, signal: AbortSignal): Promise<numb
 interface Meter {
   flow: (count: number) => void
   transfer: (bytes: number, seconds: number) => void
+  fail?: (error: unknown) => void
 }
 
 type Pump = (signal: AbortSignal, meter: Meter) => Promise<void>
@@ -209,8 +212,9 @@ async function pumpDownload(baseUrl: string, signal: AbortSignal, meter: Meter):
         }
       }
       pending = next
-    } catch {
+    } catch (error) {
       if (signal.aborted) return
+      meter.fail?.(error)
       pending = null
       await wait(300)
     }
@@ -250,6 +254,7 @@ async function measure(
   pingTarget: string,
   signal: AbortSignal,
   onProgress: (reading: Throughput) => void,
+  requireBytes = false,
 ): Promise<Outcome> {
   const phase = new AbortController()
   const stop = () => phase.abort()
@@ -257,6 +262,8 @@ async function measure(
 
   let pending = 0
   let acknowledged = 0
+  let pumpErrors = 0
+  let lastPumpError: unknown = null
   const held: number[] = []
   const streams = pumps.map((start, index) => {
     held.push(0)
@@ -267,6 +274,10 @@ async function measure(
       transfer(bytes, seconds) {
         acknowledged += bytes
         held[index] = (bytes * 8) / seconds / 1e6
+      },
+      fail(error) {
+        pumpErrors += 1
+        lastPumpError = error
       },
     })
   })
@@ -333,6 +344,18 @@ async function measure(
     acknowledged = 0
     last = now
 
+    if (requireBytes && bytes === 0 && pumpErrors >= Math.max(3, pumps.length * 2)) {
+      stop()
+      loading = false
+      abortPings()
+      signal.removeEventListener('abort', stop)
+      signal.removeEventListener('abort', abortPings)
+      await Promise.allSettled([...streams, pinger, ...flights])
+      throw lastPumpError instanceof Error
+        ? lastPumpError
+        : new Error('Download stream unavailable')
+    }
+
     samples.push(mbps)
     estimates.push(estimate(samples))
     chartLine += (smoothed(samples) - chartLine) * CHART_POLISH
@@ -347,6 +370,13 @@ async function measure(
   loading = false
   signal.removeEventListener('abort', stop)
   await Promise.allSettled(streams)
+
+  if (requireBytes && !signal.aborted && bytes === 0) {
+    abortPings()
+    signal.removeEventListener('abort', abortPings)
+    await Promise.allSettled([pinger, ...flights])
+    throw lastPumpError instanceof Error ? lastPumpError : new Error('Download returned 0 bytes')
+  }
 
   const mbps = sustained(samples)
   const loadedLatency = () => {
@@ -393,20 +423,48 @@ export async function runSpeedtest(
   const abortIdle = () => idle.abort()
   signal.addEventListener('abort', abortIdle, { once: true })
 
+  let pings: number[] = []
   try {
-    // First ping warms up DNS/TLS/QUIC and is discarded.
-    await ping(target.ping, signal)
+    // First ping warms up DNS/TLS/QUIC and is discarded (retry once on transient failure).
+    try {
+      await ping(target.ping, signal)
+    } catch (error) {
+      if (signal.aborted) throw error
+      await wait(150)
+      signal.throwIfAborted()
+      await ping(target.ping, signal)
+    }
+
+    let lastPingError: unknown = null
+    let consecutiveFailures = 0
     await Promise.all(
       Array.from({ length: LATENCY_PINGS }, async (_, index) => {
         await wait(index * LATENCY_PING_INTERVAL)
         if (idle.signal.aborted) return
-        const ms = await ping(target.ping, idle.signal)
-        if (idle.signal.aborted) return
-        slots[index] = ms
-        report.latency(ms)
-        report.pings(landed(slots))
+        try {
+          const ms = await ping(target.ping, idle.signal)
+          if (idle.signal.aborted) return
+          consecutiveFailures = 0
+          slots[index] = ms
+          report.latency(ms)
+          report.pings(landed(slots))
+        } catch (error) {
+          lastPingError = error
+          consecutiveFailures += 1
+          if (consecutiveFailures >= EARLY_ABORT_PING_FAILURES && landed(slots).length === 0) {
+            idle.abort()
+          }
+        }
       }),
     )
+
+    signal.throwIfAborted()
+    pings = landed(slots)
+    if (pings.length < MIN_VALID_IDLE_PINGS) {
+      throw lastPingError instanceof Error
+        ? lastPingError
+        : new Error('Latency test failed: too many dropped pings')
+    }
   } catch (error) {
     idle.abort()
     if (!signal.aborted) {
@@ -418,7 +476,6 @@ export async function runSpeedtest(
     signal.removeEventListener('abort', abortIdle)
   }
 
-  const pings = landed(slots)
   report.latency(median(pings))
   report.jitter(meanAbsoluteDelta(pings))
 
@@ -438,7 +495,7 @@ export async function runSpeedtest(
   }
 
   report.phase('download')
-  const download = await measure(downloadPumps, target.ping, signal, report.download)
+  const download = await measure(downloadPumps, target.ping, signal, report.download, true)
   signal.throwIfAborted()
 
   let upload: Outcome | null = null
@@ -450,7 +507,7 @@ export async function runSpeedtest(
       uploadPumps.push((phaseSignal, meter) => pumpUpload(url, phaseSignal, meter))
     }
     report.phase('upload')
-    upload = await measure(uploadPumps, target.ping, signal, report.upload)
+    upload = await measure(uploadPumps, target.ping, signal, report.upload, false)
     signal.throwIfAborted()
   }
 

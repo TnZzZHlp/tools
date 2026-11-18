@@ -1,5 +1,5 @@
 import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy } from 'pdfjs-dist'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&url'
 
 GlobalWorkerOptions.workerSrc = workerUrl
 

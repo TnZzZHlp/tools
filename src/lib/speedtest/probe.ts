@@ -49,9 +49,25 @@ export async function probePingUrl(
         samples.push(ms)
       }
     } catch {
-      // Keep any earlier valid sample; return null only if no sample succeeds.
+      // Keep any earlier valid sample; confirm below if only one landed.
     } finally {
       attempt.cleanup()
+    }
+  }
+
+  if (samples.length === 1 && !signal?.aborted) {
+    const confirm = withTimeout(signal, sampleTimeout)
+    try {
+      const ms = await ping(pingUrl, confirm.signal)
+      if (Number.isFinite(ms) && ms >= 0) {
+        samples.push(ms)
+      } else {
+        return null
+      }
+    } catch {
+      return null
+    } finally {
+      confirm.cleanup()
     }
   }
 
@@ -85,32 +101,53 @@ export function scoreTarget(
   return score
 }
 
+/** Returns candidate targets ordered from best reachable node to unprobed regional fallbacks. */
+export function rankOptimalTargets(
+  targets: readonly SpeedtestTarget[],
+  latencies: Readonly<Record<string, number | null | undefined>>,
+  countryCode?: string,
+  excludedIds?: ReadonlySet<string>,
+): SpeedtestTarget[] {
+  const eligible = targets.filter((target) => !target.dataSaver && !excludedIds?.has(target.id))
+
+  const reachable = eligible
+    .filter((target) => {
+      const ms = latencies[target.id]
+      return typeof ms === 'number' && Number.isFinite(ms)
+    })
+    .sort(
+      (a, b) =>
+        scoreTarget(a, latencies[a.id], countryCode) - scoreTarget(b, latencies[b.id], countryCode),
+    )
+
+  const preferDomestic = countryCode === 'CN'
+  const unprobed = eligible
+    .filter((target) => latencies[target.id] === undefined)
+    .sort((a, b) => {
+      const aMatch = preferDomestic ? a.region === 'domestic' : a.region === 'global'
+      const bMatch = preferDomestic ? b.region === 'domestic' : b.region === 'global'
+      if (aMatch === bMatch) return 0
+      return aMatch ? -1 : 1
+    })
+
+  return [...reachable, ...unprobed]
+}
+
 /** Selects the highest-scoring reachable target, falling back by region if no probes have landed. */
 export function pickOptimalTarget(
   targets: readonly SpeedtestTarget[],
   latencies: Readonly<Record<string, number | null | undefined>>,
   countryCode?: string,
+  excludedIds?: ReadonlySet<string>,
 ): SpeedtestTarget {
-  let best: SpeedtestTarget | null = null
-  let bestScore = Number.POSITIVE_INFINITY
+  const ranked = rankOptimalTargets(targets, latencies, countryCode, excludedIds)
+  if (ranked[0]) return ranked[0]
 
-  for (const target of targets) {
-    const score = scoreTarget(target, latencies[target.id], countryCode)
-    if (score < bestScore) {
-      bestScore = score
-      best = target
-    }
-  }
-
-  if (best) return best
-
-  if (countryCode === 'CN') {
-    return (
-      targets.find((target) => target.region === 'domestic' && !target.dataSaver) ?? targets[0]!
-    )
-  }
-
-  return targets.find((target) => !target.dataSaver) ?? targets[0]!
+  return (
+    targets.find((target) => !target.dataSaver && !excludedIds?.has(target.id)) ??
+    targets.find((target) => !target.dataSaver) ??
+    targets[0]!
+  )
 }
 
 export interface ProbeTargetsOptions {

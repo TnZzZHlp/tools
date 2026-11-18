@@ -21,6 +21,7 @@ import {
   median,
   pickOptimalTarget,
   probeTargets,
+  rankOptimalTargets,
   scoreTarget,
   shouldStop,
   smoothed,
@@ -146,9 +147,11 @@ describe('speedtest formatting & engine helpers', () => {
 
     for (const target of BUILTIN_TARGETS) {
       expect(target.ping.startsWith('https://')).toBe(true)
+      expect(target.ping).not.toContain('123pan.com')
       expect(target.download.length).toBeGreaterThan(0)
       for (const url of target.download) {
         expect(url.startsWith('https://')).toBe(true)
+        expect(url).not.toContain('123pan.com')
       }
     }
   })
@@ -190,6 +193,23 @@ describe('speedtest formatting & engine helpers', () => {
     // Fallback before any probes land
     expect(pickOptimalTarget(BUILTIN_TARGETS, {}, 'CN').id).toBe(cnMulti.id)
     expect(pickOptimalTarget(BUILTIN_TARGETS, {}, 'SG').id).toBe(cfEdge.id)
+
+    // Ranking & automatic advancement when primary candidates are excluded
+    const latencies = {
+      'cn-multi': 18,
+      'cn-tencent': 22,
+      'cn-aliyun': 26,
+      'cloudflare-edge': 160,
+    }
+    expect(
+      rankOptimalTargets(BUILTIN_TARGETS, latencies, 'CN')
+        .map((t) => t.id)
+        .slice(0, 3),
+    ).toEqual(['cn-multi', 'cn-tencent', 'cn-aliyun'])
+    const excluded = new Set(['cn-multi'])
+    expect(pickOptimalTarget(BUILTIN_TARGETS, latencies, 'CN', excluded).id).toBe('cn-tencent')
+    excluded.add('cn-tencent')
+    expect(pickOptimalTarget(BUILTIN_TARGETS, latencies, 'CN', excluded).id).toBe('cn-aliyun')
   })
 
   it('deduplicates shared ping URLs during probeTargets and handles failures', async () => {
@@ -298,6 +318,88 @@ describe('SpeedtestView component', () => {
     expect(wrapper.text()).toContain('已隐藏')
     expect(wrapper.text()).not.toContain('198.51.100.42')
 
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('automatically fails over to the next optimal node when the top candidate fails during test', async () => {
+    let failCloudflare = false
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString()
+        if (url.includes('ip.sb')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ip: '198.51.100.42',
+              country: 'Singapore',
+              country_code: 'SG',
+              region: 'Singapore',
+              city: 'Singapore',
+              timezone: 'Asia/Singapore',
+              isp: 'Cloudflare, Inc.',
+              asn: 13335,
+            }),
+          }
+        }
+        if (url.includes('speed.cloudflare.com')) {
+          return {
+            ok: !failCloudflare,
+            status: failCloudflare ? 403 : 200,
+            body: null,
+          }
+        }
+        if (url.includes('laxspeed.sharktech.net')) {
+          await new Promise((resolve) => setTimeout(resolve, 25))
+          return {
+            ok: true,
+            status: 200,
+            body: null,
+          }
+        }
+        return {
+          ok: false,
+          status: 503,
+          body: null,
+        }
+      }),
+    )
+
+    const Harness = defineComponent({
+      setup() {
+        return () =>
+          h(ThemeProvider, null, {
+            default: () =>
+              h(ToastProvider, null, {
+                default: () => h(SpeedtestView),
+              }),
+          })
+      },
+    })
+
+    const wrapper = mount(Harness)
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('自动优选 · Cloudflare 全球边缘')
+    })
+
+    failCloudflare = true
+    const startBtn = wrapper.findAll('button').find((btn) => btn.text().includes('开始测速'))
+    expect(startBtn).toBeTruthy()
+    await startBtn!.trigger('click')
+
+    await vi.waitFor(
+      () => {
+        expect(wrapper.text()).toContain('Sharktech 美西 · 洛杉矶')
+      },
+      { timeout: 3000 },
+    )
+    expect(wrapper.text()).not.toContain('测速中断')
+
+    const stopBtn = wrapper.findAll('button').find((btn) => btn.text().includes('停止测速'))
+    await stopBtn?.trigger('click')
     wrapper.unmount()
     vi.unstubAllGlobals()
   })

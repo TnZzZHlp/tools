@@ -59,6 +59,7 @@ import {
   pickOptimalTarget,
   probePingUrl,
   probeTargets,
+  rankOptimalTargets,
   runSpeedtest,
   saveCustomTargets,
   saveSelectedTargetId,
@@ -73,6 +74,7 @@ import { cn } from '@/lib/utils'
 const SCREENSHOT_MARGIN = 24
 const RE_TIMESTAMP_SEPARATORS = /[:T]/g
 const MAX_SAMPLES = Math.round(MAX_DURATION / SAMPLE_INTERVAL)
+const MAX_AUTO_FAILOVER_ATTEMPTS = 5
 const LATENCY_SHARE = LATENCY_BUDGET / 1000
 const TRANSFER_SHARE = MIN_DURATION
 
@@ -101,6 +103,7 @@ const selectedTargetId = ref<string>(
 
 const isAutoMode = computed(() => selectedTargetId.value === AUTO_TARGET_ID)
 const probeLatencies = ref<Record<string, number | null>>({})
+const unavailableTargetIds = ref<Set<string>>(new Set())
 const probing = ref(false)
 const hasAnyProbeResult = computed(() =>
   Object.values(probeLatencies.value).some((v) => typeof v === 'number'),
@@ -120,7 +123,12 @@ let probeController: AbortController | null = null
 let activeProbePromise: Promise<unknown> | null = null
 
 const autoTarget = computed<SpeedtestTarget>(() =>
-  pickOptimalTarget(allTargets.value, probeLatencies.value, geo.value?.country_code),
+  pickOptimalTarget(
+    allTargets.value,
+    probeLatencies.value,
+    geo.value?.country_code,
+    unavailableTargetIds.value,
+  ),
 )
 const lockedTarget = ref<SpeedtestTarget | null>(null)
 
@@ -243,12 +251,22 @@ async function runNodeProbe(showToast = false) {
   const controller = new AbortController()
   probeController = controller
   probing.value = true
+  if (showToast) {
+    unavailableTargetIds.value = new Set()
+  }
 
   const task = probeTargets(allTargets.value, {
     signal: controller.signal,
     onResult: (id, ms) => {
       if (controller.signal.aborted) return
       probeLatencies.value = { ...probeLatencies.value, [id]: ms }
+      const nextUnavailable = new Set(unavailableTargetIds.value)
+      if (ms === null) {
+        nextUnavailable.add(id)
+      } else {
+        nextUnavailable.delete(id)
+      }
+      unavailableTargetIds.value = nextUnavailable
     },
   })
   activeProbePromise = task
@@ -293,42 +311,90 @@ async function startTest() {
   probeController = null
   probing.value = false
 
-  const target = currentTarget.value
-  lockedTarget.value = target
+  const autoMode = isAutoMode.value
+  const maxAttempts = autoMode ? MAX_AUTO_FAILOVER_ATTEMPTS : 1
+  let lastError: unknown = null
 
-  runSpeedtest(mode.value, target, controller.signal, {
-    phase: (next) => {
-      phase.value = next
-    },
-    latency: (ms) => {
-      idleLatency.value = ms
-    },
-    pings: (list) => {
-      idlePings.value = list
-    },
-    jitter: (ms) => {
-      jitter.value = ms
-    },
-    download: (reading) => {
-      download.value = reading
-    },
-    upload: (reading) => {
-      upload.value = reading
-    },
-  })
-    .catch((err: unknown) => {
-      if (controller.signal.aborted) return
+  try {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const target = autoMode
+        ? (rankOptimalTargets(
+            allTargets.value,
+            probeLatencies.value,
+            geo.value?.country_code,
+            unavailableTargetIds.value,
+          )[0] ?? currentTarget.value)
+        : currentTarget.value
+
+      lockedTarget.value = target
+      if (attempt > 0) {
+        resetFigures('latency')
+      }
+
+      try {
+        await runSpeedtest(mode.value, target, controller.signal, {
+          phase: (next) => {
+            phase.value = next
+          },
+          latency: (ms) => {
+            idleLatency.value = ms
+          },
+          pings: (list) => {
+            idlePings.value = list
+          },
+          jitter: (ms) => {
+            jitter.value = ms
+          },
+          download: (reading) => {
+            download.value = reading
+          },
+          upload: (reading) => {
+            upload.value = reading
+          },
+        })
+        return
+      } catch (err: unknown) {
+        if (controller.signal.aborted) return
+        lastError = err
+
+        if (!autoMode) break
+
+        const nextUnavailable = new Set(unavailableTargetIds.value)
+        nextUnavailable.add(target.id)
+        unavailableTargetIds.value = nextUnavailable
+        probeLatencies.value = { ...probeLatencies.value, [target.id]: null }
+
+        const nextCandidate = rankOptimalTargets(
+          allTargets.value,
+          probeLatencies.value,
+          geo.value?.country_code,
+          unavailableTargetIds.value,
+        )[0]
+
+        if (!nextCandidate || attempt + 1 >= maxAttempts) {
+          break
+        }
+
+        toast({
+          title: `节点「${target.name}」不可用`,
+          description: `已自动切换至下一最优节点「${nextCandidate.name}」`,
+          variant: 'default',
+        })
+      }
+    }
+
+    if (!controller.signal.aborted) {
       phase.value = idleLatency.value === null ? 'idle' : 'done'
       runError.value =
-        err instanceof Error && err.message
-          ? `连接测速节点失败（${err.message}）。请检查网络或自定义测速源是否允许跨域请求（CORS）。`
+        lastError instanceof Error && lastError.message
+          ? `连接测速节点失败（${lastError.message}）。请检查网络或自定义测速源是否允许跨域请求（CORS）。`
           : '无法连接至当前测速节点，请检查网络设置或切换测速源后重试。'
-    })
-    .finally(() => {
-      if (runController === controller) {
-        lockedTarget.value = null
-      }
-    })
+    }
+  } finally {
+    if (runController === controller) {
+      lockedTarget.value = null
+    }
+  }
 }
 
 function toggleRun() {
