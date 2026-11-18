@@ -108,5 +108,5 @@ jobs:
                   rsync -avz --delete -e ssh dist/ "deploy-target:$TEMP_DIR/"
                   ssh deploy-target "rm -rf '${REMOTE_DIR}_prev' || true
                      if [ -d '$REMOTE_DIR' ]; then mv '$REMOTE_DIR' '${REMOTE_DIR}_prev'; fi
-                     mv '$TEMP_DIR' '$REMOTE_DIR'"
+                     mv '$TEMP_DIR' '$REMOTE_DIR' && rm -rf '${REMOTE_DIR}_prev'"
               shell: bash
