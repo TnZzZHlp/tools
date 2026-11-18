@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { IScannerControls } from '@zxing/browser'
-
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
 import {
-  Barcode,
   Camera,
   CameraOff,
   Check,
   ClipboardCopy,
   FileImage,
   LoaderCircle,
+  QrCode,
   ScanLine,
+  Trash2,
   Upload,
   X,
 } from 'lucide-vue-next'
+
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface BarcodeResult {
   text: string
@@ -71,11 +73,12 @@ const results = ref<BarcodeResult[]>([])
 const error = ref('')
 const loading = ref(false)
 const dragging = ref(false)
-const copySuccess = ref(false)
+const copySuccessIndex = ref<number | null>(null)
 const inputMode = ref<InputMode>('image')
 const cameraStarting = ref(false)
 const cameraActive = ref(false)
 const cameraDetected = ref(false)
+
 let recognitionToken = 0
 let cameraSession = 0
 let scannerControls: IScannerControls | undefined
@@ -125,7 +128,8 @@ async function selectFile(nextFile: File | null) {
   previewUrl.value = URL.createObjectURL(nextFile)
   results.value = []
   error.value = ''
-  copySuccess.value = false
+  copySuccessIndex.value = null
+  await nextTick()
   await recognize()
 }
 
@@ -160,27 +164,28 @@ function clearFile() {
   results.value = []
   error.value = ''
   loading.value = false
-  copySuccess.value = false
+  copySuccessIndex.value = null
 }
 
-function switchInputMode(nextMode: InputMode) {
-  if (inputMode.value === nextMode) return
+function switchInputMode(nextMode: string | number) {
+  const mode = nextMode === 'camera' ? 'camera' : 'image'
+  if (inputMode.value === mode) return
 
   recognitionToken++
   loading.value = false
   results.value = []
   error.value = ''
-  copySuccess.value = false
-  inputMode.value = nextMode
+  copySuccessIndex.value = null
+  inputMode.value = mode
 
-  if (nextMode === 'camera') {
+  if (mode === 'camera') {
     void startCamera()
     return
   }
 
   stopCamera()
   if (previewUrl.value) {
-    void recognize()
+    void nextTick(() => recognize())
   }
 }
 
@@ -193,7 +198,6 @@ async function startCamera() {
   stopCamera()
   const currentSession = ++cameraSession
   cameraStarting.value = true
-  results.value = []
   error.value = ''
 
   try {
@@ -237,7 +241,7 @@ async function startCamera() {
           (item) => item.text === nextResult.text && item.format === nextResult.format,
         )
         if (!alreadyFound) {
-          results.value.push(nextResult)
+          results.value.unshift(nextResult)
         }
 
         cameraDetected.value = true
@@ -340,8 +344,6 @@ async function recognize() {
         region.height,
       )
 
-      // ZXing 每次只返回一个结果。识别后遮盖该区域并继续扫描，
-      // 再结合重叠分块，避免同一张图片中其余条码被忽略。
       for (let attempt = 0; attempt < 8; attempt++) {
         try {
           const decoded = reader.decodeFromCanvas(scanCanvas)
@@ -527,16 +529,28 @@ function drawPreview(image: HTMLImageElement, barcodes: BarcodeResult[]) {
   })
 }
 
-async function copyContent() {
-  if (!results.value.length) return
-
+async function copySingle(text: string, index: number) {
   try {
-    await navigator.clipboard.writeText(results.value.map((item) => item.text).join('\n'))
-    copySuccess.value = true
+    await navigator.clipboard.writeText(text)
+    copySuccessIndex.value = index
     clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {
-      copySuccess.value = false
-    }, 2000)
+      copySuccessIndex.value = null
+    }, 1800)
+  } catch {
+    error.value = '复制失败，请手动选择识别内容。'
+  }
+}
+
+async function copyAll() {
+  if (!results.value.length) return
+  try {
+    await navigator.clipboard.writeText(results.value.map((item) => item.text).join('\n'))
+    copySuccessIndex.value = -1
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      copySuccessIndex.value = null
+    }, 1800)
   } catch {
     error.value = '复制失败，请手动选择识别内容。'
   }
@@ -544,249 +558,64 @@ async function copyContent() {
 </script>
 
 <template>
-  <section
-    class="grid h-full min-h-0 gap-4 overflow-auto lg:grid-cols-[minmax(18rem,2fr)_minmax(0,3fr)] lg:gap-6 lg:overflow-hidden"
-    :aria-busy="loading || cameraStarting"
-    data-morph-target
-  >
-    <section class="flex min-h-0 flex-col">
-      <header class="shrink-0 space-y-2">
-        <Badge variant="secondary">条码识别</Badge>
-        <div>
-          <h2 class="text-xl font-semibold tracking-tight">
-            {{ inputMode === 'image' ? '读取条码图片' : '摄像头实时识别' }}
-          </h2>
-          <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            图片和摄像头画面仅在浏览器本地处理，不会上传到服务器。
-          </p>
-        </div>
-      </header>
-
-      <div class="visible-scrollbar min-h-0 flex-1 space-y-4 overflow-auto pt-6">
-        <div class="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
-          <Button
-            type="button"
-            :variant="inputMode === 'image' ? 'secondary' : 'ghost'"
-            size="sm"
-            @click="switchInputMode('image')"
-          >
-            <FileImage class="h-4 w-4" />
-            图片识别
-          </Button>
-          <Button
-            type="button"
-            :variant="inputMode === 'camera' ? 'secondary' : 'ghost'"
-            size="sm"
-            @click="switchInputMode('camera')"
-          >
-            <Camera class="h-4 w-4" />
-            摄像头
-          </Button>
-        </div>
-
-        <template v-if="inputMode === 'image'">
-          <div
-            class="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :class="dragging ? 'border-primary bg-muted/70' : 'hover:bg-muted/40'"
-            role="button"
-            tabindex="0"
-            @click="fileInput?.click()"
-            @keydown.enter="fileInput?.click()"
-            @keydown.space.prevent="fileInput?.click()"
-            @dragenter.prevent="dragging = true"
-            @dragover.prevent="dragging = true"
-            @dragleave.prevent="dragging = false"
-            @drop.prevent="handleDrop"
-          >
-            <input
-              ref="fileInput"
-              class="hidden"
-              type="file"
-              accept="image/*"
-              @change="handleFileInput"
-            />
-            <Upload class="mb-4 h-10 w-10 text-muted-foreground" />
-            <p class="font-medium">粘贴、拖放或选择图片</p>
-            <p class="mt-2 text-sm leading-6 text-muted-foreground">
-              支持二维码及常见一维、二维条码
-            </p>
-          </div>
-
-          <div v-if="file" class="flex items-center justify-between gap-3 rounded-lg border p-3">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium">{{ file.name }}</p>
-              <p class="text-xs text-muted-foreground">{{ file.type }} · {{ fileSize }}</p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="移除图片"
-              @click="clearFile"
-            >
-              <X class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Button type="button" class="w-full" :disabled="!file || loading" @click="recognize">
-            <LoaderCircle v-if="loading" class="h-4 w-4 animate-spin" />
-            <ScanLine v-else class="h-4 w-4" />
-            {{ loading ? '识别中' : '重新识别' }}
-          </Button>
-        </template>
-
-        <template v-else>
-          <div
-            class="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center"
-          >
-            <Camera class="mb-4 h-10 w-10 text-muted-foreground" />
-            <p class="font-medium">
-              {{
-                cameraStarting
-                  ? '正在请求摄像头权限'
-                  : cameraActive
-                    ? '摄像头正在实时识别'
-                    : '摄像头已停止'
-              }}
-            </p>
-            <p class="mt-2 text-sm leading-6 text-muted-foreground">
-              将条码置于取景框中央，并保持画面稳定、光线充足
-            </p>
-          </div>
-
-          <Button
-            v-if="cameraActive"
-            type="button"
-            variant="outline"
-            class="w-full"
-            @click="stopCamera"
-          >
-            <CameraOff class="h-4 w-4" />
-            停止摄像头
-          </Button>
-          <Button
-            v-else
-            type="button"
-            class="w-full"
-            :disabled="cameraStarting"
-            @click="startCamera"
-          >
-            <LoaderCircle v-if="cameraStarting" class="h-4 w-4 animate-spin" />
-            <Camera v-else class="h-4 w-4" />
-            {{ cameraStarting ? '正在启动' : '启动摄像头' }}
-          </Button>
-        </template>
-
-        <Alert v-if="error" variant="destructive">
-          <AlertTitle>{{ inputMode === 'camera' ? '无法使用摄像头' : '识别失败' }}</AlertTitle>
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
-      </div>
-    </section>
-
-    <section
-      class="flex min-h-[30rem] flex-col border-t pt-4 lg:min-h-0 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
+  <div class="flex flex-col pb-8" :aria-busy="loading || cameraStarting">
+    <ToolPageHeader
+      title="二维码 / 条码识别"
+      description="粘贴或上传图片识别同一画面中的多个条码，或开启摄像头实时扫码；全程本地解析。"
+      badge="本地离线"
+      :icon="QrCode"
     >
-      <header class="flex shrink-0 items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold">识别结果</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            <template v-if="results.length">共识别到 {{ results.length }} 个条码</template>
-            <template v-else>显示条码位置、内容和编码格式</template>
-          </p>
-        </div>
-        <Button
-          v-if="results.length"
-          type="button"
-          variant="outline"
-          size="sm"
-          :class="
-            copySuccess &&
-            'border-green-600 text-green-600 dark:border-green-400 dark:text-green-400'
-          "
-          @click="copyContent"
-        >
-          <Check v-if="copySuccess" class="h-4 w-4" />
-          <ClipboardCopy v-else class="h-4 w-4" />
-          {{ copySuccess ? '已复制' : '复制内容' }}
-        </Button>
-      </header>
+      <template #actions>
+        <Tabs :model-value="inputMode" @update:model-value="switchInputMode">
+          <TabsList>
+            <TabsTrigger value="image" class="gap-1.5 px-3 text-xs sm:text-sm">
+              <FileImage class="size-3.5" />
+              图片识别
+            </TabsTrigger>
+            <TabsTrigger value="camera" class="gap-1.5 px-3 text-xs sm:text-sm">
+              <Camera class="size-3.5" />
+              摄像头扫码
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </template>
+    </ToolPageHeader>
 
-      <div class="visible-scrollbar min-h-0 flex-1 overflow-auto pt-4">
-        <div
-          v-if="inputMode === 'camera' || previewUrl"
-          class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,1fr)]"
-        >
-          <Card v-if="inputMode === 'camera'" class="gap-4 py-4">
-            <CardHeader class="px-4">
-              <CardTitle class="flex items-center gap-2 text-base">
-                <Camera class="h-4 w-4" />
-                摄像头预览
-              </CardTitle>
-            </CardHeader>
-            <CardContent class="px-4">
-              <div
-                class="relative flex min-h-64 items-center justify-center overflow-hidden rounded-lg bg-black"
-              >
-                <video
-                  ref="cameraVideo"
-                  class="max-h-[55dvh] w-full object-contain"
-                  autoplay
-                  muted
-                  playsinline
-                  aria-label="条码实时识别摄像头画面"
-                />
-                <div
-                  v-if="cameraActive"
-                  class="pointer-events-none absolute inset-[15%] rounded-lg border-2 transition-colors"
-                  :class="
-                    cameraDetected
-                      ? 'border-green-500 bg-green-500/10'
-                      : 'border-white/80 bg-transparent'
-                  "
-                  aria-hidden="true"
-                >
-                  <span class="absolute top-1/2 left-1/2 h-px w-3/4 -translate-x-1/2 bg-white/80" />
-                </div>
-                <div
-                  v-if="!cameraActive && !cameraStarting"
-                  class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-sm text-white"
-                >
-                  <CameraOff class="mb-3 h-8 w-8" />
-                  摄像头未启动
-                </div>
-                <div
-                  v-else-if="cameraStarting"
-                  class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-sm text-white"
-                >
-                  <LoaderCircle class="mb-3 h-8 w-8 animate-spin" />
-                  正在启动摄像头
-                </div>
-                <Badge
-                  v-if="cameraActive"
-                  class="absolute top-3 left-3"
-                  :variant="cameraDetected ? 'default' : 'secondary'"
-                >
-                  {{ cameraDetected ? '已识别' : '实时扫描中' }}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+    <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <!-- Left Card: Viewfinder / Image Canvas -->
+      <Card class="py-5">
+        <CardHeader class="px-5">
+          <div class="flex items-center justify-between gap-2">
+            <CardTitle class="text-base">
+              {{ inputMode === 'image' ? '条码图片画面' : '实时摄像头取景' }}
+            </CardTitle>
+            <Badge
+              v-if="inputMode === 'camera' && cameraActive"
+              :variant="cameraDetected ? 'default' : 'secondary'"
+            >
+              {{ cameraDetected ? '已捕获条码' : '实时扫描中' }}
+            </Badge>
+          </div>
+        </CardHeader>
 
-          <Card v-else class="gap-4 py-4">
-            <CardHeader class="px-4">
-              <CardTitle class="flex items-center gap-2 text-base">
-                <FileImage class="h-4 w-4" />
-                图片预览
-              </CardTitle>
-            </CardHeader>
-            <CardContent class="px-4">
+        <CardContent class="space-y-4 px-5">
+          <input
+            ref="fileInput"
+            class="hidden"
+            type="file"
+            accept="image/*"
+            @change="handleFileInput"
+          />
+
+          <template v-if="inputMode === 'image'">
+            <!-- Canvas Preview when Image Selected -->
+            <div v-if="previewUrl" class="space-y-3">
               <div
-                class="flex min-h-64 items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-3"
+                class="relative flex min-h-64 items-center justify-center overflow-hidden rounded-xl border bg-muted/35 p-3"
               >
                 <canvas
                   ref="previewCanvas"
-                  class="max-h-[55dvh] max-w-full rounded-md object-contain"
+                  class="max-h-[54dvh] max-w-full rounded-md object-contain"
                   role="img"
                   :aria-label="
                     results.length
@@ -794,77 +623,253 @@ async function copyContent() {
                       : '待识别的条码图片'
                   "
                 />
+                <div
+                  v-if="loading"
+                  class="absolute inset-0 flex items-center justify-center gap-2 bg-background/70 text-sm font-medium backdrop-blur-[2px]"
+                >
+                  <LoaderCircle class="size-5 animate-spin text-primary" />
+                  正在识别条码…
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card v-if="results.length" class="gap-4 py-4">
-            <CardHeader class="px-4">
-              <div class="flex items-center justify-between gap-3">
-                <CardTitle class="flex items-center gap-2 text-base">
-                  <Barcode class="h-4 w-4" />
-                  条码信息（{{ results.length }}）
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent class="space-y-3 px-4">
               <div
-                v-for="(result, index) in results"
-                :key="`${result.format}-${result.text}-${index}`"
-                class="space-y-3 rounded-lg border p-3"
+                v-if="file"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/25 px-3 py-2"
               >
-                <div class="flex items-center justify-between gap-3">
-                  <span
-                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-green-600 text-xs font-semibold text-white"
-                  >
-                    {{ index + 1 }}
-                  </span>
-                  <Badge variant="secondary">{{ result.formatLabel }}</Badge>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium">{{ file.name }}</p>
+                  <p class="text-xs text-muted-foreground">{{ file.type }} · {{ fileSize }}</p>
                 </div>
-                <Textarea
-                  :model-value="result.text"
-                  class="visible-scrollbar min-h-20 resize-none overflow-auto font-mono"
-                  readonly
-                  spellcheck="false"
-                />
-                <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
-                  <span class="text-muted-foreground">原始格式名</span>
-                  <code class="break-all">{{ result.format }}</code>
-                  <span class="text-muted-foreground">字符数</span>
-                  <span>{{ Array.from(result.text).length }}</span>
+                <div class="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    class="h-8 text-xs"
+                    @click="fileInput?.click()"
+                  >
+                    <Upload class="size-3.5" />
+                    更换图片
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    class="size-8 text-muted-foreground hover:text-destructive"
+                    aria-label="移除图片"
+                    @click="clearFile"
+                  >
+                    <X class="size-4" />
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              <Button type="button" class="w-full" :disabled="loading" @click="recognize">
+                <LoaderCircle v-if="loading" class="size-4 animate-spin" />
+                <ScanLine v-else class="size-4" />
+                {{ loading ? '识别中…' : '重新扫描图片' }}
+              </Button>
+            </div>
+
+            <!-- Upload Dropzone when Empty -->
+            <div
+              v-else
+              role="button"
+              tabindex="0"
+              class="group flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              :class="
+                dragging
+                  ? 'border-primary bg-accent/60'
+                  : 'border-border hover:border-foreground/30 hover:bg-muted/35'
+              "
+              @click="fileInput?.click()"
+              @keydown.enter.prevent="fileInput?.click()"
+              @keydown.space.prevent="fileInput?.click()"
+              @dragenter.prevent="dragging = true"
+              @dragover.prevent="dragging = true"
+              @dragleave.prevent="dragging = false"
+              @drop.prevent="handleDrop"
+            >
+              <div
+                class="mb-3 flex size-12 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+              >
+                <Upload class="size-5" />
+              </div>
+              <p class="text-base font-medium text-foreground">粘贴截图、拖放或点击选择图片</p>
+              <p class="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                支持 QR Code、Code 128、EAN-13、Data Matrix 等常见一维与二维条码
+              </p>
+            </div>
+          </template>
+
+          <!-- Live Camera Viewfinder directly in Left Card -->
+          <template v-else>
+            <div class="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-950">
+              <video
+                ref="cameraVideo"
+                class="h-full w-full object-cover"
+                autoplay
+                muted
+                playsinline
+                aria-label="条码实时识别摄像头画面"
+              />
+
+              <div
+                v-if="cameraActive"
+                class="pointer-events-none absolute inset-[15%] rounded-xl border-2 transition-colors"
+                :class="
+                  cameraDetected
+                    ? 'border-emerald-400 bg-emerald-400/10'
+                    : 'border-white/80 bg-transparent'
+                "
+                aria-hidden="true"
+              >
+                <span
+                  class="absolute top-1/2 left-1/2 h-px w-3/4 -translate-x-1/2 bg-emerald-400/90"
+                />
+              </div>
+
+              <div
+                v-if="!cameraActive && !cameraStarting"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-sm text-white/85"
+              >
+                <CameraOff class="mb-2.5 size-8 opacity-80" />
+                <p>摄像头已停止，点击下方按钮启动扫码</p>
+              </div>
+
+              <div
+                v-else-if="cameraStarting"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-sm text-white"
+              >
+                <LoaderCircle class="mb-2.5 size-8 animate-spin" />
+                <p>正在请求摄像头权限…</p>
+              </div>
+            </div>
+
+            <Button
+              v-if="cameraActive"
+              type="button"
+              variant="outline"
+              class="w-full"
+              @click="stopCamera"
+            >
+              <CameraOff class="size-4" />
+              停止摄像头
+            </Button>
+            <Button
+              v-else
+              type="button"
+              class="w-full"
+              :disabled="cameraStarting"
+              @click="startCamera"
+            >
+              <LoaderCircle v-if="cameraStarting" class="size-4 animate-spin" />
+              <Camera v-else class="size-4" />
+              {{ cameraStarting ? '正在启动…' : '启动摄像头扫码' }}
+            </Button>
+          </template>
+
+          <Alert v-if="error" variant="destructive">
+            <AlertTitle>{{ inputMode === 'camera' ? '无法使用摄像头' : '识别未成功' }}</AlertTitle>
+            <AlertDescription>{{ error }}</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+
+      <!-- Right Card: Decoded Results -->
+      <Card class="min-w-0 py-5">
+        <CardHeader class="px-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <CardTitle class="text-base">识别结果</CardTitle>
+              <Badge variant="secondary" class="tabular-nums font-normal">
+                {{ results.length }} 条
+              </Badge>
+            </div>
+
+            <div v-if="results.length" class="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="h-8 text-xs"
+                :class="
+                  copySuccessIndex === -1 &&
+                  'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                "
+                @click="copyAll"
+              >
+                <Check v-if="copySuccessIndex === -1" class="size-3.5" />
+                <ClipboardCopy v-else class="size-3.5" />
+                {{ copySuccessIndex === -1 ? '已复制全部' : '复制全部' }}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                @click="results = []"
+              >
+                <Trash2 class="size-3.5" />
+                清空
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent class="px-5">
+          <ul v-if="results.length" class="space-y-2.5">
+            <li
+              v-for="(item, index) in results"
+              :key="`${item.format}-${item.text}-${index}`"
+              class="rounded-xl border bg-muted/20 p-3.5 transition-colors hover:bg-muted/40"
+            >
+              <div class="mb-2 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <Badge variant="secondary" class="font-mono text-xs tabular-nums">
+                    #{{ index + 1 }}
+                  </Badge>
+                  <Badge variant="outline" class="font-normal">
+                    {{ item.formatLabel }}
+                  </Badge>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="h-7 px-2 text-xs"
+                  :class="copySuccessIndex === index && 'text-emerald-600 dark:text-emerald-400'"
+                  @click="copySingle(item.text, index)"
+                >
+                  <Check v-if="copySuccessIndex === index" class="size-3.5" />
+                  <ClipboardCopy v-else class="size-3.5" />
+                  {{ copySuccessIndex === index ? '已复制' : '复制' }}
+                </Button>
+              </div>
+
+              <p class="break-all font-mono text-sm leading-relaxed text-foreground">
+                {{ item.text }}
+              </p>
+            </li>
+          </ul>
 
           <div
             v-else
-            class="flex min-h-64 items-center justify-center rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground"
+            class="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center text-muted-foreground"
           >
-            <span v-if="inputMode === 'camera' && cameraActive">
-              将条码对准取景框，识别结果会自动显示
-            </span>
-            <span v-else-if="inputMode === 'camera'">启动摄像头后开始实时识别</span>
-            <span v-else-if="loading">正在分析图片中的条码…</span>
-            <span v-else>识别结果会显示在这里</span>
+            <ScanLine class="mb-3 size-8 opacity-50" aria-hidden="true" />
+            <p class="text-sm font-medium text-foreground">等待识别结果</p>
+            <p class="mt-1 max-w-xs text-xs leading-relaxed">
+              {{
+                inputMode === 'camera'
+                  ? '将条码或二维码对准左侧取景框中央，识别结果会自动追加到此处。'
+                  : '上传或粘贴条码图片后，将在此展示编码格式与完整内容。'
+              }}
+            </p>
           </div>
-        </div>
-
-        <div
-          v-else
-          class="flex h-full min-h-80 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center text-muted-foreground"
-        >
-          <ScanLine class="mb-4 h-10 w-10" />
-          <p class="font-medium text-foreground">等待条码图片</p>
-          <p class="mt-2 text-sm">选择、拖放或粘贴图片后自动识别</p>
-        </div>
-      </div>
-    </section>
-  </section>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
 </template>
-
-<style scoped>
-.visible-scrollbar {
-  scrollbar-width: thin;
-}
-</style>

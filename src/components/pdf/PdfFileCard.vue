@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, GripVertical, RotateCw, Trash2 } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
+import { ArrowDown, ArrowUp, GripVertical, LoaderCircle, RotateCw, Trash2 } from 'lucide-vue-next'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import PdfThumbnail from './PdfThumbnail.vue'
 import type { PdfEntry } from '@/composables/usePdfMerge'
+import PdfThumbnail from './PdfThumbnail.vue'
 
 const props = defineProps<{ entry: PdfEntry; index: number; count: number; busy: boolean }>()
 const emit = defineEmits<{
@@ -26,69 +28,95 @@ function dragStart(event: DragEvent) {
 </script>
 
 <template>
-  <Card class="gap-3" @dragover.prevent @drop.prevent.stop="emit('dropFile', $event)">
-    <CardHeader class="gap-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          :draggable="!busy"
-          class="cursor-grab rounded p-2 text-muted-foreground"
-          aria-label="拖动调整文件顺序"
-          title="拖动调整文件顺序"
-          @dragstart="dragStart"
-          ><GripVertical class="size-4"
-        /></span>
-        <div class="min-w-0 flex-1">
-          <h3 class="break-all font-medium">{{ index + 1 }}. {{ entry.file.name }}</h3>
-          <p class="text-xs text-muted-foreground">
-            {{ (entry.file.size / 1024 / 1024).toFixed(2) }} MB ·
-            {{ entry.status === 'loading' ? '正在读取' : `${entry.rotations.length} 页` }}
-          </p>
+  <Card class="gap-3 py-4" @dragover.prevent @drop.prevent.stop="emit('dropFile', $event)">
+    <CardHeader class="gap-2 px-4 sm:px-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <span
+            :draggable="!busy"
+            class="cursor-grab rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            aria-label="拖动调整文件顺序"
+            title="拖动调整文件顺序"
+            @dragstart="dragStart"
+          >
+            <GripVertical class="size-4" />
+          </span>
+
+          <Badge variant="secondary" class="shrink-0 tabular-nums">#{{ index + 1 }}</Badge>
+
+          <div class="min-w-0 flex-1">
+            <h3 class="truncate text-sm font-semibold sm:text-base" :title="entry.file.name">
+              {{ entry.file.name }}
+            </h3>
+            <p class="text-xs text-muted-foreground">
+              {{ (entry.file.size / 1024 / 1024).toFixed(2) }} MB ·
+              {{ entry.status === 'loading' ? '读取中…' : `${entry.rotations.length} 页` }}
+            </p>
+          </div>
         </div>
-        <div class="flex flex-wrap gap-1">
+
+        <div class="flex shrink-0 items-center gap-1">
           <Button
             variant="outline"
             size="sm"
+            class="h-8 text-xs"
             :disabled="busy || entry.status !== 'ready'"
             @click="emit('rotate')"
-            ><RotateCw class="size-4" />整份旋转</Button
           >
+            <RotateCw class="size-3.5" />
+            整份旋转
+          </Button>
           <Button
             variant="ghost"
             size="icon"
+            class="size-8"
             :disabled="busy || index === 0"
             :aria-label="`上移 ${entry.file.name}`"
             @click="emit('move', index - 1)"
-            ><ArrowUp class="size-4"
-          /></Button>
+          >
+            <ArrowUp class="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
+            class="size-8"
             :disabled="busy || index === count - 1"
             :aria-label="`下移 ${entry.file.name}`"
             @click="emit('move', index + 1)"
-            ><ArrowDown class="size-4"
-          /></Button>
+          >
+            <ArrowDown class="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
+            class="size-8 text-muted-foreground hover:text-destructive"
             :disabled="busy"
             :aria-label="`移除 ${entry.file.name}`"
             @click="emit('remove')"
-            ><Trash2 class="size-4"
-          /></Button>
+          >
+            <Trash2 class="size-4" />
+          </Button>
         </div>
       </div>
     </CardHeader>
-    <CardContent>
-      <Alert v-if="entry.status === 'error'" variant="destructive"
-        ><AlertDescription>{{ entry.error }}。请移除或替换该文件后再合并。</AlertDescription></Alert
+
+    <CardContent class="px-4 sm:px-5">
+      <Alert v-if="entry.status === 'error'" variant="destructive">
+        <AlertDescription>{{ entry.error }}。请移除或替换该文件后再合并。</AlertDescription>
+      </Alert>
+
+      <div
+        v-else-if="entry.status === 'loading'"
+        class="flex items-center gap-2 py-4 text-sm text-muted-foreground"
+        role="status"
       >
-      <p v-else-if="entry.status === 'loading'" class="text-sm text-muted-foreground" role="status">
-        正在读取 PDF…
-      </p>
+        <LoaderCircle class="size-4 animate-spin" />
+        <span>正在解析 PDF 页面预览…</span>
+      </div>
+
       <div
         v-else-if="entry.document"
-        class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6"
       >
         <PdfThumbnail
           v-for="(rotation, page) in entry.rotations"

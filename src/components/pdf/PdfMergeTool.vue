@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Download, LoaderCircle, Upload } from 'lucide-vue-next'
+import { Download, FilePlus2, LoaderCircle, Trash2, Upload } from 'lucide-vue-next'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import PdfFileCard from './PdfFileCard.vue'
 import { usePdfMerge } from '@/composables/usePdfMerge'
+import PdfFileCard from './PdfFileCard.vue'
 
 const {
   entries,
@@ -26,6 +28,7 @@ const {
   previewError,
   merge,
 } = usePdfMerge()
+
 const fileInput = ref<HTMLInputElement>()
 const dragging = ref(false)
 
@@ -33,6 +36,14 @@ function selectFiles(event: Event) {
   const input = event.target as HTMLInputElement
   void addFiles(Array.from(input.files ?? []))
   input.value = ''
+}
+
+function clearAll() {
+  if (busy.value) return
+  const ids = entries.value.map((entry) => entry.id)
+  for (const id of ids) {
+    remove(id)
+  }
 }
 
 function dropFiles(event: DragEvent, targetIndex?: number) {
@@ -49,13 +60,6 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
 
 <template>
   <div class="space-y-5" @dragover.prevent @drop.prevent="dropFiles($event)">
-    <Alert
-      ><AlertDescription
-        >所有文件仅在浏览器本地处理，不会上传。按文件顺序合并，保留文件内部页序；旋转会写入导出的
-        PDF。交互表单会转为静态内容，不保留数字签名有效性、书签等文档级信息；不支持加密 PDF 和 XFA
-        表单。</AlertDescription
-      ></Alert
-    >
     <input
       ref="fileInput"
       type="file"
@@ -66,29 +70,83 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
       :disabled="busy"
       @change="selectFiles"
     />
+
+    <!-- Clickable Upload Dropzone -->
     <div
-      class="rounded-xl border-2 border-dashed p-6 text-center transition-colors"
-      :class="dragging ? 'border-primary bg-muted' : 'border-border'"
+      role="button"
+      tabindex="0"
+      :aria-disabled="busy"
+      class="group flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-card px-6 py-8 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:py-10"
+      :class="[
+        dragging
+          ? 'border-primary bg-accent/60'
+          : 'border-border hover:border-foreground/30 hover:bg-accent/30',
+        busy && 'pointer-events-none opacity-60',
+      ]"
+      @click="!busy && fileInput?.click()"
+      @keydown.enter.prevent="!busy && fileInput?.click()"
+      @keydown.space.prevent="!busy && fileInput?.click()"
       @dragenter.prevent="dragging = true"
       @dragover.prevent="dragging = true"
       @dragleave.prevent="dragging = false"
       @drop.prevent.stop="dropFiles($event)"
     >
-      <Upload class="mx-auto mb-3 size-6 text-muted-foreground" />
-      <p class="mb-3 text-sm text-muted-foreground">
-        拖入多个 PDF，或点击选择；可继续追加文件。大文件可能占用较多内存，请按设备性能适量添加。
+      <div
+        class="mb-3 flex size-12 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+      >
+        <LoaderCircle v-if="importing" class="size-5 animate-spin" />
+        <Upload v-else class="size-5" />
+      </div>
+      <p class="text-base font-medium text-foreground">
+        {{ importing ? '正在读取 PDF 文件…' : '点击或拖入多个 PDF 文件' }}
       </p>
-      <Button variant="outline" :disabled="busy" @click="fileInput?.click()">{{
-        importing ? '正在读取文件…' : '选择 PDF 文件'
-      }}</Button>
+      <p class="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
+        可随时继续追加文件；支持拖动文件卡片调整合并先后顺序，以及单页或整份顺时针旋转。
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        class="mt-4 pointer-events-none"
+        tabindex="-1"
+      >
+        <FilePlus2 class="size-4" />
+        {{ entries.length ? '继续添加 PDF' : '选择 PDF 文件' }}
+      </Button>
     </div>
-    <p class="text-sm text-muted-foreground" aria-live="polite">
-      {{ entries.length }} 个文件 · {{ pageCount }} 页。拖动文件左侧手柄或使用上下箭头调整合并顺序。
-    </p>
-    <Alert v-if="entries.some((entry) => entry.status === 'error')" variant="destructive"
-      ><AlertDescription>存在无法处理的文件，请先移除或替换后再合并。</AlertDescription></Alert
-    >
-    <div class="space-y-4">
+
+    <Alert v-if="entries.some((entry) => entry.status === 'error')" variant="destructive">
+      <AlertDescription>存在无法处理的文件，请先移除异常文件后再执行合并。</AlertDescription>
+    </Alert>
+
+    <Alert v-if="error" variant="destructive">
+      <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
+
+    <!-- File List Header -->
+    <div v-if="entries.length" class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2" aria-live="polite">
+        <Badge variant="secondary">{{ entries.length }} 个文件</Badge>
+        <Badge variant="outline">共 {{ pageCount }} 页</Badge>
+        <span class="hidden text-xs text-muted-foreground sm:inline">
+          拖动左侧手柄或点击上下箭头调整顺序
+        </span>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="text-muted-foreground hover:text-destructive"
+        :disabled="busy"
+        @click="clearAll"
+      >
+        <Trash2 class="size-4" />
+        清空全部
+      </Button>
+    </div>
+
+    <!-- PDF File Cards -->
+    <div v-if="entries.length" class="space-y-4">
       <PdfFileCard
         v-for="(entry, index) in entries"
         :key="entry.id"
@@ -103,32 +161,44 @@ function dropFiles(event: DragEvent, targetIndex?: number) {
         @preview-error="previewError(entry.id, $event)"
       />
     </div>
-    <div class="flex flex-wrap items-end gap-3 rounded-xl border bg-background p-4">
-      <div class="min-w-0 flex-1 space-y-2">
-        <Label for="pdf-output-name">输出文件名</Label>
-        <Input
-          id="pdf-output-name"
-          v-model="outputName"
-          :disabled="busy"
-          placeholder="merged.pdf"
-        />
-      </div>
-      <Button :disabled="!canMerge" @click="merge"
-        ><LoaderCircle v-if="merging" class="size-4 animate-spin" />{{
-          merging ? '正在合并…' : '合并 PDF'
-        }}</Button
-      >
-      <Button v-if="outputUrl" as-child
-        ><a :href="outputUrl" :download="downloadName"
-          ><Download class="size-4" />下载 PDF</a
-        ></Button
-      >
-    </div>
-    <p v-if="outputUrl" class="text-sm text-muted-foreground" role="status">
-      合并完成，点击“下载 PDF”保存文件。
-    </p>
-    <Alert v-if="error" variant="destructive"
-      ><AlertDescription>{{ error }}</AlertDescription></Alert
+
+    <!-- Sticky Bottom Action Bar -->
+    <div
+      v-if="entries.length"
+      class="sticky bottom-4 z-20 rounded-xl border bg-card/95 p-4 shadow-lg backdrop-blur-md"
     >
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="min-w-0 flex-1 space-y-1.5">
+          <Label for="pdf-output-name" class="text-xs text-muted-foreground">导出文件名</Label>
+          <Input
+            id="pdf-output-name"
+            v-model="outputName"
+            :disabled="busy"
+            placeholder="merged.pdf"
+            class="bg-background"
+          />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            class="flex-1 sm:flex-none"
+            :variant="outputUrl ? 'outline' : 'default'"
+            :disabled="!canMerge"
+            @click="merge"
+          >
+            <LoaderCircle v-if="merging" class="size-4 animate-spin" />
+            {{ merging ? '正在合并…' : outputUrl ? '重新合并' : `合并 PDF（${pageCount} 页）` }}
+          </Button>
+
+          <Button v-if="outputUrl" as-child class="flex-1 sm:flex-none">
+            <a :href="outputUrl" :download="downloadName">
+              <Download class="size-4" />
+              下载合并结果
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

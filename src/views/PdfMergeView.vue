@@ -1,17 +1,47 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { FileStack, Info, ShieldCheck } from 'lucide-vue-next'
+
 import PdfMergeTool from '@/components/pdf/PdfMergeTool.vue'
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 </script>
 
 <template>
-  <section class="space-y-5 overflow-y-auto pb-6" data-morph-target>
-    <RouterLink to="/tools/files" class="text-sm text-muted-foreground underline underline-offset-4"
-      >返回文件处理</RouterLink
+  <div class="space-y-5 pb-10">
+    <ToolPageHeader
+      title="PDF 合并与旋转"
+      description="选择或拖入多份 PDF，自由调整合并顺序与单页方向，在本地合成并下载。"
+      :icon="FileStack"
     >
-    <div class="space-y-2">
-      <h2 class="text-2xl font-semibold">PDF 合并</h2>
-      <p class="text-sm text-muted-foreground">选择文件，调整顺序和页面方向，然后合并下载。</p>
-    </div>
+      <template #badges>
+        <Badge variant="outline" class="gap-1 font-normal">
+          <ShieldCheck class="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          本地离线处理
+        </Badge>
+      </template>
+
+      <template #actions>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button variant="outline" size="sm" class="gap-1.5">
+              <Info class="size-4" />
+              兼容性说明
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="max-w-80 space-y-1.5 text-xs leading-5">
+            <p>所有文件仅在浏览器内存中处理，绝不上传至任何服务器。</p>
+            <p>
+              按文件顺序合并并保留内部页序；旋转角度会直接写入导出的
+              PDF。交互式表单将转为静态内容，不保留数字签名与文档级书签；不支持加密 PDF 与 XFA
+              表单。
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </template>
+    </ToolPageHeader>
+
     <PdfMergeTool />
-  </section>
+  </div>
 </template>

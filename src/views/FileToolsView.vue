@@ -1,27 +1,46 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import HoverUnderlineTitle from '@/components/HoverUnderlineTitle.vue'
+import { ArrowUpRight, FileStack } from 'lucide-vue-next'
+
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
+import { Badge } from '@/components/ui/badge'
 </script>
 
 <template>
-  <section class="space-y-6 overflow-y-auto pb-6" data-morph-target>
-    <div class="space-y-2">
-      <h2 class="text-2xl font-semibold">文件处理</h2>
-      <p class="text-sm text-muted-foreground">在浏览器中处理文件。</p>
-    </div>
-    <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="space-y-6 pb-8">
+    <ToolPageHeader
+      title="文件处理"
+      description="在浏览器本地安全处理文档，文件不会上传至服务器。"
+      :icon="FileStack"
+    />
+
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <li>
         <RouterLink
           to="/tools/files/pdf-merge"
-          data-morph="/tools/files/pdf-merge"
-          class="group block rounded-xl p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
+          class="group flex h-full flex-col justify-between rounded-xl border bg-card p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <HoverUnderlineTitle class="mb-2">PDF 合并</HoverUnderlineTitle>
-          <p class="text-sm leading-relaxed text-muted-foreground">
-            合并多个 PDF，调整文件顺序，预览并旋转单页或整份文件，全程本地处理。
-          </p>
+          <div>
+            <div class="mb-3.5 flex items-center justify-between gap-3">
+              <div
+                class="flex size-10 items-center justify-center rounded-lg border bg-muted/60 text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+              >
+                <FileStack class="size-5" />
+              </div>
+              <div class="flex items-center gap-1.5">
+                <Badge variant="secondary" class="font-normal">本地处理</Badge>
+                <ArrowUpRight
+                  class="size-4 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
+                />
+              </div>
+            </div>
+            <h2 class="text-base font-semibold tracking-tight sm:text-lg">PDF 合并与旋转</h2>
+            <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              合并多个 PDF，拖拽调整文件顺序，预览并旋转单页或整份文件，全程本地处理。
+            </p>
+          </div>
         </RouterLink>
       </li>
     </ul>
-  </section>
+  </div>
 </template>

@@ -2,9 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Activity,
   ArrowRight,
@@ -437,16 +439,19 @@ watch(
   { immediate: true },
 )
 
-function selectMode(mode: Mode) {
-  currentMode.value = mode
+function selectMode(mode: string | number) {
+  const nextMode = (['reference', 'quiz', 'ear', 'fretboard'] as const).find((m) => m === mode)
+  if (!nextMode) return
+  currentMode.value = nextMode
 
-  if (mode === 'ear') {
+  if (nextMode === 'ear') {
     void playEarQuestion()
   }
 }
 
 function selectNote(index: number) {
   selectedNoteIndex.value = index
+  void playGuitarNote(noteIndexFrequency(index))
 
   const forwardInterval = intervals.find((item) => item.fromIndex === index)
   const backwardInterval = intervals.find((item) => item.toIndex === index)
@@ -981,671 +986,611 @@ function toSafeNumber(value: unknown) {
 </script>
 
 <template>
-  <section class="h-full min-h-0 w-full overflow-hidden" data-morph-target>
-    <div class="visible-scrollbar h-full overflow-auto pr-1">
-      <div class="mx-auto max-w-7xl space-y-4 pb-8 sm:space-y-6">
-        <Card class="overflow-hidden border-border/70 bg-card/95 shadow-sm">
-          <CardHeader class="gap-5 lg:grid-cols-[1fr_auto]">
-            <div class="space-y-3">
-              <Badge variant="secondary" class="gap-1.5">
-                <Guitar class="size-3.5" />
-                Guitar Note Memory Trainer
-              </Badge>
-              <div class="space-y-2">
-                <CardTitle class="text-2xl tracking-tight sm:text-3xl lg:text-4xl">
-                  吉他简谱、音名、唱名记忆训练
-                </CardTitle>
-                <CardDescription class="max-w-3xl text-sm leading-6 sm:text-base">
-                  把 1-C-do 到 7-B-si 的映射关系和「全音 2 品、半音 1
-                  品」的物理距离放在同一个训练页面里。
-                </CardDescription>
+  <div class="space-y-5 pb-8">
+    <ToolPageHeader
+      title="吉他简谱记忆训练"
+      description="对照记忆 1-C-do 到 7-B-si，结合吉他拨弦音色与「全音 2 品、半音 1 品」距离强化肌肉记忆。"
+      :icon="Guitar"
+    >
+      <template #actions>
+        <div class="flex flex-wrap items-center gap-2">
+          <div
+            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+          >
+            <Activity class="size-3.5 text-orange-500" />
+            <span class="text-muted-foreground">正确率</span>
+            <strong class="tabular-nums font-semibold">{{ accuracy }}%</strong>
+            <span class="text-muted-foreground tabular-nums"
+              >({{ stats.correct }}/{{ stats.total }})</span
+            >
+          </div>
+
+          <div
+            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+          >
+            <Target class="size-3.5 text-sky-500" />
+            <span class="text-muted-foreground">连击</span>
+            <strong class="tabular-nums font-semibold">{{ stats.currentStreak }}</strong>
+          </div>
+
+          <div
+            class="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1.5 text-xs"
+          >
+            <Trophy class="size-3.5 text-amber-500" />
+            <span class="text-muted-foreground">最高</span>
+            <strong class="tabular-nums font-semibold">{{ stats.bestStreak }}</strong>
+          </div>
+
+          <Button
+            v-if="stats.total > 0"
+            variant="ghost"
+            size="sm"
+            class="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            @click="resetStats"
+          >
+            <RotateCcw class="size-3.5" />
+            重置
+          </Button>
+        </div>
+      </template>
+    </ToolPageHeader>
+
+    <!-- Mode Switcher Tabs -->
+    <Tabs :model-value="currentMode" @update:model-value="selectMode">
+      <TabsList class="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:inline-flex sm:h-10 sm:w-auto">
+        <TabsTrigger
+          v-for="mode in modes"
+          :key="mode.id"
+          :value="mode.id"
+          class="gap-1.5 px-3.5 py-2 text-xs sm:py-1.5 sm:text-sm"
+        >
+          <component :is="mode.icon" class="size-4 shrink-0" />
+          <span>{{ mode.label }}</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+
+    <Transition name="mode-fade" mode="out-in">
+      <section v-if="currentMode === 'reference'" key="reference" class="space-y-4">
+        <Card>
+          <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <CardTitle class="text-lg sm:text-xl">对照学习面板</CardTitle>
+                <Badge variant="secondary" class="font-normal">点击卡片试听音高</Badge>
               </div>
+              <CardDescription class="max-w-2xl leading-6">
+                点击任意音符卡片试听吉他拨弦音高，或点击音程胶囊查看相邻音之间的全音、半音关系。
+              </CardDescription>
             </div>
-
-            <div class="grid gap-2 sm:grid-cols-3 lg:min-w-[460px]">
-              <Card class="gap-2 rounded-2xl border-border/70 py-4 shadow-none">
-                <CardContent class="flex items-center gap-3 px-4">
-                  <Activity class="size-5 text-orange-500" />
-                  <div>
-                    <p class="text-xs text-muted-foreground">正确率</p>
-                    <p class="text-2xl font-semibold">{{ accuracy }}%</p>
-                    <p class="text-xs text-muted-foreground">
-                      {{ stats.correct }} / {{ stats.total }}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card class="gap-2 rounded-2xl border-border/70 py-4 shadow-none">
-                <CardContent class="flex items-center gap-3 px-4">
-                  <Target class="size-5 text-sky-500" />
-                  <div>
-                    <p class="text-xs text-muted-foreground">当前连击</p>
-                    <p class="text-2xl font-semibold">{{ stats.currentStreak }}</p>
-                    <p class="text-xs text-muted-foreground">Streak</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card class="gap-2 rounded-2xl border-border/70 py-4 shadow-none">
-                <CardContent class="flex items-center gap-3 px-4">
-                  <Trophy class="size-5 text-amber-500" />
-                  <div>
-                    <p class="text-xs text-muted-foreground">最高连击</p>
-                    <p class="text-2xl font-semibold">{{ stats.bestStreak }}</p>
-                    <p class="text-xs text-muted-foreground">Best</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div
+              class="rounded-xl border bg-muted/35 px-4 py-3 text-sm leading-6 text-muted-foreground"
+            >
+              <strong class="text-foreground">核心口诀：</strong>
+              3-4（E-F）和 7-1̇（B-C）是半音（1 品）；其余相邻自然音都是全音（2 品）。
             </div>
           </CardHeader>
 
-          <CardContent class="space-y-4">
-            <div class="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <button
-                  v-for="mode in modes"
-                  :key="mode.id"
-                  type="button"
-                  class="group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.99]"
-                  :class="
-                    currentMode === mode.id
-                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                      : 'border-border bg-background'
-                  "
-                  @click="selectMode(mode.id)"
-                >
-                  <div class="flex items-center gap-2 font-medium">
-                    <component :is="mode.icon" class="size-4" />
-                    <span>{{ mode.label }}</span>
-                  </div>
-                  <p
-                    class="mt-2 text-xs"
-                    :class="
-                      currentMode === mode.id
-                        ? 'text-primary-foreground/75'
-                        : 'text-muted-foreground'
-                    "
+          <CardContent class="space-y-6">
+            <div class="-mx-1 overflow-x-auto px-1 pb-2">
+              <div class="flex min-w-max items-stretch gap-2">
+                <template v-for="(note, index) in notes" :key="note.id">
+                  <button
+                    type="button"
+                    class="note-card group w-[8.25rem] rounded-xl border bg-background p-4 text-left transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98] sm:w-[9rem]"
+                    :class="{
+                      'border-primary ring-2 ring-primary/20': selectedNoteIndex === index,
+                      'border-orange-400 bg-orange-50/70 dark:bg-orange-950/20':
+                        isNoteInActiveInterval(index),
+                    }"
+                    @click="selectNote(index)"
                   >
-                    {{ mode.description }}
-                  </p>
-                </button>
+                    <div class="flex items-start justify-between">
+                      <span class="block text-3xl font-black tracking-tight sm:text-4xl">
+                        {{ note.number }}
+                      </span>
+                      <Volume2
+                        class="size-3.5 text-muted-foreground/50 transition-colors group-hover:text-orange-500"
+                      />
+                    </div>
+                    <span class="mt-2.5 block text-xl font-semibold sm:text-2xl">{{
+                      note.letter
+                    }}</span>
+                    <span class="block text-sm font-medium text-orange-600 dark:text-orange-400">
+                      {{ note.solfege }}
+                    </span>
+                    <span class="mt-2.5 block text-xs leading-5 text-muted-foreground">
+                      {{ note.hint }}
+                    </span>
+                  </button>
+
+                  <button
+                    v-if="index < intervals.length"
+                    :key="intervals[index]?.id"
+                    type="button"
+                    class="interval-pill self-center rounded-full border px-3 py-2 text-center text-xs font-semibold transition-all hover:-translate-y-0.5 active:scale-95 sm:px-4"
+                    :class="[
+                      intervals[index]?.kind === 'half'
+                        ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300'
+                        : 'border-border bg-muted/50 text-muted-foreground',
+                      intervals[index] && isIntervalHighlighted(intervals[index])
+                        ? 'scale-105 shadow-md ring-2 ring-orange-500/25'
+                        : '',
+                    ]"
+                    @click="intervals[index] && selectInterval(intervals[index])"
+                  >
+                    <span class="block whitespace-nowrap">{{
+                      intervals[index] ? intervalShortLabel(intervals[index]) : ''
+                    }}</span>
+                    <span class="block whitespace-nowrap opacity-80">
+                      {{ intervals[index]?.frets }} 品格
+                    </span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <div
+              class="grid gap-4 rounded-xl border p-4 sm:grid-cols-[auto_1fr] sm:items-center"
+              :class="
+                selectedInterval.kind === 'half'
+                  ? 'border-orange-300 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/20'
+                  : 'bg-muted/30'
+              "
+            >
+              <div class="flex flex-wrap items-center gap-3 text-lg font-semibold">
+                <span>{{ noteSignature(selectedIntervalFromNote) }}</span>
+                <ArrowRight class="size-5 text-muted-foreground" />
+                <span>{{ noteSignature(selectedIntervalToNote) }}</span>
+              </div>
+              <div class="space-y-1">
+                <Badge :variant="selectedInterval.kind === 'half' ? 'default' : 'outline'">
+                  {{ intervalLabel(selectedInterval) }}
+                </Badge>
+                <p class="text-sm leading-6 text-muted-foreground">
+                  {{ intervalTheory(selectedInterval) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-xl border">
+              <div
+                class="grid grid-cols-4 bg-muted/60 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:text-sm"
+              >
+                <span>简谱</span>
+                <span>音名</span>
+                <span>唱名</span>
+                <span>记忆提示</span>
+              </div>
+              <div
+                v-for="note in notes"
+                :key="note.id"
+                class="grid grid-cols-4 border-t px-4 py-2.5 text-sm"
+              >
+                <span class="font-semibold">{{ note.number }}</span>
+                <span>{{ note.letter }}</span>
+                <span>{{ note.solfege }}</span>
+                <span class="text-muted-foreground">{{ note.hint }}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section
+        v-else-if="currentMode === 'quiz'"
+        key="quiz"
+        class="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"
+      >
+        <Transition name="card-flip" mode="out-in">
+          <Card
+            :key="quizCardKey"
+            class="quiz-card overflow-hidden"
+            :class="{
+              'border-emerald-500': answerStatus === 'correct',
+              'border-destructive': answerStatus === 'wrong',
+              'animate-correct-flash': answerStatus === 'correct',
+              'animate-wrong-shake': answerStatus === 'wrong',
+            }"
+          >
+            <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+              <div class="space-y-1.5">
+                <Badge variant="secondary" class="w-fit font-normal">随机问答</Badge>
+                <CardTitle class="text-lg sm:text-xl">盲听 / 盲看测试</CardTitle>
+                <CardDescription class="leading-6">
+                  {{ currentQuestion.title }}。答错后会立即显示正确答案与推导逻辑。
+                </CardDescription>
+              </div>
+              <Badge variant="outline" class="text-base">{{ currentQuestion.promptBadge }}</Badge>
+            </CardHeader>
+
+            <CardContent class="space-y-5">
+              <div class="rounded-xl bg-muted/50 p-5">
+                <p class="text-xs text-muted-foreground">题目</p>
+                <h2 class="mt-1.5 text-xl font-semibold tracking-tight sm:text-2xl">
+                  {{ currentQuestion.prompt }}
+                </h2>
               </div>
 
-              <Button
-                variant="outline"
-                class="justify-self-start lg:justify-self-end"
-                @click="resetStats"
+              <div class="grid gap-3 sm:grid-cols-2">
+                <Button
+                  v-for="option in currentQuestion.options"
+                  :key="option.id"
+                  type="button"
+                  variant="outline"
+                  class="h-auto min-h-14 justify-center rounded-xl px-4 py-3.5 text-base font-semibold transition-all hover:-translate-y-0.5 sm:text-lg"
+                  :class="optionButtonClass(option)"
+                  :disabled="answerStatus !== 'idle'"
+                  @click="chooseAnswer(option)"
+                >
+                  {{ option.label }}
+                </Button>
+              </div>
+
+              <Transition name="feedback">
+                <div
+                  v-if="answerStatus !== 'idle'"
+                  class="flex gap-3 rounded-xl border p-4"
+                  :class="
+                    answerStatus === 'correct'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : 'border-destructive/40 bg-destructive/10 text-destructive'
+                  "
+                  role="status"
+                  aria-live="polite"
+                >
+                  <CheckCircle2 v-if="answerStatus === 'correct'" class="mt-0.5 size-5 shrink-0" />
+                  <XCircle v-else class="mt-0.5 size-5 shrink-0" />
+                  <div class="space-y-1">
+                    <p class="font-semibold">{{ feedbackTitle }}</p>
+                    <p class="text-sm leading-6 opacity-90">
+                      {{ currentQuestion.explanation }}
+                    </p>
+                  </div>
+                </div>
+              </Transition>
+
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-muted-foreground">
+                  当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
+                </p>
+                <Button @click="nextQuestion">
+                  <RefreshCcw class="size-4" />
+                  {{ answerStatus === 'idle' ? '换一题' : '下一题' }}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Transition>
+
+        <div class="space-y-4">
+          <Card>
+            <CardHeader>
+              <Badge variant="secondary" class="w-fit font-normal">记忆口诀</Badge>
+              <CardTitle class="flex items-center gap-2 text-base sm:text-lg">
+                <Lightbulb class="size-5 text-orange-500" />
+                两个特殊半音
+              </CardTitle>
+            </CardHeader>
+            <CardContent class="space-y-2.5 text-sm leading-6 text-muted-foreground">
+              <p>只要记住 3-4 是 E-F，7-1̇ 是 B-C，就能快速判断所有相邻自然音。</p>
+              <p>吉他同弦上：半音移动 1 个品格，全音移动 2 个品格。</p>
+            </CardContent>
+          </Card>
+
+          <Card v-if="currentQuestion.kind === 'D'">
+            <CardHeader>
+              <Badge variant="outline" class="w-fit font-normal">指板示意</Badge>
+              <CardTitle class="text-base sm:text-lg">本题指板提示</CardTitle>
+              <CardDescription>假设起点音在 0 品，观察目标音落在哪个品格。</CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+              <div class="fretboard-track">
+                <div
+                  v-for="fret in frets"
+                  :key="fret"
+                  class="fret-cell"
+                  :class="{ marked: Boolean(markerForFret(fret)) }"
+                >
+                  <span class="fret-number">{{ fret }}品</span>
+                  <span
+                    v-if="markerForFret(fret)"
+                    class="fret-marker"
+                    :class="markerForFret(fret)?.type"
+                  >
+                    {{ markerForFret(fret)?.label }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-sm leading-6 text-muted-foreground">{{ fretboardDescription }}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section
+        v-else-if="currentMode === 'ear'"
+        key="ear"
+        class="grid gap-4 lg:grid-cols-[0.78fr_1.22fr]"
+      >
+        <Card>
+          <CardHeader>
+            <Badge variant="secondary" class="w-fit font-normal">答题格式</Badge>
+            <CardTitle class="flex items-center gap-2 text-lg sm:text-xl">
+              <Volume2 class="size-5 text-orange-500" />
+              听音识别模式
+            </CardTitle>
+            <CardDescription class="leading-6">
+              先听吉他拨弦音，再选择对应音名、简谱或唱名。点击选项也会播放该选项的实际音高以便对比。
+            </CardDescription>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid gap-2">
+              <button
+                v-for="answerMode in earAnswerModes"
+                :key="answerMode.id"
+                type="button"
+                class="rounded-xl border p-3.5 text-left transition-all hover:bg-muted/60 active:scale-[0.99]"
+                :class="
+                  earAnswerMode === answerMode.id
+                    ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
+                    : 'border-border bg-background'
+                "
+                @click="selectEarAnswerMode(answerMode.id)"
               >
-                <RotateCcw class="size-4" />
-                重置统计
-              </Button>
+                <p class="text-sm font-semibold sm:text-base">{{ answerMode.label }}</p>
+                <p
+                  class="mt-1 text-xs leading-5"
+                  :class="
+                    earAnswerMode === answerMode.id
+                      ? 'text-primary-foreground/75'
+                      : 'text-muted-foreground'
+                  "
+                >
+                  {{ answerMode.description }}
+                </p>
+              </button>
+            </div>
+
+            <div
+              class="rounded-xl border bg-muted/35 p-3.5 text-sm leading-6 text-muted-foreground"
+            >
+              <strong class="text-foreground">音域范围：</strong>
+              C D E F G A B 高音 C，对应 1 2 3 4 5 6 7 1̇，以及 do re mi fa sol la si 高音 do。
             </div>
           </CardContent>
         </Card>
 
-        <Transition name="mode-fade" mode="out-in">
-          <section v-if="currentMode === 'reference'" key="reference" class="space-y-4">
-            <Card>
-              <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
-                <div class="space-y-2">
-                  <Badge variant="secondary" class="w-fit">Reference Board</Badge>
-                  <CardTitle class="text-xl sm:text-2xl">对照学习面板</CardTitle>
-                  <CardDescription class="max-w-2xl leading-6">
-                    点击任意音符卡片或音程胶囊，高亮它和相邻音之间的全音、半音关系。
-                  </CardDescription>
-                </div>
-                <div
-                  class="rounded-2xl border bg-muted/35 p-4 text-sm leading-6 text-muted-foreground"
+        <Card
+          class="overflow-hidden"
+          :class="{
+            'border-emerald-500': earAnswerStatus === 'correct',
+            'border-destructive': earAnswerStatus === 'wrong',
+            'animate-correct-flash': earAnswerStatus === 'correct',
+            'animate-wrong-shake': earAnswerStatus === 'wrong',
+          }"
+        >
+          <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+            <div class="space-y-1.5">
+              <Badge variant="outline" class="w-fit font-normal">听音辨位</Badge>
+              <CardTitle class="text-lg sm:text-xl">听到的是哪个音？</CardTitle>
+              <CardDescription class="leading-6">
+                点击喇叭按钮重播题目音，从下方按钮组中选出答案。
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" @click="playEarQuestion">
+              <Volume2 class="size-4" />
+              重播题目音
+            </Button>
+          </CardHeader>
+
+          <CardContent class="space-y-5">
+            <div class="rounded-xl bg-muted/45 p-5 text-center">
+              <div class="flex justify-center">
+                <button
+                  type="button"
+                  class="grid size-20 place-items-center rounded-full border bg-background shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-95"
+                  aria-label="播放题目音"
+                  @click="playEarQuestion"
                 >
-                  <strong class="text-foreground">核心规则：</strong>
-                  3-4（E-F）和 7-1̇（B-C）是半音；其余相邻自然音都是全音。
+                  <Volume2 class="size-9 text-orange-500" />
+                </button>
+              </div>
+              <p class="mt-3 text-xs text-muted-foreground">点击图标播放吉他音色，凭听觉判断音级</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Button
+                v-for="option in earQuestion.options"
+                :key="option.id"
+                type="button"
+                variant="outline"
+                class="h-12 rounded-xl text-base font-semibold"
+                :class="earOptionButtonClass(option)"
+                :disabled="earAnswerStatus !== 'idle'"
+                @click="chooseEarAnswer(option)"
+              >
+                {{ option.label }}
+              </Button>
+            </div>
+
+            <Transition name="feedback">
+              <div
+                v-if="earAnswerStatus !== 'idle'"
+                class="flex gap-3 rounded-xl border p-4"
+                :class="
+                  earAnswerStatus === 'correct'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'border-destructive/40 bg-destructive/10 text-destructive'
+                "
+                role="status"
+                aria-live="polite"
+              >
+                <CheckCircle2 v-if="earAnswerStatus === 'correct'" class="mt-0.5 size-5 shrink-0" />
+                <XCircle v-else class="mt-0.5 size-5 shrink-0" />
+                <div class="space-y-1">
+                  <p class="font-semibold">{{ earFeedbackTitle }}</p>
+                  <p class="text-sm leading-6 opacity-90">
+                    {{ noteSignature(earQuestionNote) }}。可点击上方重播题目音对比音高。
+                  </p>
                 </div>
-              </CardHeader>
+              </div>
+            </Transition>
 
-              <CardContent class="space-y-6">
-                <div class="visible-scrollbar -mx-1 overflow-x-auto px-1 pb-2">
-                  <div class="flex min-w-max items-stretch gap-2">
-                    <template v-for="(note, index) in notes" :key="note.id">
-                      <button
-                        type="button"
-                        class="note-card group w-[8.5rem] rounded-2xl border bg-background p-4 text-left transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98] sm:w-[9.5rem]"
-                        :class="{
-                          'border-primary ring-2 ring-primary/20': selectedNoteIndex === index,
-                          'border-orange-400 bg-orange-50/70 dark:bg-orange-950/20':
-                            isNoteInActiveInterval(index),
-                        }"
-                        @click="selectNote(index)"
-                      >
-                        <span class="block text-4xl font-black tracking-tight">{{
-                          note.number
-                        }}</span>
-                        <span class="mt-3 block text-2xl font-semibold">{{ note.letter }}</span>
-                        <span
-                          class="block text-sm font-medium text-orange-600 dark:text-orange-400"
-                        >
-                          {{ note.solfege }}
-                        </span>
-                        <span class="mt-3 block text-xs leading-5 text-muted-foreground">
-                          {{ note.hint }}
-                        </span>
-                      </button>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="text-sm text-muted-foreground">
+                当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
+              </p>
+              <Button @click="nextEarQuestion(true)">
+                <RefreshCcw class="size-4" />
+                {{ earAnswerStatus === 'idle' ? '换一个音' : '下一题' }}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-                      <button
-                        v-if="index < intervals.length"
-                        :key="intervals[index]?.id"
-                        type="button"
-                        class="interval-pill self-center rounded-full border px-3 py-2 text-center text-xs font-semibold transition-all hover:-translate-y-0.5 active:scale-95 sm:px-4"
-                        :class="[
-                          intervals[index]?.kind === 'half'
-                            ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300'
-                            : 'border-border bg-muted/50 text-muted-foreground',
-                          intervals[index] && isIntervalHighlighted(intervals[index])
-                            ? 'scale-105 shadow-md ring-2 ring-orange-500/25'
-                            : '',
-                        ]"
-                        @click="intervals[index] && selectInterval(intervals[index])"
-                      >
-                        <span class="block whitespace-nowrap">{{
-                          intervals[index] ? intervalShortLabel(intervals[index]) : ''
-                        }}</span>
-                        <span class="block whitespace-nowrap opacity-80">
-                          {{ intervals[index]?.frets }} 品格
-                        </span>
-                      </button>
-                    </template>
-                  </div>
-                </div>
+      <section v-else key="fretboard" class="space-y-4">
+        <Card>
+          <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
+            <div class="space-y-1.5">
+              <Badge variant="secondary" class="w-fit font-normal">同弦品格换算</Badge>
+              <CardTitle class="text-lg sm:text-xl">指板大闯关</CardTitle>
+              <CardDescription class="max-w-2xl leading-6">
+                选择或随机生成一组相邻自然音，把音程关系换算成同一根琴弦上的品格移动距离。
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" @click="nextFretChallenge">
+              <RefreshCcw class="size-4" />
+              随机一关
+            </Button>
+          </CardHeader>
 
-                <div
-                  class="grid gap-4 rounded-2xl border p-4 sm:grid-cols-[auto_1fr] sm:items-center"
+          <CardContent class="space-y-6">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+              <button
+                v-for="interval in intervals"
+                :key="interval.id"
+                type="button"
+                class="rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.98]"
+                :class="[
+                  selectedInterval.id === interval.id
+                    ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
+                    : 'border-border bg-background',
+                  interval.kind === 'half' && selectedInterval.id !== interval.id
+                    ? 'border-orange-300 bg-orange-50/70 text-orange-800 dark:border-orange-900 dark:bg-orange-950/20 dark:text-orange-300'
+                    : '',
+                ]"
+                @click="selectInterval(interval)"
+              >
+                <p class="font-semibold">
+                  {{ noteByIndex(interval.fromIndex).letter }} →
+                  {{ noteDisplayName(noteByIndex(interval.toIndex)) }}
+                </p>
+                <p
+                  class="mt-1 text-xs"
                   :class="
-                    selectedInterval.kind === 'half'
-                      ? 'border-orange-300 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/20'
-                      : 'bg-muted/30'
+                    selectedInterval.id === interval.id
+                      ? 'text-primary-foreground/75'
+                      : 'text-muted-foreground'
                   "
                 >
-                  <div class="flex flex-wrap items-center gap-3 text-lg font-semibold">
-                    <span>{{ noteSignature(selectedIntervalFromNote) }}</span>
-                    <ArrowRight class="size-5 text-muted-foreground" />
-                    <span>{{ noteSignature(selectedIntervalToNote) }}</span>
+                  {{ intervalLabel(interval) }}
+                </p>
+              </button>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-[1fr_340px]">
+              <div class="space-y-4 rounded-xl border bg-muted/20 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs text-muted-foreground">当前关卡</p>
+                    <h3 class="text-xl font-semibold tracking-tight sm:text-2xl">
+                      {{ fretboardTitle }}
+                    </h3>
                   </div>
-                  <div class="space-y-1">
-                    <Badge :variant="selectedInterval.kind === 'half' ? 'default' : 'outline'">
-                      {{ intervalLabel(selectedInterval) }}
-                    </Badge>
-                    <p class="text-sm leading-6 text-muted-foreground">
-                      {{ intervalTheory(selectedInterval) }}
-                    </p>
+                  <Badge :variant="fretboardInterval.kind === 'half' ? 'default' : 'outline'">
+                    {{ intervalLabel(fretboardInterval) }}
+                  </Badge>
+                </div>
+
+                <div class="fretboard-track large">
+                  <div
+                    v-for="fret in frets"
+                    :key="fret"
+                    class="fret-cell"
+                    :class="{ marked: Boolean(markerForFret(fret)) }"
+                  >
+                    <span class="fret-number">{{ fret }}品</span>
+                    <span
+                      v-if="markerForFret(fret)"
+                      class="fret-marker"
+                      :class="markerForFret(fret)?.type"
+                    >
+                      {{ markerForFret(fret)?.label }}
+                    </span>
                   </div>
                 </div>
 
-                <div class="overflow-hidden rounded-2xl border">
-                  <div
-                    class="grid grid-cols-4 bg-muted/60 px-4 py-3 text-sm font-medium text-muted-foreground"
-                  >
-                    <span>简谱 N</span>
-                    <span>音名 L</span>
-                    <span>唱名 S</span>
-                    <span>记忆提示</span>
-                  </div>
-                  <div
-                    v-for="note in notes"
-                    :key="note.id"
-                    class="grid grid-cols-4 border-t px-4 py-3 text-sm"
-                  >
-                    <span class="font-semibold">{{ note.number }}</span>
-                    <span>{{ note.letter }}</span>
-                    <span>{{ note.solfege }}</span>
-                    <span class="text-muted-foreground">{{ note.hint }}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+                <p class="text-sm leading-6 text-muted-foreground">
+                  {{ fretboardDescription }}
+                </p>
+              </div>
 
-          <section
-            v-else-if="currentMode === 'quiz'"
-            key="quiz"
-            class="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"
-          >
-            <Transition name="card-flip" mode="out-in">
-              <Card
-                :key="quizCardKey"
-                class="quiz-card overflow-hidden"
-                :class="{
-                  'border-green-500': answerStatus === 'correct',
-                  'border-destructive': answerStatus === 'wrong',
-                  'animate-correct-flash': answerStatus === 'correct',
-                  'animate-wrong-shake': answerStatus === 'wrong',
-                }"
-              >
-                <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-                  <div class="space-y-2">
-                    <Badge variant="secondary" class="w-fit">Smart Quiz</Badge>
-                    <CardTitle class="text-xl sm:text-2xl">盲听 / 盲看测试</CardTitle>
-                    <CardDescription class="leading-6">
-                      {{ currentQuestion.title }}。答错后会立即显示正确答案和推导逻辑。
-                    </CardDescription>
-                  </div>
-                  <Badge variant="outline" class="text-base">{{
-                    currentQuestion.promptBadge
-                  }}</Badge>
+              <Card class="shadow-none">
+                <CardHeader>
+                  <Badge variant="outline" class="w-fit font-normal">品格挑战</Badge>
+                  <CardTitle class="text-base sm:text-lg">从起点到目标要移动几品？</CardTitle>
+                  <CardDescription>先根据 3-4、7-1̇ 判断半音，再换算成品格。</CardDescription>
                 </CardHeader>
-
-                <CardContent class="space-y-6">
-                  <div class="rounded-2xl bg-muted/50 p-5 sm:p-6">
-                    <p class="text-sm text-muted-foreground">题目</p>
-                    <h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-                      {{ currentQuestion.prompt }}
-                    </h2>
-                  </div>
-
-                  <div class="grid gap-3 sm:grid-cols-2">
+                <CardContent class="space-y-4">
+                  <div class="grid grid-cols-3 gap-2">
                     <Button
-                      v-for="option in currentQuestion.options"
-                      :key="option.id"
+                      v-for="answer in fretAnswerOptions"
+                      :key="answer"
                       type="button"
                       variant="outline"
-                      class="h-auto min-h-16 justify-center rounded-2xl px-4 py-4 text-lg font-semibold transition-all hover:-translate-y-0.5"
-                      :class="optionButtonClass(option)"
-                      :disabled="answerStatus !== 'idle'"
-                      @click="chooseAnswer(option)"
+                      class="h-12 rounded-xl text-base font-semibold"
+                      :class="fretOptionButtonClass(answer)"
+                      :disabled="fretAnswerStatus !== 'idle'"
+                      @click="answerFretChallenge(answer)"
                     >
-                      {{ option.label }}
+                      {{ answer }} 品
                     </Button>
                   </div>
 
                   <Transition name="feedback">
                     <div
-                      v-if="answerStatus !== 'idle'"
-                      class="flex gap-3 rounded-2xl border p-4"
+                      v-if="fretAnswerStatus !== 'idle'"
+                      class="rounded-xl border p-4 text-sm leading-6"
                       :class="
-                        answerStatus === 'correct'
-                          ? 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300'
+                        fretAnswerStatus === 'correct'
+                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                           : 'border-destructive/40 bg-destructive/10 text-destructive'
                       "
                       role="status"
                       aria-live="polite"
                     >
-                      <CheckCircle2
-                        v-if="answerStatus === 'correct'"
-                        class="mt-0.5 size-5 shrink-0"
-                      />
-                      <XCircle v-else class="mt-0.5 size-5 shrink-0" />
-                      <div class="space-y-1">
-                        <p class="font-semibold">{{ feedbackTitle }}</p>
-                        <p class="text-sm leading-6 opacity-90">
-                          {{ currentQuestion.explanation }}
-                        </p>
-                      </div>
+                      <p class="font-semibold">{{ fretFeedbackTitle }}</p>
+                      <p class="mt-1 opacity-90">{{ intervalTheory(selectedInterval) }}</p>
                     </div>
                   </Transition>
 
-                  <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-sm text-muted-foreground">
-                      当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
-                    </p>
-                    <Button @click="nextQuestion">
-                      <RefreshCcw class="size-4" />
-                      {{ answerStatus === 'idle' ? '换一题' : '下一题' }}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </Transition>
-
-            <div class="space-y-4">
-              <Card>
-                <CardHeader>
-                  <Badge variant="secondary" class="w-fit">Memory Tip</Badge>
-                  <CardTitle class="flex items-center gap-2 text-lg">
-                    <Lightbulb class="size-5 text-orange-500" />
-                    两个特殊半音
-                  </CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-3 text-sm leading-6 text-muted-foreground">
-                  <p>只要记住 3-4 是 E-F，7-1̇ 是 B-C，就能快速判断所有相邻自然音。</p>
-                  <p>半音等于 1 个品格，全音等于 2 个品格。</p>
-                </CardContent>
-              </Card>
-
-              <Card v-if="currentQuestion.kind === 'D'">
-                <CardHeader>
-                  <Badge variant="outline" class="w-fit">Mini Fretboard</Badge>
-                  <CardTitle class="text-lg">本题指板提示</CardTitle>
-                  <CardDescription>假设起点音在 0 品，观察目标音落在哪个品格。</CardDescription>
-                </CardHeader>
-                <CardContent class="space-y-4">
-                  <div class="fretboard-track">
-                    <div
-                      v-for="fret in frets"
-                      :key="fret"
-                      class="fret-cell"
-                      :class="{ marked: Boolean(markerForFret(fret)) }"
-                    >
-                      <span class="fret-number">{{ fret }}品</span>
-                      <span
-                        v-if="markerForFret(fret)"
-                        class="fret-marker"
-                        :class="markerForFret(fret)?.type"
-                      >
-                        {{ markerForFret(fret)?.label }}
-                      </span>
-                    </div>
-                  </div>
-                  <p class="text-sm leading-6 text-muted-foreground">{{ fretboardDescription }}</p>
+                  <Button class="w-full" @click="nextFretChallenge">
+                    <RefreshCcw class="size-4" />
+                    下一关
+                  </Button>
                 </CardContent>
               </Card>
             </div>
-          </section>
-
-          <section
-            v-else-if="currentMode === 'ear'"
-            key="ear"
-            class="grid gap-4 lg:grid-cols-[0.78fr_1.22fr]"
-          >
-            <Card>
-              <CardHeader>
-                <Badge variant="secondary" class="w-fit">Ear Training</Badge>
-                <CardTitle class="flex items-center gap-2 text-xl sm:text-2xl">
-                  <Volume2 class="size-5 text-orange-500" />
-                  听音识别练习
-                </CardTitle>
-                <CardDescription class="leading-6">
-                  先听吉他音，再选择音名、简谱或唱名。选择答案时也会播放你选中的那个音。
-                </CardDescription>
-              </CardHeader>
-              <CardContent class="space-y-4">
-                <div class="grid gap-2">
-                  <button
-                    v-for="answerMode in earAnswerModes"
-                    :key="answerMode.id"
-                    type="button"
-                    class="rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.98]"
-                    :class="
-                      earAnswerMode === answerMode.id
-                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                        : 'border-border bg-background'
-                    "
-                    @click="selectEarAnswerMode(answerMode.id)"
-                  >
-                    <p class="font-semibold">{{ answerMode.label }}</p>
-                    <p
-                      class="mt-1 text-xs leading-5"
-                      :class="
-                        earAnswerMode === answerMode.id
-                          ? 'text-primary-foreground/75'
-                          : 'text-muted-foreground'
-                      "
-                    >
-                      {{ answerMode.description }}
-                    </p>
-                  </button>
-                </div>
-
-                <div class="rounded-2xl border bg-muted/35 p-4 text-sm leading-6 text-muted-foreground">
-                  <strong class="text-foreground">练习范围：</strong>
-                  C D E F G A B 高音 C，对应 1 2 3 4 5 6 7 1̇，以及 do re mi fa sol la si 高音 do。
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card
-              class="overflow-hidden"
-              :class="{
-                'border-green-500': earAnswerStatus === 'correct',
-                'border-destructive': earAnswerStatus === 'wrong',
-                'animate-correct-flash': earAnswerStatus === 'correct',
-                'animate-wrong-shake': earAnswerStatus === 'wrong',
-              }"
-            >
-              <CardHeader class="gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-                <div class="space-y-2">
-                  <Badge variant="outline" class="w-fit">Listen and Choose</Badge>
-                  <CardTitle class="text-xl sm:text-2xl">听到的是哪个音？</CardTitle>
-                  <CardDescription class="leading-6">
-                    点击播放题目音，听完后从当前答案组中选择。答对或答错都会记录到统计里。
-                  </CardDescription>
-                </div>
-                <Button variant="outline" @click="playEarQuestion">
-                  <Volume2 class="size-4" />
-                  播放题目音
-                </Button>
-              </CardHeader>
-
-              <CardContent class="space-y-6">
-                <div class="rounded-2xl bg-muted/50 p-6 text-center">
-                  <p class="text-sm text-muted-foreground">当前题目</p>
-                  <div class="mt-4 flex justify-center">
-                    <button
-                      type="button"
-                      class="grid size-24 place-items-center rounded-full border bg-background shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-95"
-                      aria-label="播放题目音"
-                      @click="playEarQuestion"
-                    >
-                      <Volume2 class="size-10 text-orange-500" />
-                    </button>
-                  </div>
-                  <p class="mt-4 text-sm leading-6 text-muted-foreground">
-                    请听音后选择，不显示提示音名。
-                  </p>
-                </div>
-
-                <div class="grid gap-2 sm:grid-cols-4">
-                  <Button
-                    v-for="option in earQuestion.options"
-                    :key="option.id"
-                    type="button"
-                    variant="outline"
-                    class="h-14 rounded-2xl text-base font-semibold"
-                    :class="earOptionButtonClass(option)"
-                    :disabled="earAnswerStatus !== 'idle'"
-                    @click="chooseEarAnswer(option)"
-                  >
-                    {{ option.label }}
-                  </Button>
-                </div>
-
-                <Transition name="feedback">
-                  <div
-                    v-if="earAnswerStatus !== 'idle'"
-                    class="flex gap-3 rounded-2xl border p-4"
-                    :class="
-                      earAnswerStatus === 'correct'
-                        ? 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300'
-                        : 'border-destructive/40 bg-destructive/10 text-destructive'
-                    "
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <CheckCircle2
-                      v-if="earAnswerStatus === 'correct'"
-                      class="mt-0.5 size-5 shrink-0"
-                    />
-                    <XCircle v-else class="mt-0.5 size-5 shrink-0" />
-                    <div class="space-y-1">
-                      <p class="font-semibold">{{ earFeedbackTitle }}</p>
-                      <p class="text-sm leading-6 opacity-90">
-                        {{ noteSignature(earQuestionNote) }}。可以反复播放题目音和已选择音，对比音高。
-                      </p>
-                    </div>
-                  </div>
-                </Transition>
-
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <p class="text-sm text-muted-foreground">
-                    当前连击 {{ stats.currentStreak }}，最高连击 {{ stats.bestStreak }}。
-                  </p>
-                  <Button @click="nextEarQuestion(true)">
-                    <RefreshCcw class="size-4" />
-                    {{ earAnswerStatus === 'idle' ? '换一个音' : '下一题' }}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section v-else key="fretboard" class="space-y-4">
-            <Card>
-              <CardHeader class="gap-3 lg:grid-cols-[1fr_auto]">
-                <div class="space-y-2">
-                  <Badge variant="secondary" class="w-fit">Mini Fretboard Layout</Badge>
-                  <CardTitle class="text-xl sm:text-2xl">指板大闯关</CardTitle>
-                  <CardDescription class="max-w-2xl leading-6">
-                    选择或随机生成一个相邻自然音关系，把抽象音程转化成同一根弦上的品格距离。
-                  </CardDescription>
-                </div>
-                <Button variant="outline" @click="nextFretChallenge">
-                  <RefreshCcw class="size-4" />
-                  随机一关
-                </Button>
-              </CardHeader>
-
-              <CardContent class="space-y-6">
-                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
-                  <button
-                    v-for="interval in intervals"
-                    :key="interval.id"
-                    type="button"
-                    class="rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/60 active:scale-[0.98]"
-                    :class="[
-                      selectedInterval.id === interval.id
-                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                        : 'border-border bg-background',
-                      interval.kind === 'half' && selectedInterval.id !== interval.id
-                        ? 'border-orange-300 bg-orange-50/70 text-orange-800 dark:border-orange-900 dark:bg-orange-950/20 dark:text-orange-300'
-                        : '',
-                    ]"
-                    @click="selectInterval(interval)"
-                  >
-                    <p class="font-semibold">
-                      {{ noteByIndex(interval.fromIndex).letter }} →
-                      {{ noteDisplayName(noteByIndex(interval.toIndex)) }}
-                    </p>
-                    <p
-                      class="mt-1 text-xs"
-                      :class="
-                        selectedInterval.id === interval.id
-                          ? 'text-primary-foreground/75'
-                          : 'text-muted-foreground'
-                      "
-                    >
-                      {{ intervalLabel(interval) }}
-                    </p>
-                  </button>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-[1fr_360px]">
-                  <div class="space-y-4 rounded-2xl border bg-muted/20 p-4">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p class="text-sm text-muted-foreground">当前关卡</p>
-                        <h3 class="text-2xl font-semibold tracking-tight">{{ fretboardTitle }}</h3>
-                      </div>
-                      <Badge :variant="fretboardInterval.kind === 'half' ? 'default' : 'outline'">
-                        {{ intervalLabel(fretboardInterval) }}
-                      </Badge>
-                    </div>
-
-                    <div class="fretboard-track large">
-                      <div
-                        v-for="fret in frets"
-                        :key="fret"
-                        class="fret-cell"
-                        :class="{ marked: Boolean(markerForFret(fret)) }"
-                      >
-                        <span class="fret-number">{{ fret }}品</span>
-                        <span
-                          v-if="markerForFret(fret)"
-                          class="fret-marker"
-                          :class="markerForFret(fret)?.type"
-                        >
-                          {{ markerForFret(fret)?.label }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p class="text-sm leading-6 text-muted-foreground">
-                      {{ fretboardDescription }}
-                    </p>
-                  </div>
-
-                  <Card class="shadow-none">
-                    <CardHeader>
-                      <Badge variant="outline" class="w-fit">Challenge</Badge>
-                      <CardTitle class="text-lg">从起点到目标要移动几品？</CardTitle>
-                      <CardDescription>先根据 3-4、7-1̇ 判断半音，再换算成品格。</CardDescription>
-                    </CardHeader>
-                    <CardContent class="space-y-4">
-                      <div class="grid grid-cols-3 gap-2">
-                        <Button
-                          v-for="answer in fretAnswerOptions"
-                          :key="answer"
-                          type="button"
-                          variant="outline"
-                          class="h-14 rounded-2xl text-base font-semibold"
-                          :class="fretOptionButtonClass(answer)"
-                          :disabled="fretAnswerStatus !== 'idle'"
-                          @click="answerFretChallenge(answer)"
-                        >
-                          {{ answer }} 品
-                        </Button>
-                      </div>
-
-                      <Transition name="feedback">
-                        <div
-                          v-if="fretAnswerStatus !== 'idle'"
-                          class="rounded-2xl border p-4 text-sm leading-6"
-                          :class="
-                            fretAnswerStatus === 'correct'
-                              ? 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300'
-                              : 'border-destructive/40 bg-destructive/10 text-destructive'
-                          "
-                          role="status"
-                          aria-live="polite"
-                        >
-                          <p class="font-semibold">{{ fretFeedbackTitle }}</p>
-                          <p class="mt-1 opacity-90">{{ intervalTheory(selectedInterval) }}</p>
-                        </div>
-                      </Transition>
-
-                      <Button class="w-full" @click="nextFretChallenge">
-                        <RefreshCcw class="size-4" />
-                        下一关
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        </Transition>
-      </div>
-    </div>
-  </section>
+          </CardContent>
+        </Card>
+      </section>
+    </Transition>
+  </div>
 </template>
 
 <style scoped>
-.visible-scrollbar {
-  scrollbar-width: thin;
-}
-
-.visible-scrollbar::-webkit-scrollbar {
-  display: block;
-  width: 8px;
-  height: 8px;
-}
-
-.visible-scrollbar::-webkit-scrollbar-thumb {
-  background-color: color-mix(in oklab, var(--foreground) 20%, transparent);
-  border-radius: 9999px;
-}
-
-.visible-scrollbar::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
 .note-card {
   transform-style: preserve-3d;
 }

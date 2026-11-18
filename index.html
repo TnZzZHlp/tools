@@ -4,10 +4,22 @@
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#f8fafc">
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="description" content="个人工具集 - 实用小工具集合">
-    <title>Tools</title>
+    <meta name="description" content="个人工具集 - 实用在线小工具集合">
+    <title>Tools · 实用工具集</title>
+    <script>
+      ;(function () {
+        try {
+          var saved = localStorage.getItem('tools:theme')
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          var dark = saved === 'dark' || (saved !== 'light' && prefersDark)
+          document.documentElement.classList.toggle('dark', dark)
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#11141c' : '#f8fafc')
+        } catch {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import EncodingView from '@/views/EncodingView.vue'
-import GuitarNoteTrainerView from '@/views/GuitarNoteTrainerView.vue'
 import HomeView from '@/views/HomeView.vue'
-import RandomStringView from '@/views/RandomStringView.vue'
-import RustTracingToLogqlView from '@/views/RustTracingToLogqlView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(_to, _from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return { top: 0 }
+  },
   routes: [
     {
       path: '/',
@@ -16,22 +16,22 @@ const router = createRouter({
     {
       path: '/random-string',
       name: 'random-string',
-      component: RandomStringView,
+      component: () => import('@/views/RandomStringView.vue'),
     },
     {
       path: '/tools/rust-tracing-to-logql',
       name: 'rust-tracing-to-logql',
-      component: RustTracingToLogqlView,
+      component: () => import('@/views/RustTracingToLogqlView.vue'),
     },
     {
       path: '/tools/encoding',
       name: 'encoding',
-      component: EncodingView,
+      component: () => import('@/views/EncodingView.vue'),
     },
     {
       path: '/tools/guitar-note-trainer',
       name: 'guitar-note-trainer',
-      component: GuitarNoteTrainerView,
+      component: () => import('@/views/GuitarNoteTrainerView.vue'),
     },
     {
       path: '/tools/files',

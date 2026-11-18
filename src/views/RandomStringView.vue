@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Check, ClipboardCopy, RefreshCw, Shuffle, Sparkles } from 'lucide-vue-next'
 
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Check, ClipboardCopy, RefreshCw } from 'lucide-vue-next'
 
 const CHAR_SETS = {
   digits: '0123456789',
@@ -16,31 +18,91 @@ const CHAR_SETS = {
   special: '!@#$%^&*()_+-=[]{}|;:,.<>?',
 }
 
+interface Preset {
+  id: string
+  label: string
+  apply: () => void
+}
+
 const useDigits = ref(true)
 const useLowercase = ref(true)
 const useUppercase = ref(true)
 const useSpecial = ref(false)
-const length = ref(64)
-const count = ref(5)
+const length = ref(32)
+const count = ref(6)
 const excludeChars = ref('')
 const uuidMode = ref(false)
 const results = ref<string[]>([])
 const copySuccess = ref<number | null>(null)
+let copyTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(uuidMode, (isUuid) => {
-  if (isUuid) {
-    length.value = 64
-    useDigits.value = true
-    useLowercase.value = true
-    useUppercase.value = false
-    useSpecial.value = false
-  }
-})
+const presets: Preset[] = [
+  {
+    id: 'password-16',
+    label: '16位强密码',
+    apply: () => {
+      uuidMode.value = false
+      length.value = 16
+      useDigits.value = true
+      useLowercase.value = true
+      useUppercase.value = true
+      useSpecial.value = true
+      excludeChars.value = '0O1lI'
+    },
+  },
+  {
+    id: 'secret-32',
+    label: '32位密钥',
+    apply: () => {
+      uuidMode.value = false
+      length.value = 32
+      useDigits.value = true
+      useLowercase.value = true
+      useUppercase.value = true
+      useSpecial.value = false
+      excludeChars.value = ''
+    },
+  },
+  {
+    id: 'token-64',
+    label: '64位 Token',
+    apply: () => {
+      uuidMode.value = false
+      length.value = 64
+      useDigits.value = true
+      useLowercase.value = true
+      useUppercase.value = true
+      useSpecial.value = false
+      excludeChars.value = ''
+    },
+  },
+  {
+    id: 'pin-6',
+    label: '6位纯数字',
+    apply: () => {
+      uuidMode.value = false
+      length.value = 6
+      useDigits.value = true
+      useLowercase.value = false
+      useUppercase.value = false
+      useSpecial.value = false
+      excludeChars.value = ''
+    },
+  },
+  {
+    id: 'uuid',
+    label: 'UUID v4',
+    apply: () => {
+      uuidMode.value = true
+    },
+  },
+]
+
+const safeLength = computed(() => Math.min(1000, Math.max(1, Number(length.value) || 1)))
+const safeCount = computed(() => Math.min(200, Math.max(1, Number(count.value) || 1)))
 
 const charset = computed(() => {
-  if (uuidMode.value) {
-    return '0123456789abcdef'
-  }
+  if (uuidMode.value) return '0123456789abcdef'
 
   let chars = ''
   if (useDigits.value) chars += CHAR_SETS.digits
@@ -57,11 +119,23 @@ const charset = computed(() => {
 })
 
 const canGenerate = computed(() => {
-  if (uuidMode.value) return true
-  return charset.value.length > 0 && length.value > 0 && count.value > 0
+  if (uuidMode.value) return Number(count.value) > 0
+  return charset.value.length > 0 && Number(length.value) > 0 && Number(count.value) > 0
 })
 
+function randomInt(max: number): number {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint32Array(1)
+    crypto.getRandomValues(array)
+    return (array[0] ?? 0) % max
+  }
+  return Math.floor(Math.random() * max)
+}
+
 function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
   const hex = '0123456789abcdef'
   let uuid = ''
   for (let i = 0; i < 36; i++) {
@@ -70,9 +144,9 @@ function generateUUID(): string {
     } else if (i === 14) {
       uuid += '4'
     } else if (i === 19) {
-      uuid += '89ab'[Math.floor(Math.random() * 4)]
+      uuid += '89ab'[randomInt(4)]
     } else {
-      uuid += hex[Math.floor(Math.random() * 16)]
+      uuid += hex[randomInt(16)]
     }
   }
   return uuid
@@ -81,28 +155,39 @@ function generateUUID(): string {
 function generateRandomString(len: number, chars: string): string {
   let result = ''
   for (let i = 0; i < len; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)]
+    result += chars[randomInt(chars.length)]
   }
   return result
 }
 
 function generate() {
-  results.value = []
-
-  if (uuidMode.value) {
-    for (let i = 0; i < count.value; i++) {
-      results.value.push(generateUUID())
-    }
+  if (!canGenerate.value) {
+    results.value = []
     return
   }
 
-  const chars = charset.value
-  if (!chars) return
-
-  for (let i = 0; i < count.value; i++) {
-    results.value.push(generateRandomString(length.value, chars))
+  const next: string[] = []
+  if (uuidMode.value) {
+    for (let i = 0; i < safeCount.value; i++) {
+      next.push(generateUUID())
+    }
+  } else {
+    const chars = charset.value
+    for (let i = 0; i < safeCount.value; i++) {
+      next.push(generateRandomString(safeLength.value, chars))
+    }
   }
+  results.value = next
+  copySuccess.value = null
 }
+
+watch(
+  [uuidMode, useDigits, useLowercase, useUppercase, useSpecial, length, count, excludeChars],
+  () => {
+    generate()
+  },
+  { immediate: true },
+)
 
 async function copySingle(index: number) {
   const text = results.value[index]
@@ -111,163 +196,250 @@ async function copySingle(index: number) {
   try {
     await navigator.clipboard.writeText(text)
     copySuccess.value = index
-    setTimeout(() => {
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
       copySuccess.value = null
-    }, 2000)
+    }, 1800)
   } catch {
-    console.error('Failed to copy')
+    // Clipboard unavailable
   }
 }
 
 async function copyAll() {
+  if (!results.value.length) return
   try {
     await navigator.clipboard.writeText(results.value.join('\n'))
     copySuccess.value = -1
-    setTimeout(() => {
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
       copySuccess.value = null
-    }, 2000)
+    }, 1800)
   } catch {
-    console.error('Failed to copy')
+    // Clipboard unavailable
   }
 }
+
+onBeforeUnmount(() => clearTimeout(copyTimer))
 </script>
 
 <template>
-  <section class="grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-2 lg:gap-6" data-morph-target>
-    <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
-      <header class="shrink-0 space-y-1.5 sm:space-y-2">
-        <Badge variant="secondary">配置选项</Badge>
-        <h2 class="text-lg font-semibold tracking-tight sm:text-xl">随机字符串生成器</h2>
-      </header>
+  <div class="flex flex-col pb-8">
+    <ToolPageHeader
+      title="随机字符串生成"
+      description="快速生成高强度密码、密钥或标准 UUID v4，点击任意一行结果即可复制。"
+      :icon="Shuffle"
+    >
+      <template #actions>
+        <Button type="button" :disabled="!canGenerate" @click="generate">
+          <RefreshCw class="size-4" />
+          重新生成
+        </Button>
+      </template>
+    </ToolPageHeader>
 
-      <div class="visible-scrollbar min-h-0 flex-1 overflow-auto pt-4 sm:pt-6">
-        <div class="space-y-6">
-          <div class="flex items-center justify-between rounded-lg border p-4">
-            <div class="space-y-0.5">
-              <Label for="uuid-mode">UUID 模式</Label>
-              <p class="text-sm text-muted-foreground">生成标准 UUID v4 格式</p>
+    <div
+      class="grid items-start gap-5 lg:grid-cols-[23rem_minmax(0,1fr)] xl:grid-cols-[25rem_minmax(0,1fr)]"
+    >
+      <!-- Configuration Card -->
+      <Card class="py-5">
+        <CardHeader class="gap-3 px-5">
+          <div class="flex items-center justify-between">
+            <CardTitle class="text-base">生成规则</CardTitle>
+            <Badge variant="outline" class="font-mono text-xs font-normal">
+              字符池 {{ charset.length }}
+            </Badge>
+          </div>
+
+          <div class="space-y-1.5">
+            <span class="flex items-center gap-1 text-xs text-muted-foreground">
+              <Sparkles class="size-3" />
+              常用预设
+            </span>
+            <div class="flex flex-wrap gap-1.5">
+              <Button
+                v-for="preset in presets"
+                :key="preset.id"
+                type="button"
+                variant="outline"
+                size="sm"
+                class="h-7 rounded-full px-2.5 text-xs font-normal"
+                @click="preset.apply"
+              >
+                {{ preset.label }}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent class="space-y-5 px-5">
+          <div class="flex items-center justify-between rounded-lg border bg-muted/35 p-3.5">
+            <div class="space-y-0.5 pr-3">
+              <Label for="uuid-mode" class="cursor-pointer">UUID v4 模式</Label>
+              <p class="text-xs text-muted-foreground">生成固定 36 位标准唯一标识符</p>
             </div>
             <Switch id="uuid-mode" v-model="uuidMode" />
           </div>
 
           <div v-if="!uuidMode" class="space-y-4">
-            <div class="space-y-3">
-              <Label>字符类型</Label>
-              <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div class="flex items-center gap-2">
-                  <Checkbox id="digits" v-model="useDigits" :disabled="uuidMode" />
-                  <Label for="digits" :class="['cursor-pointer', uuidMode && 'opacity-50']">数字</Label>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Checkbox id="lowercase" v-model="useLowercase" :disabled="uuidMode" />
-                  <Label for="lowercase" :class="['cursor-pointer', uuidMode && 'opacity-50']">小写</Label>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Checkbox id="uppercase" v-model="useUppercase" :disabled="uuidMode" />
-                  <Label for="uppercase" :class="['cursor-pointer', uuidMode && 'opacity-50']">大写</Label>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Checkbox id="special" v-model="useSpecial" :disabled="uuidMode" />
-                  <Label for="special" :class="['cursor-pointer', uuidMode && 'opacity-50']">特殊</Label>
-                </div>
+            <div class="space-y-2.5">
+              <Label>包含字符类型</Label>
+              <div class="grid grid-cols-2 gap-2.5">
+                <label
+                  for="digits"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
+                  :class="useDigits && 'border-primary/40 bg-accent/40'"
+                >
+                  <Checkbox id="digits" v-model="useDigits" />
+                  <span>数字 <code class="text-xs text-muted-foreground">0-9</code></span>
+                </label>
+
+                <label
+                  for="lowercase"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
+                  :class="useLowercase && 'border-primary/40 bg-accent/40'"
+                >
+                  <Checkbox id="lowercase" v-model="useLowercase" />
+                  <span>小写 <code class="text-xs text-muted-foreground">a-z</code></span>
+                </label>
+
+                <label
+                  for="uppercase"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
+                  :class="useUppercase && 'border-primary/40 bg-accent/40'"
+                >
+                  <Checkbox id="uppercase" v-model="useUppercase" />
+                  <span>大写 <code class="text-xs text-muted-foreground">A-Z</code></span>
+                </label>
+
+                <label
+                  for="special"
+                  class="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
+                  :class="useSpecial && 'border-primary/40 bg-accent/40'"
+                >
+                  <Checkbox id="special" v-model="useSpecial" />
+                  <span>符号 <code class="text-xs text-muted-foreground">!@#…</code></span>
+                </label>
               </div>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div class="space-y-2">
+            <div class="grid gap-3.5 sm:grid-cols-2">
+              <div class="space-y-1.5">
                 <Label for="length">字符串长度</Label>
-                <Input id="length" v-model.number="length" type="number" min="1" max="1000" placeholder="64"
-                  :disabled="uuidMode" :class="uuidMode && 'bg-muted'" />
+                <Input
+                  id="length"
+                  v-model.number="length"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  placeholder="32"
+                />
               </div>
 
-              <div class="space-y-2">
-                <Label for="exclude">排除字符</Label>
-                <Input id="exclude" v-model="excludeChars" placeholder="例如: 0O1lI" :disabled="uuidMode"
-                  :class="uuidMode && 'bg-muted'" />
+              <div class="space-y-1.5">
+                <Label for="exclude">排除易混字符</Label>
+                <Input
+                  id="exclude"
+                  v-model="excludeChars"
+                  placeholder="例如: 0O1lI"
+                  class="font-mono"
+                />
               </div>
             </div>
           </div>
 
-          <div v-else class="space-y-2">
-            <Label for="uuid-length">字符串长度</Label>
-            <Input id="uuid-length" :model-value="36" type="number" disabled class="bg-muted" />
-          </div>
-
-          <div class="space-y-2">
-            <Label for="count">生成数量</Label>
-            <Input id="count" v-model.number="count" type="number" min="1" max="1000" placeholder="5" />
+          <div class="space-y-1.5">
+            <Label for="count">生成条数（1 - 200）</Label>
+            <Input
+              id="count"
+              v-model.number="count"
+              type="number"
+              min="1"
+              max="200"
+              placeholder="6"
+            />
           </div>
 
           <Button class="w-full" :disabled="!canGenerate" @click="generate">
-            <RefreshCw class="h-4 w-4" />
-            生成随机字符串
+            <RefreshCw class="size-4" />
+            换一批结果
           </Button>
-        </div>
-      </div>
-    </section>
+        </CardContent>
+      </Card>
 
-    <section
-      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-4 lg:h-full lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
-      <header class="shrink-0">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1.5 sm:space-y-2">
-            <Badge variant="outline">输出结果</Badge>
-            <h2 class="text-lg font-semibold tracking-tight sm:text-xl">
-              生成结果
-              <span v-if="results.length" class="text-sm font-normal text-muted-foreground">
-                ({{ results.length }} 条)
-              </span>
-            </h2>
-          </div>
-          <Button v-if="results.length > 1" variant="outline" size="sm"
-            :class="copySuccess === -1 && 'text-green-600 dark:text-green-400 border-green-600 dark:border-green-400'"
-            @click="copyAll">
-            <Check v-if="copySuccess === -1" class="h-4 w-4" />
-            <ClipboardCopy v-else class="h-4 w-4" />
-            复制全部
-          </Button>
-        </div>
-      </header>
+      <!-- Results Card -->
+      <Card class="min-w-0 py-5">
+        <CardHeader class="px-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <CardTitle class="text-base">生成结果</CardTitle>
+              <Badge v-if="results.length" variant="secondary" class="tabular-nums font-normal">
+                {{ results.length }} 条 · {{ uuidMode ? 36 : safeLength }} 位
+              </Badge>
+            </div>
 
-      <div class="visible-scrollbar min-h-0 flex-1 overflow-auto pt-4">
-        <div v-if="results.length" class="space-y-2">
-          <div v-for="(result, index) in results" :key="index"
-            class="group flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
-            <code class="flex-1 break-all font-mono text-sm">{{ result }}</code>
-            <Button variant="ghost" size="icon" class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-              :class="copySuccess === index && 'opacity-100 text-green-600 dark:text-green-400'"
-              @click="copySingle(index)">
-              <Check v-if="copySuccess === index" class="h-4 w-4" />
-              <ClipboardCopy v-else class="h-4 w-4" />
+            <Button
+              v-if="results.length"
+              type="button"
+              variant="outline"
+              size="sm"
+              :class="
+                copySuccess === -1 &&
+                'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+              "
+              @click="copyAll"
+            >
+              <Check v-if="copySuccess === -1" class="size-4" />
+              <ClipboardCopy v-else class="size-4" />
+              {{ copySuccess === -1 ? '已复制全部' : '复制全部' }}
             </Button>
           </div>
-        </div>
+        </CardHeader>
 
-        <div v-else class="flex h-full items-center justify-center text-muted-foreground">
-          <p>点击"生成随机字符串"开始</p>
-        </div>
-      </div>
-    </section>
-  </section>
+        <CardContent class="px-5">
+          <ul v-if="results.length" class="space-y-2">
+            <li v-for="(result, index) in results" :key="index">
+              <button
+                type="button"
+                class="group flex w-full items-center gap-3 rounded-lg border bg-muted/25 px-3.5 py-2.5 text-left transition-all hover:border-foreground/25 hover:bg-muted/55 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                :class="
+                  copySuccess === index &&
+                  'border-emerald-500/60 bg-emerald-500/8 dark:border-emerald-400/50'
+                "
+                :aria-label="`复制第 ${index + 1} 条字符串`"
+                @click="copySingle(index)"
+              >
+                <span class="w-5 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  {{ index + 1 }}
+                </span>
+                <code class="min-w-0 flex-1 break-all font-mono text-sm leading-relaxed">
+                  {{ result }}
+                </code>
+                <span
+                  class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors"
+                  :class="
+                    copySuccess === index
+                      ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                      : 'text-muted-foreground group-hover:bg-background group-hover:text-foreground'
+                  "
+                >
+                  <Check v-if="copySuccess === index" class="size-3.5" />
+                  <ClipboardCopy v-else class="size-3.5" />
+                  <span class="hidden sm:inline">{{
+                    copySuccess === index ? '已复制' : '复制'
+                  }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+
+          <div
+            v-else
+            class="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground"
+          >
+            <p>请至少勾选一种字符类型（或调整排除字符）以生成结果。</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
 </template>
-
-<style scoped>
-.visible-scrollbar {
-  scrollbar-width: thin;
-}
-
-.visible-scrollbar::-webkit-scrollbar {
-  display: block;
-  width: 8px;
-  height: 8px;
-}
-
-.visible-scrollbar::-webkit-scrollbar-thumb {
-  background-color: color-mix(in oklab, var(--foreground) 22%, transparent);
-  border-radius: 9999px;
-}
-
-.visible-scrollbar::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-</style>

@@ -783,7 +783,7 @@ onBeforeUnmount(() => {
         </AlertDescription>
       </Alert>
     </div>
-    <div v-if="chapter && novel" class="reader-content" :aria-busy="loading" data-morph-target>
+    <div v-if="chapter && novel" class="reader-content" :aria-busy="loading">
       <header class="reader-chapter-heading">
         <div>
           <p class="mb-3 text-xs tracking-widest text-muted-foreground">

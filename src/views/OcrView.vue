@@ -3,13 +3,33 @@ import { katex } from '@mdit/plugin-katex'
 import 'katex/dist/katex.min.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
+import {
+  Check,
+  ClipboardCopy,
+  FileText,
+  Image as ImageIcon,
+  LoaderCircle,
+  RefreshCw,
+  ScanText,
+  Upload,
+  X,
+} from 'lucide-vue-next'
 
 import { getApiBaseUrl } from '@/api'
+import ToolPageHeader from '@/components/ToolPageHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, ClipboardCopy, FileText, Image, LoaderCircle, Upload, X } from 'lucide-vue-next'
 
 const OCR_API_URL = `${getApiBaseUrl()}/ocr`
 const markdownIt = new MarkdownIt({
@@ -21,7 +41,7 @@ const markdownIt = new MarkdownIt({
 })
 
 type OutputMode = 'text' | 'markdown'
-type OutputTab = 'normal' | 'markdown' | 'text'
+type OutputTab = 'result' | 'source' | 'overlay'
 
 interface OcrPage {
   page: number
@@ -49,9 +69,10 @@ interface LayoutBlock {
 }
 
 const file = ref<File | null>(null)
+const localPreviewUrl = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const outputMode = ref<OutputMode>('text')
-const activeOutputTab = ref<OutputTab>('normal')
+const activeOutputTab = ref<OutputTab>('result')
 const result = ref('')
 const pages = ref<OcrPage[]>([])
 const rawResults = ref<unknown[]>([])
@@ -59,17 +80,29 @@ const error = ref('')
 const loading = ref(false)
 const dragging = ref(false)
 const copySuccess = ref(false)
-const selectedPageIndex = ref(0)
+const selectedPageIndex = ref('0')
 let recognitionToken = 0
+let copyTimer: ReturnType<typeof setTimeout> | undefined
 
 watch(outputMode, (mode) => {
-  if (activeOutputTab.value !== 'normal') {
-    activeOutputTab.value = mode
+  if (mode === 'text' && activeOutputTab.value === 'source') {
+    activeOutputTab.value = 'result'
+  }
+  if (file.value && !loading.value) {
+    void recognize()
   }
 })
 
+function releaseLocalPreview() {
+  if (!localPreviewUrl.value) return
+  URL.revokeObjectURL(localPreviewUrl.value)
+  localPreviewUrl.value = ''
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('paste', handlePaste)
+  releaseLocalPreview()
+  clearTimeout(copyTimer)
 })
 
 onMounted(() => {
@@ -86,39 +119,45 @@ const canRun = computed(() => Boolean(file.value) && !loading.value)
 const ocrImages = computed(() => pages.value.map((page) => page.ocrImage).filter(Boolean))
 const layoutOverlayPages = computed(() => extractLayoutOverlayPages(rawResults.value))
 const selectedOverlayPage = computed(
-  () => layoutOverlayPages.value[selectedPageIndex.value] ?? null,
+  () => layoutOverlayPages.value[Number(selectedPageIndex.value)] ?? null,
 )
 const firstResultImage = computed(
   () => layoutOverlayPages.value[0]?.imageUrl ?? ocrImages.value[0] ?? '',
 )
-const fallbackPreviewUrl = computed(() => firstResultImage.value)
+const fallbackPreviewUrl = computed(() => firstResultImage.value || localPreviewUrl.value)
+
 const markdownOutput = computed(() =>
   pages.value
     .map((page) => resolveMarkdownImages(page).trim() || page.text?.trim() || '')
     .filter(Boolean)
     .join('\n\n---\n\n'),
 )
+
 const textOutput = computed(() =>
   pages.value
     .map((page) => page.text?.trim() || plainTextFromMarkdown(page.markdown))
     .filter(Boolean)
     .join('\n\n'),
 )
-const activeTextOutput = computed(() => {
-  if (activeOutputTab.value === 'markdown') return markdownOutput.value
-  if (activeOutputTab.value === 'text') return textOutput.value
-  return ''
-})
+
+const copyableOutput = computed(() =>
+  outputMode.value === 'markdown' ? markdownOutput.value : textOutput.value,
+)
+
 const renderedMarkdown = computed(() => markdownIt.render(markdownOutput.value))
 
 watch(layoutOverlayPages, () => {
-  selectedPageIndex.value = 0
+  selectedPageIndex.value = '0'
 })
 
 async function selectFile(nextFile: File | null) {
   if (!nextFile) return
 
+  releaseLocalPreview()
   file.value = nextFile
+  if (nextFile.type.startsWith('image/')) {
+    localPreviewUrl.value = URL.createObjectURL(nextFile)
+  }
   error.value = ''
   result.value = ''
   pages.value = []
@@ -150,6 +189,7 @@ function handlePaste(event: ClipboardEvent) {
 
 function clearFile() {
   recognitionToken++
+  releaseLocalPreview()
   file.value = null
   result.value = ''
   pages.value = []
@@ -169,22 +209,21 @@ function asString(value: unknown): string {
 function extractLayoutOverlayPages(results: unknown[]): LayoutOverlayPage[] {
   const overlayPages: LayoutOverlayPage[] = []
 
-  for (const result of results) {
-    if (!isRecord(result)) continue
-
-    overlayPages.push(...extractDocumentLayoutOverlayPages(result))
-    overlayPages.push(...extractPlainOcrOverlayPages(result))
+  for (const item of results) {
+    if (!isRecord(item)) continue
+    overlayPages.push(...extractDocumentLayoutOverlayPages(item))
+    overlayPages.push(...extractPlainOcrOverlayPages(item))
   }
 
   return overlayPages
 }
 
-function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): LayoutOverlayPage[] {
-  if (!Array.isArray(result.layoutParsingResults)) return []
+function extractDocumentLayoutOverlayPages(item: Record<string, unknown>): LayoutOverlayPage[] {
+  if (!Array.isArray(item.layoutParsingResults)) return []
 
   const overlayPages: LayoutOverlayPage[] = []
 
-  for (const layoutResult of result.layoutParsingResults) {
+  for (const layoutResult of item.layoutParsingResults) {
     if (!isRecord(layoutResult)) continue
 
     const prunedResult = isRecord(layoutResult.prunedResult) ? layoutResult.prunedResult : null
@@ -214,12 +253,12 @@ function extractDocumentLayoutOverlayPages(result: Record<string, unknown>): Lay
   return overlayPages
 }
 
-function extractPlainOcrOverlayPages(result: Record<string, unknown>): LayoutOverlayPage[] {
-  if (!Array.isArray(result.ocrResults)) return []
+function extractPlainOcrOverlayPages(item: Record<string, unknown>): LayoutOverlayPage[] {
+  if (!Array.isArray(item.ocrResults)) return []
 
   const overlayPages: LayoutOverlayPage[] = []
 
-  for (const ocrResult of result.ocrResults) {
+  for (const ocrResult of item.ocrResults) {
     if (!isRecord(ocrResult)) continue
 
     const prunedResult = isRecord(ocrResult.prunedResult) ? ocrResult.prunedResult : null
@@ -310,7 +349,10 @@ async function recognize() {
     renderOutput()
 
     if (!result.value && ocrImages.value.length) {
-      error.value = '当前模型只返回了 OCR 结果图片，没有可复制的文本内容。'
+      activeOutputTab.value = 'overlay'
+      error.value = '当前模型仅返回了检测图片，没有可复制的文本内容。'
+    } else if (result.value) {
+      activeOutputTab.value = 'result'
     }
   } catch (err) {
     if (currentToken !== recognitionToken) return
@@ -323,316 +365,312 @@ async function recognize() {
 }
 
 async function copyOutput() {
-  if (!activeTextOutput.value) return
+  if (!copyableOutput.value) return
 
-  await navigator.clipboard.writeText(activeTextOutput.value)
+  await navigator.clipboard.writeText(copyableOutput.value)
   copySuccess.value = true
-  setTimeout(() => {
+  clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => {
     copySuccess.value = false
-  }, 2000)
+  }, 1800)
 }
 </script>
 
 <template>
-  <section
-    class="relative grid h-full w-full min-h-0 gap-4 overflow-hidden lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] lg:gap-6"
-    :aria-busy="loading"
-    data-morph-target
-  >
-    <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
-      <header class="shrink-0 space-y-1.5 sm:space-y-2">
-        <Badge variant="secondary">OCR 输入</Badge>
-        <div>
-          <h2 class="text-lg font-semibold tracking-tight sm:text-xl">图片 / 文件识别</h2>
-          <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            粘贴图片、拖入文件，或从本地选择文件后自动提交识别。
-          </p>
-        </div>
-      </header>
+  <div class="flex flex-col pb-6" :aria-busy="loading">
+    <ToolPageHeader
+      title="OCR 图文识别"
+      description="支持直接 Ctrl+V 粘贴截图、拖拽上传图片或 PDF，提取纯文本或结构化 Markdown。"
+      :icon="ScanText"
+    >
+      <template #actions>
+        <Tabs v-model="outputMode">
+          <TabsList>
+            <TabsTrigger value="text" class="gap-1.5 px-3 text-xs sm:text-sm">
+              <ImageIcon class="size-3.5" />
+              纯文本模式
+            </TabsTrigger>
+            <TabsTrigger value="markdown" class="gap-1.5 px-3 text-xs sm:text-sm">
+              <FileText class="size-3.5" />
+              Markdown 版面
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </template>
+    </ToolPageHeader>
 
-      <div class="visible-scrollbar min-h-0 flex-1 overflow-auto pt-4 sm:pt-6">
-        <div class="space-y-4">
-          <div class="inline-flex gap-1.5 rounded-lg border p-1">
-            <Button
-              type="button"
-              size="sm"
-              class="min-w-24"
-              :variant="outputMode === 'text' ? 'default' : 'ghost'"
-              @click="outputMode = 'text'"
-            >
-              <Image class="h-4 w-4" />
-              纯文本
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              class="min-w-24"
-              :variant="outputMode === 'markdown' ? 'default' : 'ghost'"
-              @click="outputMode = 'markdown'"
-            >
-              <FileText class="h-4 w-4" />
-              MD
-            </Button>
+    <div
+      class="grid gap-5 lg:h-[calc(100dvh-11.5rem)] lg:min-h-[30rem] lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[25rem_minmax(0,1fr)]"
+    >
+      <!-- Left Input Card -->
+      <Card class="flex min-w-0 flex-col gap-4 py-4 lg:min-h-0">
+        <CardHeader class="px-4">
+          <div class="flex items-center justify-between gap-2">
+            <CardTitle class="text-base">输入文件</CardTitle>
+            <Badge variant="outline" class="font-normal">
+              {{ outputMode === 'markdown' ? 'PaddleOCR-VL' : 'PP-OCRv6' }}
+            </Badge>
           </div>
+        </CardHeader>
+
+        <CardContent class="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4">
+          <input
+            ref="fileInput"
+            class="hidden"
+            type="file"
+            accept="image/*,.pdf"
+            @change="handleFileInput"
+          />
 
           <div
-            class="flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :class="dragging ? 'border-primary bg-muted/70' : 'hover:bg-muted/40'"
+            role="button"
             tabindex="0"
+            class="group relative flex min-h-52 flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed p-5 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            :class="
+              dragging
+                ? 'border-primary bg-accent/60'
+                : 'border-border hover:border-foreground/30 hover:bg-muted/35'
+            "
             @click="fileInput?.click()"
-            @keydown.enter="fileInput?.click()"
+            @keydown.enter.prevent="fileInput?.click()"
             @keydown.space.prevent="fileInput?.click()"
             @dragenter.prevent="dragging = true"
             @dragover.prevent="dragging = true"
             @dragleave.prevent="dragging = false"
             @drop.prevent="handleDrop"
           >
-            <input
-              ref="fileInput"
-              class="hidden"
-              type="file"
-              accept="image/*,.pdf"
-              @change="handleFileInput"
-            />
+            <template v-if="localPreviewUrl">
+              <img
+                :src="localPreviewUrl"
+                alt="待识别图片预览"
+                class="max-h-52 max-w-full rounded-md object-contain"
+                :class="loading && 'opacity-45'"
+              />
+              <p class="mt-2.5 text-xs text-muted-foreground">点击或粘贴新图片即可替换</p>
+            </template>
 
-            <Upload class="mb-4 h-10 w-10 text-muted-foreground" />
-            <p class="font-medium">粘贴、拖放或选择文件</p>
-            <p class="mt-2 text-sm leading-6 text-muted-foreground">支持图片和 PDF</p>
+            <template v-else>
+              <div
+                class="mb-3 flex size-11 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+              >
+                <Upload class="size-5" />
+              </div>
+              <p class="text-sm font-medium text-foreground">粘贴截图、拖放或点击选择文件</p>
+              <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                支持常见图片格式与 PDF 文档
+              </p>
+            </template>
+
+            <div
+              v-if="loading"
+              class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px]"
+            >
+              <LoaderCircle class="size-6 animate-spin text-primary" />
+              <span class="text-xs font-medium text-foreground">正在识别文档内容…</span>
+            </div>
           </div>
 
-          <div v-if="file" class="flex items-center justify-between gap-3 rounded-lg border p-3">
+          <div
+            v-if="file"
+            class="flex items-center justify-between gap-2 rounded-lg border bg-muted/25 px-3 py-2.5"
+          >
             <div class="min-w-0">
               <p class="truncate text-sm font-medium">{{ file.name }}</p>
               <p class="text-xs text-muted-foreground">
-                {{ file.type || '未知类型' }} · {{ fileSize }}
+                {{ file.type || '未知格式' }} · {{ fileSize }}
               </p>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              class="size-8 shrink-0 text-muted-foreground hover:text-destructive"
               aria-label="移除文件"
               @click="clearFile"
             >
-              <X class="h-4 w-4" />
+              <X class="size-4" />
             </Button>
           </div>
 
           <Button type="button" class="w-full" :disabled="!canRun" @click="recognize">
-            <LoaderCircle v-if="loading" class="h-4 w-4 animate-spin" />
-            <FileText v-else class="h-4 w-4" />
-            {{ loading ? '识别中' : '开始识别' }}
+            <LoaderCircle v-if="loading" class="size-4 animate-spin" />
+            <RefreshCw v-else class="size-4" />
+            {{ loading ? '识别中…' : result ? '重新识别' : '开始识别' }}
           </Button>
 
           <Alert v-if="error" :variant="result ? 'default' : 'destructive'">
             <AlertTitle>{{ result ? '提示' : '识别失败' }}</AlertTitle>
             <AlertDescription>{{ error }}</AlertDescription>
           </Alert>
-        </div>
-      </div>
-    </section>
+        </CardContent>
+      </Card>
 
-    <section
-      class="flex min-h-0 min-w-0 flex-col overflow-hidden border-t pt-4 lg:h-full lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
-    >
-      <header class="shrink-0">
-        <div class="flex items-center justify-between gap-3">
-          <div class="inline-flex gap-1.5 rounded-lg border p-1">
+      <!-- Right Output Card -->
+      <Card class="flex min-h-[26rem] min-w-0 flex-col gap-3 py-4 lg:min-h-0">
+        <CardHeader class="px-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <Tabs v-model="activeOutputTab">
+              <TabsList>
+                <TabsTrigger value="result" class="px-3 text-xs">
+                  {{ outputMode === 'markdown' ? '渲染预览' : '识别文本' }}
+                </TabsTrigger>
+                <TabsTrigger v-if="outputMode === 'markdown'" value="source" class="px-3 text-xs">
+                  MD 源码
+                </TabsTrigger>
+                <TabsTrigger value="overlay" class="px-3 text-xs"> 版面区域 </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              class="min-w-20"
-              :variant="activeOutputTab === 'normal' ? 'default' : 'ghost'"
-              @click="activeOutputTab = 'normal'"
+              class="h-8 text-xs"
+              :disabled="!copyableOutput"
+              :class="
+                copySuccess &&
+                'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+              "
+              @click="copyOutput"
             >
-              预览
+              <Check v-if="copySuccess" class="size-3.5" />
+              <ClipboardCopy v-else class="size-3.5" />
+              {{
+                copySuccess ? '已复制' : outputMode === 'markdown' ? '复制 Markdown' : '复制文本'
+              }}
             </Button>
-            <Button
+          </div>
+        </CardHeader>
+
+        <CardContent class="flex min-h-0 flex-1 flex-col overflow-hidden px-4">
+          <!-- Tab 1: Primary Result (Text or Rendered Markdown) -->
+          <template v-if="activeOutputTab === 'result'">
+            <div
               v-if="outputMode === 'markdown'"
-              type="button"
-              size="sm"
-              class="min-w-24"
-              :variant="activeOutputTab === 'markdown' ? 'default' : 'ghost'"
-              @click="activeOutputTab = 'markdown'"
+              class="markdown-preview min-h-0 flex-1 overflow-y-auto rounded-lg border bg-muted/15 px-5 py-4"
             >
-              Markdown
-            </Button>
-            <Button
-              v-if="outputMode === 'text'"
-              type="button"
-              size="sm"
-              class="min-w-20"
-              :variant="activeOutputTab === 'text' ? 'default' : 'ghost'"
-              @click="activeOutputTab = 'text'"
-            >
-              纯文本
-            </Button>
-          </div>
-          <Button
-            v-if="activeOutputTab !== 'normal'"
-            type="button"
-            variant="outline"
-            size="icon"
-            :disabled="!activeTextOutput"
-            :aria-label="copySuccess ? '已复制' : '复制结果'"
-            :class="
-              copySuccess &&
-              'border-green-600 text-green-600 dark:border-green-400 dark:text-green-400'
-            "
-            @click="copyOutput"
-          >
-            <Check v-if="copySuccess" class="h-4 w-4" />
-            <ClipboardCopy v-else class="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
-
-      <div class="flex min-h-0 flex-1 flex-col gap-3 pt-4">
-        <template v-if="activeOutputTab === 'normal'">
-          <div
-            v-if="fallbackPreviewUrl && !layoutOverlayPages.length"
-            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
-          >
-            <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
-              <div class="min-w-0">
-                <p class="text-sm font-medium">图片预览</p>
-                <p class="text-xs text-muted-foreground">后端返回的图片</p>
-              </div>
-              <Badge variant="outline">Result</Badge>
-            </div>
-            <div
-              class="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3"
-            >
-              <div class="w-fit max-w-full overflow-hidden rounded-md border bg-background">
-                <img
-                  :src="fallbackPreviewUrl"
-                  class="block h-auto max-h-[50dvh] w-auto max-w-full object-contain lg:max-h-[calc(100dvh-16rem)]"
-                  alt=""
-                />
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="layoutOverlayPages.length"
-            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
-          >
-            <div class="flex items-center justify-between gap-3 border-b px-3 py-2">
-              <div class="min-w-0">
-                <p class="text-sm font-medium">识别区域</p>
-                <p class="text-xs text-muted-foreground">
-                  {{ selectedOverlayPage?.blocks.length ?? 0 }} 个区域
-                </p>
-              </div>
-              <div class="flex shrink-0 items-center gap-2">
-                <select
-                  v-if="layoutOverlayPages.length > 1"
-                  v-model.number="selectedPageIndex"
-                  class="h-8 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-                  aria-label="选择识别页"
-                >
-                  <option
-                    v-for="(_, pageIndex) in layoutOverlayPages"
-                    :key="pageIndex"
-                    :value="pageIndex"
-                  >
-                    第 {{ pageIndex + 1 }} 页
-                  </option>
-                </select>
-                <Badge variant="outline">{{ layoutOverlayPages.length }} 页</Badge>
-              </div>
-            </div>
-            <div
-              class="visible-scrollbar min-h-0 flex-1 overflow-auto bg-muted/30 p-3 md:overflow-hidden"
-            >
+              <div v-if="markdownOutput" v-html="renderedMarkdown" />
               <div
-                v-if="selectedOverlayPage"
-                :key="`${selectedOverlayPage.imageUrl}-${selectedPageIndex}`"
-                class="grid min-h-0 gap-3 md:h-full md:grid-cols-[minmax(0,3fr)_minmax(15rem,2fr)]"
+                v-else
+                class="flex h-full min-h-48 items-center justify-center text-sm text-muted-foreground"
               >
-                <div
-                  class="flex min-h-64 min-w-0 items-center justify-center overflow-hidden rounded-md border bg-background p-2 md:min-h-0"
-                >
-                  <div class="w-fit max-w-full">
-                    <img
-                      :src="selectedOverlayPage.imageUrl"
-                      class="block h-auto max-h-[50dvh] w-auto max-w-full object-contain lg:max-h-[calc(100dvh-16rem)]"
-                      alt=""
-                    />
-                  </div>
-                </div>
-                <div
-                  class="visible-scrollbar min-h-48 overflow-auto rounded-md border bg-background p-3 md:min-h-0"
-                >
-                  <div class="flex flex-wrap content-start gap-1.5">
-                    <Badge
-                      v-for="(block, blockIndex) in selectedOverlayPage.blocks"
-                      :key="`${blockIndex}-${block.label}-content`"
-                      variant="secondary"
-                      class="h-auto max-w-full whitespace-normal text-left"
-                    >
-                      {{ block.content || block.label || 'block' }}
-                    </Badge>
-                  </div>
-                </div>
+                {{ loading ? '正在解析 Markdown 版面…' : '上传图片或文档后，在此查看排版预览' }}
               </div>
             </div>
-          </div>
 
-          <div
-            v-if="!fallbackPreviewUrl && !layoutOverlayPages.length"
-            class="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-          >
-            普通视图会显示图片和识别区域
-          </div>
-        </template>
+            <Textarea
+              v-else
+              :model-value="textOutput"
+              class="h-full min-h-60 flex-1 resize-none bg-muted/20 font-mono text-sm leading-6 lg:min-h-0"
+              readonly
+              spellcheck="false"
+              :placeholder="
+                loading ? '正在提取文字…' : '上传或粘贴图片后，识别出的纯文本将显示在这里…'
+              "
+            />
+          </template>
 
-        <div
-          v-else-if="activeOutputTab === 'markdown'"
-          class="visible-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-auto"
-        >
-          <div
-            class="markdown-preview min-h-48 shrink-0 rounded-md border px-4 py-3"
-            v-html="
-              renderedMarkdown ||
-              '<p class=&quot;text-muted-foreground&quot;>Markdown 结果会显示在这里</p>'
-            "
-          />
+          <!-- Tab 2: Markdown Raw Source -->
           <Textarea
+            v-else-if="activeOutputTab === 'source'"
             :model-value="markdownOutput"
-            class="visible-scrollbar min-h-40 resize-none overflow-auto font-mono text-sm leading-6"
+            class="h-full min-h-60 flex-1 resize-none bg-muted/20 font-mono text-sm leading-6 lg:min-h-0"
             readonly
             spellcheck="false"
-            placeholder="Markdown 源码会显示在这里"
+            placeholder="Markdown 源码将显示在这里…"
           />
-        </div>
 
-        <Textarea
-          v-else
-          :model-value="activeTextOutput"
-          class="visible-scrollbar h-full min-h-0 flex-1 resize-none overflow-auto font-mono text-sm leading-6"
-          readonly
-          spellcheck="false"
-          placeholder="纯文本结果会显示在这里"
-        />
-      </div>
-    </section>
-  </section>
+          <!-- Tab 3: Layout / Image Overlay -->
+          <template v-else>
+            <div
+              v-if="layoutOverlayPages.length"
+              class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
+            >
+              <div class="flex items-center justify-between gap-3 border-b bg-muted/25 px-3 py-2">
+                <span class="text-xs text-muted-foreground">
+                  检测到 {{ selectedOverlayPage?.blocks.length ?? 0 }} 个文本块
+                </span>
+                <div class="flex items-center gap-2">
+                  <Select v-if="layoutOverlayPages.length > 1" v-model="selectedPageIndex">
+                    <SelectTrigger class="h-7 w-28 text-xs" aria-label="选择识别页">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="(_, pageIndex) in layoutOverlayPages"
+                        :key="pageIndex"
+                        :value="String(pageIndex)"
+                      >
+                        第 {{ pageIndex + 1 }} 页
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Badge variant="outline" class="font-normal">
+                    共 {{ layoutOverlayPages.length }} 页
+                  </Badge>
+                </div>
+              </div>
+
+              <div class="min-h-0 flex-1 overflow-y-auto bg-muted/15 p-3 md:overflow-hidden">
+                <div
+                  v-if="selectedOverlayPage"
+                  :key="`${selectedOverlayPage.imageUrl}-${selectedPageIndex}`"
+                  class="grid min-h-0 gap-3 md:h-full md:grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)]"
+                >
+                  <div
+                    class="flex min-h-56 items-center justify-center overflow-hidden rounded-md border bg-background p-2 md:min-h-0"
+                  >
+                    <img
+                      :src="selectedOverlayPage.imageUrl"
+                      class="block max-h-[50dvh] max-w-full object-contain lg:max-h-full"
+                      alt="版面检测可视化"
+                    />
+                  </div>
+                  <div
+                    class="min-h-40 overflow-y-auto rounded-md border bg-background p-3 md:min-h-0"
+                  >
+                    <div class="flex flex-wrap content-start gap-1.5">
+                      <Badge
+                        v-for="(block, blockIndex) in selectedOverlayPage.blocks"
+                        :key="`${blockIndex}-${block.label}-content`"
+                        variant="secondary"
+                        class="h-auto max-w-full whitespace-normal text-left font-normal"
+                      >
+                        {{ block.content || block.label || 'block' }}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else-if="fallbackPreviewUrl"
+              class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 p-3"
+            >
+              <img
+                :src="fallbackPreviewUrl"
+                class="max-h-full max-w-full rounded-md object-contain"
+                alt="预览图片"
+              />
+            </div>
+
+            <div
+              v-else
+              class="flex min-h-56 flex-1 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+            >
+              识别完成后在此查看检测框与版面分块
+            </div>
+          </template>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.visible-scrollbar {
-  scrollbar-width: thin;
-}
-
-.visible-scrollbar::-webkit-scrollbar {
-  display: block;
-  width: 8px;
-  height: 8px;
-}
-
 .markdown-preview {
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .markdown-preview :deep(h1) {
