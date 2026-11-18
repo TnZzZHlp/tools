@@ -110,8 +110,8 @@ function landed(slots: ReadonlyArray<number | null>): number[] {
   return slots.filter((ms): ms is number => ms !== null)
 }
 
-async function discard(body: ReadableStream<Uint8Array> | null): Promise<void> {
-  if (body !== null) {
+async function discard(body: ReadableStream<Uint8Array> | null | undefined): Promise<void> {
+  if (body != null && typeof body.cancel === 'function') {
     await body.cancel().catch(noop)
   }
 }
@@ -123,7 +123,7 @@ function nextToken(): string {
 }
 
 /** Round trip to the ping host: time to response headers via Resource Timing or wall clock. */
-async function ping(targetUrl: string, signal: AbortSignal): Promise<number> {
+export async function ping(targetUrl: string, signal: AbortSignal): Promise<number> {
   const url = appendQueryParam(targetUrl, 'ping', nextToken())
   const started = performance.now()
   let response = await fetch(url, { ...FETCH_INIT, method: 'HEAD', signal })
@@ -134,8 +134,15 @@ async function ping(targetUrl: string, signal: AbortSignal): Promise<number> {
     const getStarted = performance.now()
     response = await fetch(fallbackUrl, { ...FETCH_INIT, method: 'GET', signal })
     const getHeadersAt = performance.now()
+    if (!response.ok) {
+      await discard(response.body)
+      throw new Error(`Ping failed: ${response.status}`)
+    }
     await discard(response.body)
-    const fallbackEntries = performance.getEntriesByName(fallbackUrl, 'resource')
+    const fallbackEntries =
+      typeof performance.getEntriesByName === 'function'
+        ? performance.getEntriesByName(fallbackUrl, 'resource')
+        : []
     const entry = fallbackEntries[fallbackEntries.length - 1] as
       | PerformanceResourceTiming
       | undefined
@@ -144,8 +151,15 @@ async function ping(targetUrl: string, signal: AbortSignal): Promise<number> {
       : getHeadersAt - getStarted
   }
   const headersAt = performance.now()
+  if (!response.ok) {
+    await discard(response.body)
+    throw new Error(`Ping failed: ${response.status}`)
+  }
   await discard(response.body)
-  const entries = performance.getEntriesByName(url, 'resource')
+  const entries =
+    typeof performance.getEntriesByName === 'function'
+      ? performance.getEntriesByName(url, 'resource')
+      : []
   const entry = entries[entries.length - 1] as PerformanceResourceTiming | undefined
   return entry && entry.requestStart > 0 && entry.responseStart > 0
     ? entry.responseStart - entry.requestStart

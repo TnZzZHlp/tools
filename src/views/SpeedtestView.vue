@@ -7,8 +7,10 @@ import {
   Gauge,
   Globe,
   Play,
+  RefreshCw,
   RotateCw,
   Settings2,
+  Sparkles,
   Square,
 } from 'lucide-vue-next'
 
@@ -35,6 +37,7 @@ import { Stat } from '@/components/ui/stat'
 import { useToast } from '@/components/ui/toast'
 import { Toggle } from '@/components/ui/toggle'
 import {
+  AUTO_TARGET_ID,
   BUILTIN_TARGETS,
   LATENCY_BUDGET,
   LATENCY_PINGS,
@@ -53,6 +56,9 @@ import {
   formatTraffic,
   loadCustomTargets,
   loadSelectedTargetId,
+  pickOptimalTarget,
+  probePingUrl,
+  probeTargets,
   runSpeedtest,
   saveCustomTargets,
   saveSelectedTargetId,
@@ -83,22 +89,22 @@ const runError = ref('')
 
 const customTargets = ref<SpeedtestTarget[]>(loadCustomTargets())
 const allTargets = computed<SpeedtestTarget[]>(() => [...BUILTIN_TARGETS, ...customTargets.value])
+const domesticTargets = computed(() => BUILTIN_TARGETS.filter((t) => t.region === 'domestic'))
+const globalTargets = computed(() => BUILTIN_TARGETS.filter((t) => t.region === 'global'))
 
-const initialTargetId = loadSelectedTargetId()
+const savedTargetId = loadSelectedTargetId()
 const selectedTargetId = ref<string>(
-  allTargets.value.some((t) => t.id === initialTargetId)
-    ? initialTargetId!
-    : BUILTIN_TARGETS[0]!.id,
+  savedTargetId === AUTO_TARGET_ID || allTargets.value.some((t) => t.id === savedTargetId)
+    ? (savedTargetId ?? AUTO_TARGET_ID)
+    : AUTO_TARGET_ID,
 )
 
-const currentTarget = computed<SpeedtestTarget>(
-  () => allTargets.value.find((t) => t.id === selectedTargetId.value) ?? BUILTIN_TARGETS[0]!,
+const isAutoMode = computed(() => selectedTargetId.value === AUTO_TARGET_ID)
+const probeLatencies = ref<Record<string, number | null>>({})
+const probing = ref(false)
+const hasAnyProbeResult = computed(() =>
+  Object.values(probeLatencies.value).some((v) => typeof v === 'number'),
 )
-
-const targetMenuModel = computed({
-  get: () => currentTarget.value.id,
-  set: (id: string) => selectTarget(id),
-})
 
 const customDialogOpen = ref(false)
 const redacted = ref(false)
@@ -110,6 +116,31 @@ const geoLoading = ref(true)
 
 let runController: AbortController | null = null
 let geoController: AbortController | null = null
+let probeController: AbortController | null = null
+let activeProbePromise: Promise<unknown> | null = null
+
+const autoTarget = computed<SpeedtestTarget>(() =>
+  pickOptimalTarget(allTargets.value, probeLatencies.value, geo.value?.country_code),
+)
+const lockedTarget = ref<SpeedtestTarget | null>(null)
+
+const currentTarget = computed<SpeedtestTarget>(
+  () =>
+    lockedTarget.value ??
+    (isAutoMode.value
+      ? autoTarget.value
+      : (allTargets.value.find((t) => t.id === selectedTargetId.value) ?? BUILTIN_TARGETS[0]!)),
+)
+
+const currentTargetLatency = computed(() => {
+  const ms = probeLatencies.value[currentTarget.value.id]
+  return typeof ms === 'number' ? Math.max(1, Math.round(ms)) : null
+})
+
+const targetMenuModel = computed({
+  get: () => selectedTargetId.value,
+  set: (id: string) => selectTarget(id),
+})
 
 const running = computed(() => phase.value !== 'idle' && phase.value !== 'done')
 const uploadUnsupported = computed(() => currentTarget.value.upload.length === 0)
@@ -184,19 +215,88 @@ function resetFigures(nextPhase: Phase) {
   upload.value = { ...NOT_STARTED }
 }
 
+function formatProbeBadge(id: string): string {
+  const ms = probeLatencies.value[id]
+  if (ms === undefined) return probing.value ? '测速中' : ''
+  if (ms === null) return '不可用'
+  return `${Math.max(1, Math.round(ms))} ms`
+}
+
+function probeBadgeClass(id: string): string {
+  const ms = probeLatencies.value[id]
+  if (typeof ms === 'number') {
+    return ms < 80 ? 'text-accent' : 'text-ink-muted'
+  }
+  return 'text-ink-faint'
+}
+
 function stopTest() {
   runController?.abort()
   runController = null
+  lockedTarget.value = null
   resetFigures('idle')
 }
 
-function startTest() {
+async function runNodeProbe(showToast = false) {
+  if (running.value) return
+  probeController?.abort()
+  const controller = new AbortController()
+  probeController = controller
+  probing.value = true
+
+  const task = probeTargets(allTargets.value, {
+    signal: controller.signal,
+    onResult: (id, ms) => {
+      if (controller.signal.aborted) return
+      probeLatencies.value = { ...probeLatencies.value, [id]: ms }
+    },
+  })
+  activeProbePromise = task
+
+  try {
+    await task
+    if (!controller.signal.aborted && showToast) {
+      const winner = autoTarget.value
+      const rtt = probeLatencies.value[winner.id]
+      toast({
+        title: `已优选最快节点：${winner.name}`,
+        description:
+          typeof rtt === 'number'
+            ? `响应延迟约 ${Math.max(1, Math.round(rtt))} ms`
+            : '已按当前网络地区匹配可用节点',
+        variant: 'success',
+      })
+    }
+  } finally {
+    if (probeController === controller) {
+      probing.value = false
+      activeProbePromise = null
+    }
+  }
+}
+
+async function startTest() {
   runController?.abort()
   const controller = new AbortController()
   runController = controller
   resetFigures('latency')
 
-  runSpeedtest(mode.value, currentTarget.value, controller.signal, {
+  if (isAutoMode.value && probing.value && !hasAnyProbeResult.value && activeProbePromise) {
+    await Promise.race([
+      activeProbePromise,
+      new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+    ])
+    if (controller.signal.aborted) return
+  }
+
+  probeController?.abort()
+  probeController = null
+  probing.value = false
+
+  const target = currentTarget.value
+  lockedTarget.value = target
+
+  runSpeedtest(mode.value, target, controller.signal, {
     phase: (next) => {
       phase.value = next
     },
@@ -215,21 +315,27 @@ function startTest() {
     upload: (reading) => {
       upload.value = reading
     },
-  }).catch((err: unknown) => {
-    if (controller.signal.aborted) return
-    phase.value = idleLatency.value === null ? 'idle' : 'done'
-    runError.value =
-      err instanceof Error && err.message
-        ? `连接测速节点失败（${err.message}）。请检查网络或自定义测速源是否允许跨域请求（CORS）。`
-        : '无法连接至当前测速节点，请检查网络设置或切换测速源后重试。'
   })
+    .catch((err: unknown) => {
+      if (controller.signal.aborted) return
+      phase.value = idleLatency.value === null ? 'idle' : 'done'
+      runError.value =
+        err instanceof Error && err.message
+          ? `连接测速节点失败（${err.message}）。请检查网络或自定义测速源是否允许跨域请求（CORS）。`
+          : '无法连接至当前测速节点，请检查网络设置或切换测速源后重试。'
+    })
+    .finally(() => {
+      if (runController === controller) {
+        lockedTarget.value = null
+      }
+    })
 }
 
 function toggleRun() {
   if (running.value) {
     stopTest()
   } else {
-    startTest()
+    void startTest()
   }
 }
 
@@ -249,13 +355,16 @@ function handleAddCustomTarget(target: SpeedtestTarget) {
     description: `当前已切换至「${target.name}」`,
     variant: 'success',
   })
+  void probePingUrl(target.ping, probeController?.signal).then((ms) => {
+    probeLatencies.value = { ...probeLatencies.value, [target.id]: ms }
+  })
 }
 
 function handleRemoveCustomTarget(id: string) {
   customTargets.value = customTargets.value.filter((item) => item.id !== id)
   saveCustomTargets(customTargets.value)
   if (selectedTargetId.value === id) {
-    selectTarget(BUILTIN_TARGETS[0]!.id)
+    selectTarget(AUTO_TARGET_ID)
   }
 }
 
@@ -349,11 +458,13 @@ async function loadGeo() {
 
 onMounted(() => {
   void loadGeo()
+  void runNodeProbe()
 })
 
 onBeforeUnmount(() => {
   runController?.abort()
   geoController?.abort()
+  probeController?.abort()
 })
 </script>
 
@@ -367,7 +478,16 @@ onBeforeUnmount(() => {
         class="mb-2 sm:mb-3"
       >
         <template #badges>
-          <Badge variant="outline">{{ currentTarget.name }}</Badge>
+          <Badge variant="outline" class="gap-1">
+            <Sparkles v-if="isAutoMode" class="size-3 text-accent" aria-hidden="true" />
+            <span v-if="isAutoMode && probing && !hasAnyProbeResult">正在自动优选节点…</span>
+            <span v-else>
+              {{ isAutoMode ? `自动优选 · ${currentTarget.name}` : currentTarget.name }}
+              <template v-if="currentTargetLatency !== null">
+                · {{ currentTargetLatency }} ms
+              </template>
+            </span>
+          </Badge>
         </template>
 
         <template #actions>
@@ -393,28 +513,104 @@ onBeforeUnmount(() => {
                   :aria-label="`测速节点：${currentTarget.name}`"
                 >
                   <template #leading>
-                    <Globe class="size-4 text-ink-muted" />
+                    <Sparkles v-if="isAutoMode" class="size-4 text-accent" />
+                    <Globe v-else class="size-4 text-ink-muted" />
                   </template>
-                  <span class="max-w-36 truncate">{{ currentTarget.name }}</span>
+                  <span class="max-w-40 truncate">
+                    {{ isAutoMode ? `自动 · ${currentTarget.name}` : currentTarget.name }}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" :min-width="220">
-                <DropdownMenuLabel>选择测速节点</DropdownMenuLabel>
+              <DropdownMenuContent
+                align="end"
+                :min-width="290"
+                class="max-h-[min(75dvh,28rem)] overflow-y-auto"
+              >
                 <DropdownMenuRadioGroup v-model="targetMenuModel">
-                  <DropdownMenuRadioItem v-for="item in allTargets" :key="item.id" :value="item.id">
+                  <DropdownMenuRadioItem :value="AUTO_TARGET_ID">
                     <span class="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <span class="truncate">{{ item.name }}</span>
-                      <span
-                        v-if="item.upload.length === 0"
-                        class="shrink-0 text-[11px] font-normal text-ink-faint"
-                      >
-                        仅下载
+                      <span class="truncate font-medium text-ink">自动选择最优节点</span>
+                      <span class="max-w-28 shrink-0 truncate text-[11px] font-normal text-accent">
+                        {{ probing && !hasAnyProbeResult ? '检测中…' : autoTarget.name }}
                       </span>
                     </span>
                   </DropdownMenuRadioItem>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>中国大陆节点</DropdownMenuLabel>
+                  <DropdownMenuRadioItem
+                    v-for="item in domesticTargets"
+                    :key="item.id"
+                    :value="item.id"
+                  >
+                    <span class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span class="truncate">{{ item.name }}</span>
+                      <span class="flex shrink-0 items-center gap-1.5 text-[11px] font-normal">
+                        <span v-if="item.upload.length === 0" class="text-ink-faint">仅下载</span>
+                        <span
+                          v-if="formatProbeBadge(item.id)"
+                          :class="['tabular-nums', probeBadgeClass(item.id)]"
+                        >
+                          {{ formatProbeBadge(item.id) }}
+                        </span>
+                      </span>
+                    </span>
+                  </DropdownMenuRadioItem>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>全球与海外节点</DropdownMenuLabel>
+                  <DropdownMenuRadioItem
+                    v-for="item in globalTargets"
+                    :key="item.id"
+                    :value="item.id"
+                  >
+                    <span class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span class="truncate">{{ item.name }}</span>
+                      <span class="flex shrink-0 items-center gap-1.5 text-[11px] font-normal">
+                        <span v-if="item.dataSaver" class="text-ink-faint">省流</span>
+                        <span v-else-if="item.upload.length === 0" class="text-ink-faint">
+                          仅下载
+                        </span>
+                        <span
+                          v-if="formatProbeBadge(item.id)"
+                          :class="['tabular-nums', probeBadgeClass(item.id)]"
+                        >
+                          {{ formatProbeBadge(item.id) }}
+                        </span>
+                      </span>
+                    </span>
+                  </DropdownMenuRadioItem>
+
+                  <template v-if="customTargets.length">
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>自定义节点</DropdownMenuLabel>
+                    <DropdownMenuRadioItem
+                      v-for="item in customTargets"
+                      :key="item.id"
+                      :value="item.id"
+                    >
+                      <span class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                        <span class="truncate">{{ item.name }}</span>
+                        <span class="flex shrink-0 items-center gap-1.5 text-[11px] font-normal">
+                          <span v-if="item.upload.length === 0" class="text-ink-faint">仅下载</span>
+                          <span
+                            v-if="formatProbeBadge(item.id)"
+                            :class="['tabular-nums', probeBadgeClass(item.id)]"
+                          >
+                            {{ formatProbeBadge(item.id) }}
+                          </span>
+                        </span>
+                      </span>
+                    </DropdownMenuRadioItem>
+                  </template>
                 </DropdownMenuRadioGroup>
+
                 <DropdownMenuSeparator />
+                <DropdownMenuItem :disabled="probing || running" @select="runNodeProbe(true)">
+                  <RefreshCw class="size-4 text-ink-muted" :class="{ 'animate-spin': probing }" />
+                  <span>{{ probing ? '正在检测各节点延迟…' : '重新检测最优节点' }}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem @select="customDialogOpen = true">
                   <Settings2 class="size-4 text-ink-muted" />
                   <span>管理自定义测速源…</span>

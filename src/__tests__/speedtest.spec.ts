@@ -19,6 +19,9 @@ import {
   formatTraffic,
   meanAbsoluteDelta,
   median,
+  pickOptimalTarget,
+  probeTargets,
+  scoreTarget,
   shouldStop,
   smoothed,
   sustained,
@@ -133,24 +136,132 @@ describe('speedtest formatting & engine helpers', () => {
     expect(formatGeoLocation(sampleGeo, true)).toBe('Japan')
     expect(formatGeoProvider(sampleGeo)).toBe('AS17676 SoftBank')
   })
+
+  it('includes domestic and global builtin targets with valid HTTPS URLs', () => {
+    const domestic = BUILTIN_TARGETS.filter((t) => t.region === 'domestic')
+    const global = BUILTIN_TARGETS.filter((t) => t.region === 'global')
+
+    expect(domestic.length).toBeGreaterThanOrEqual(4)
+    expect(global.length).toBeGreaterThanOrEqual(4)
+
+    for (const target of BUILTIN_TARGETS) {
+      expect(target.ping.startsWith('https://')).toBe(true)
+      expect(target.download.length).toBeGreaterThan(0)
+      for (const url of target.download) {
+        expect(url.startsWith('https://')).toBe(true)
+      }
+    }
+  })
+
+  it('scores targets and picks optimal node across domestic and overseas networks', () => {
+    const cfEdge = BUILTIN_TARGETS.find((t) => t.id === 'cloudflare-edge')!
+    const cfLight = BUILTIN_TARGETS.find((t) => t.id === 'cloudflare-light')!
+    const cachefly = BUILTIN_TARGETS.find((t) => t.id === 'cachefly-global')!
+    const cnMulti = BUILTIN_TARGETS.find((t) => t.id === 'cn-multi')!
+
+    expect(scoreTarget(cfLight, 1)).toBe(Number.POSITIVE_INFINITY)
+
+    // Mainland China visitor: low domestic RTT beats high overseas RTT
+    const cnPick = pickOptimalTarget(
+      BUILTIN_TARGETS,
+      {
+        'cn-multi': 22,
+        'cn-tencent': 20,
+        'cloudflare-edge': 165,
+        'sharktech-us-west': 180,
+      },
+      'CN',
+    )
+    expect(cnPick.id).toBe('cn-multi')
+
+    // Overseas visitor: full-duplex Cloudflare (10ms) beats download-only CacheFly (8ms)
+    expect(scoreTarget(cfEdge, 10, 'SG')).toBeLessThan(scoreTarget(cachefly, 8, 'SG'))
+    const sgPick = pickOptimalTarget(
+      BUILTIN_TARGETS,
+      {
+        'cloudflare-edge': 10,
+        'cachefly-global': 8,
+        'cn-multi': 120,
+      },
+      'SG',
+    )
+    expect(sgPick.id).toBe('cloudflare-edge')
+
+    // Fallback before any probes land
+    expect(pickOptimalTarget(BUILTIN_TARGETS, {}, 'CN').id).toBe(cnMulti.id)
+    expect(pickOptimalTarget(BUILTIN_TARGETS, {}, 'SG').id).toBe(cfEdge.id)
+  })
+
+  it('deduplicates shared ping URLs during probeTargets and handles failures', async () => {
+    const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('fail.example.com')) {
+        return { ok: false, status: 503, body: null }
+      }
+      return { ok: true, status: 200, body: null }
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    try {
+      const subset = BUILTIN_TARGETS.filter(
+        (t) => t.id === 'cloudflare-edge' || t.id === 'cloudflare-light' || t.id === 'cn-tencent',
+      )
+      const withFail = [
+        ...subset,
+        {
+          id: 'broken',
+          name: 'Broken',
+          ping: 'https://fail.example.com/ping',
+          download: ['https://fail.example.com/dl'],
+          upload: [],
+        },
+      ]
+      const seen = new Set<string>()
+      const res = await probeTargets(withFail, {
+        onResult: (id) => seen.add(id),
+      })
+
+      // cloudflare-edge + cloudflare-light share 1 ping URL -> 3 unique URLs probed (1 warmup + 2 samples each = 9 max, broken fails on warmup = 1 call -> 7 calls total)
+      expect(mockFetch).toHaveBeenCalledTimes(7)
+      expect(typeof res['cloudflare-edge']).toBe('number')
+      expect(res['cloudflare-light']).toBe(res['cloudflare-edge'])
+      expect(typeof res['cn-tencent']).toBe('number')
+      expect(res.broken).toBeNull()
+      expect(seen.size).toBe(4)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
 
 describe('SpeedtestView component', () => {
   it('renders P0seid0n speedtest controls, panels, and privacy toggle', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          ip: '198.51.100.42',
-          country: 'Singapore',
-          country_code: 'SG',
-          region: 'Singapore',
-          city: 'Singapore',
-          timezone: 'Asia/Singapore',
-          isp: 'Cloudflare, Inc.',
-          asn: 13335,
-        }),
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString()
+        if (url.includes('ip.sb')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ip: '198.51.100.42',
+              country: 'Singapore',
+              country_code: 'SG',
+              region: 'Singapore',
+              city: 'Singapore',
+              timezone: 'Asia/Singapore',
+              isp: 'Cloudflare, Inc.',
+              asn: 13335,
+            }),
+          }
+        }
+        const ok = url.includes('speed.cloudflare.com')
+        return {
+          ok,
+          status: ok ? 200 : 503,
+          body: null,
+        }
       }),
     )
 
@@ -169,6 +280,7 @@ describe('SpeedtestView component', () => {
     const wrapper = mount(Harness)
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('198.51.100.42')
+      expect(wrapper.text()).toContain('自动优选 · Cloudflare 全球边缘')
     })
 
     expect(wrapper.text()).toContain('网络测速')
@@ -186,6 +298,7 @@ describe('SpeedtestView component', () => {
     expect(wrapper.text()).toContain('已隐藏')
     expect(wrapper.text()).not.toContain('198.51.100.42')
 
+    wrapper.unmount()
     vi.unstubAllGlobals()
   })
 })
