@@ -183,6 +183,7 @@ const readerStyle = computed(() => ({
   '--reader-font': selectedFont.value.family,
 }))
 let controller: AbortController | undefined
+let prefetchController: AbortController | undefined
 let themeObserver: MutationObserver | undefined
 let scrollTimer: ReturnType<typeof setTimeout> | undefined
 let layoutFrame = 0
@@ -405,10 +406,13 @@ async function load(refresh = false) {
     novel.value = null
   }
   try {
-    const [book, content] = await Promise.all([
+    const requested = Promise.all([
       cachedBook ? Promise.resolve(cachedBook) : novelApi.detail(novelId, current.signal),
       novelApi.chapter(novelId, chapterId, current.signal, refresh),
     ])
+    prefetchController?.abort()
+    prefetchController = undefined
+    const [book, content] = await requested
     if (current.signal.aborted) return
     const previous = chapter.value
     const previousChapterNo = previous?.chapter_no
@@ -425,6 +429,10 @@ async function load(refresh = false) {
     legacyScroll = undefined
     novel.value = book
     chapter.value = content
+    if (content.next) {
+      prefetchController = new AbortController()
+      void novelApi.chapter(novelId, content.next.id, prefetchController.signal).catch(() => {})
+    }
     const saved = readProgress(novelId)
     if (saved?.chapterId === chapterId && autoNextTarget !== chapterId) {
       anchors = { ...saved.anchors }
@@ -541,6 +549,7 @@ onBeforeUnmount(() => {
   fontRequest++
   saveProgress()
   controller?.abort()
+  prefetchController?.abort()
   cancelChapterTransition()
   themeObserver?.disconnect()
   clearTimeout(scrollTimer)
