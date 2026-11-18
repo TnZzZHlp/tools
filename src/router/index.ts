@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('@/views/SpeedtestView.vue'),
     },
     {
+      path: '/tools/ip-check',
+      name: 'ip-check',
+      component: () => import('@/views/IpCheckView.vue'),
+    },
+    {
       path: '/random-string',
       name: 'random-string',
       component: () => import('@/views/RandomStringView.vue'),
@@ -47,11 +52,6 @@ const router = createRouter({
       path: '/tools/files/pdf-merge',
       name: 'pdf-merge',
       component: () => import('@/views/PdfMergeView.vue'),
-    },
-    {
-      path: '/tools/ocr',
-      name: 'ocr',
-      component: () => import('@/views/OcrView.vue'),
     },
     {
       path: '/tools/barcode-generator',

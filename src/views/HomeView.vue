@@ -67,7 +67,7 @@ function resetFilters() {
         <div class="space-y-1.5">
           <h1 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">实用工具集</h1>
           <p class="text-[14px] leading-relaxed text-ink-muted sm:text-[15px]">
-            轻量、即开即用的在线工具箱，涵盖网络测速、文档合并、图文识别、条码排版与开发辅助。
+            轻量、即开即用的在线工具箱，涵盖网络测速、IP 检测、文档合并、条码排版与开发辅助。
           </p>
         </div>
 
@@ -79,7 +79,7 @@ function resetFilters() {
           <Input
             v-model="searchQuery"
             type="search"
-            placeholder="筛选工具（如 测速、PDF、二维码）…"
+            placeholder="筛选工具（如 测速、IP、PDF、二维码）…"
             aria-label="筛选工具"
             class="h-10 bg-raised pr-8 pl-9 text-[14px]"
           />

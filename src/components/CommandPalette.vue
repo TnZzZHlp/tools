@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
   >
     <CommandInput
       auto-focus
-      placeholder="搜索工具名称、功能或关键词（如测速、PDF、UUID、二维码）…"
+      placeholder="搜索工具名称、功能或关键词（如测速、IP、PDF、UUID、二维码）…"
       aria-label="搜索工具"
     />
 
@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
       <CommandEmpty class="py-10">
         <p class="text-[14px] font-medium text-ink">未找到匹配的工具</p>
         <p class="mt-1 text-[12px] text-ink-muted">
-          换个关键词试试，例如 测速、PDF、条码、OCR、随机
+          换个关键词试试，例如 测速、IP、PDF、条码、随机
         </p>
       </CommandEmpty>
 

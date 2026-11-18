@@ -31,7 +31,9 @@ describe('Tools registry & HomeView UX', () => {
 
     const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'))
     expect(hrefs).toContain('/tools/speedtest')
+    expect(hrefs).toContain('/tools/ip-check')
     expect(hrefs).toContain('/tools/files/pdf-merge')
+    expect(hrefs).not.toContain('/tools/ocr')
     expect(hrefs).not.toContain('/tools/files')
     expect(hrefs).not.toContain('/novels')
     expect(hrefs).not.toContain('/randomyuri')
@@ -58,6 +60,11 @@ describe('Tools registry & HomeView UX', () => {
       { label: '首页', to: '/' },
       { label: '网络与测速' },
       { label: '网络测速' },
+    ])
+    expect(resolveRouteBreadcrumbs('/tools/ip-check')).toEqual([
+      { label: '首页', to: '/' },
+      { label: '网络与测速' },
+      { label: 'IP 检测' },
     ])
     expect(resolveRouteBreadcrumbs('/tools/files/pdf-merge')).toEqual([
       { label: '首页', to: '/' },
