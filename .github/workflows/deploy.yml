@@ -6,6 +6,10 @@ on:
         paths:
             - "src/**"
             - "public/**"
+            - "build/**"
+            - "index.html"
+            - "vite.config.ts"
+            - "tsconfig*.json"
             - "package.json"
             - "pnpm-lock.yaml"
             - "pnpm-workspace.yaml"
@@ -102,11 +106,9 @@ jobs:
               run: |
                   set -euo pipefail
                   REMOTE_DIR=/www/tools
-                  TEMP_DIR=/www/tools_tmp
 
-                  ssh deploy-target "rm -rf '$TEMP_DIR' && mkdir -p '$TEMP_DIR'"
-                  rsync -avz --delete -e ssh dist/ "deploy-target:$TEMP_DIR/"
-                  ssh deploy-target "rm -rf '${REMOTE_DIR}_prev' || true
-                     if [ -d '$REMOTE_DIR' ]; then mv '$REMOTE_DIR' '${REMOTE_DIR}_prev'; fi
-                     mv '$TEMP_DIR' '$REMOTE_DIR' && rm -rf '${REMOTE_DIR}_prev'"
+                  ssh deploy-target "mkdir -p '$REMOTE_DIR'"
+                  rsync -avz --delete-after --exclude='.user.ini' -e ssh dist/ "deploy-target:$REMOTE_DIR/"
+                  ssh deploy-target "chattr -i -R '${REMOTE_DIR}_prev' '${REMOTE_DIR}_tmp' 2>/dev/null || true
+                      /bin/rm -rf '${REMOTE_DIR}_prev' '${REMOTE_DIR}_tmp'"
               shell: bash
