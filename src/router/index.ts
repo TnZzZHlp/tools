@@ -54,6 +54,12 @@ const router = createRouter({
       component: () => import('@/views/PdfMergeView.vue'),
     },
     {
+      path: '/tools/exam-paper',
+      name: 'exam-paper-generator',
+      meta: { fullscreen: true },
+      component: () => import('@/views/ExamPaperView.vue'),
+    },
+    {
       path: '/tools/barcode-generator',
       name: 'barcode-generator',
       component: () => import('@/views/BarcodeGeneratorView.vue'),

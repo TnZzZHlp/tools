@@ -33,6 +33,7 @@ describe('Tools registry & HomeView UX', () => {
     expect(hrefs).toContain('/tools/speedtest')
     expect(hrefs).toContain('/tools/ip-check')
     expect(hrefs).toContain('/tools/files/pdf-merge')
+    expect(hrefs).not.toContain('/tools/exam-paper')
     expect(hrefs).not.toContain('/tools/ocr')
     expect(hrefs).not.toContain('/tools/files')
     expect(hrefs).not.toContain('/novels')
@@ -70,6 +71,10 @@ describe('Tools registry & HomeView UX', () => {
       { label: '首页', to: '/' },
       { label: '文档与图像' },
       { label: 'PDF 合并' },
+    ])
+    expect(resolveRouteBreadcrumbs('/tools/exam-paper')).toEqual([
+      { label: '首页', to: '/' },
+      { label: '试卷模板' },
     ])
 
     recordRecentTool('/tools/encoding')

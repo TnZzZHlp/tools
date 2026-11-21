@@ -209,6 +209,10 @@ export function resolveRouteBreadcrumbs(path: string): BreadcrumbItem[] {
     return [{ label: '首页', to: '/' }, { label: '文件处理' }]
   }
 
+  if (path === '/tools/exam-paper') {
+    return [{ label: '首页', to: '/' }, { label: '试卷模板' }]
+  }
+
   if (path === '/novels') {
     return [{ label: '首页', to: '/' }, { label: '小说阅读' }]
   }

@@ -8,10 +8,10 @@ export const tabList = [
 ].join(' ')
 
 export const tabIndicator = [
-  'pointer-events-none absolute left-0 top-1 z-0 rounded-[10px] bg-raised shadow-sm',
-  'h-[var(--reka-tabs-indicator-thickness)] w-[var(--reka-tabs-indicator-size)] translate-x-[var(--reka-tabs-indicator-position)]',
-  'group-data-[orientation=vertical]/tablist:left-1 group-data-[orientation=vertical]/tablist:top-0',
-  'group-data-[orientation=vertical]/tablist:h-[var(--reka-tabs-indicator-size)] group-data-[orientation=vertical]/tablist:w-[var(--reka-tabs-indicator-thickness)]',
+  'pointer-events-none absolute left-0 top-1 bottom-1 z-0 rounded-[10px] bg-raised shadow-sm',
+  'w-[var(--reka-tabs-indicator-size)] translate-x-[var(--reka-tabs-indicator-position)]',
+  'group-data-[orientation=vertical]/tablist:left-1 group-data-[orientation=vertical]/tablist:right-1 group-data-[orientation=vertical]/tablist:top-0 group-data-[orientation=vertical]/tablist:bottom-auto',
+  'group-data-[orientation=vertical]/tablist:h-[var(--reka-tabs-indicator-size)] group-data-[orientation=vertical]/tablist:w-auto',
   'group-data-[orientation=vertical]/tablist:translate-x-0 group-data-[orientation=vertical]/tablist:translate-y-[var(--reka-tabs-indicator-position)]',
   'group-data-[ready]/tablist:transition-[translate,width,height] group-data-[ready]/tablist:duration-[var(--p0seid0n-duration-slow)] group-data-[ready]/tablist:ease-spring motion-reduce:transition-none',
 ].join(' ')
@@ -28,4 +28,4 @@ export const tabTrigger = [
 ].join(' ')
 
 export const tabPanel =
-  'mt-4 text-[14px] text-ink-muted outline-none data-[state=active]:motion-safe:animate-panel-in'
+  'mt-4 text-[14px] text-ink-muted outline-none data-[state=inactive]:hidden data-[state=active]:motion-safe:animate-panel-in'
