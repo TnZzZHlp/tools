@@ -1,0 +1,280 @@
+{
+  "meta": {
+    "title": "湖北省高中名校联盟 2027 届高三第一次联考",
+    "subject": "chinese",
+    "totalScore": 150,
+    "recommendedPaperSpec": "8K_2COL",
+    "studentFields": ["班级", "姓名", "考场", "座位号"],
+    "headerMode": "id_grid"
+  },
+  "assets": [],
+  "blocks": [
+    {
+      "id": "q1",
+      "type": "omr_choice",
+      "displayNo": "1",
+      "numericOrder": 1,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q2",
+      "type": "omr_choice",
+      "displayNo": "2",
+      "numericOrder": 2,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q3",
+      "type": "omr_choice",
+      "displayNo": "3",
+      "numericOrder": 3,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q4",
+      "type": "omr_choice",
+      "displayNo": "4",
+      "numericOrder": 4,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q5",
+      "type": "omr_choice",
+      "displayNo": "5",
+      "numericOrder": 5,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q6",
+      "type": "omr_choice",
+      "displayNo": "6",
+      "numericOrder": 6,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q7",
+      "type": "omr_choice",
+      "displayNo": "7",
+      "numericOrder": 7,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q8",
+      "type": "omr_choice",
+      "displayNo": "8",
+      "numericOrder": 8,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q9",
+      "type": "lined_writing",
+      "displayNo": "9",
+      "numericOrder": 9,
+      "score": 3,
+      "estimatedChars": 100,
+      "baseLines": 3
+    },
+    {
+      "id": "q10",
+      "type": "omr_choice",
+      "displayNo": "10",
+      "numericOrder": 10,
+      "score": 3,
+      "options": ["A", "B", "C", "D", "E", "F", "G", "H"],
+      "isMultiple": true,
+      "maxSelectCount": 3,
+      "groupTag": "文言文"
+    },
+    {
+      "id": "q11",
+      "type": "omr_choice",
+      "displayNo": "11",
+      "numericOrder": 11,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "文言文"
+    },
+    {
+      "id": "q12",
+      "type": "omr_choice",
+      "displayNo": "12",
+      "numericOrder": 12,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "文言文"
+    },
+    {
+      "id": "q13",
+      "type": "lined_writing",
+      "displayNo": "13",
+      "numericOrder": 13,
+      "score": 8,
+      "baseLines": 4
+    },
+    {
+      "id": "q14",
+      "type": "lined_writing",
+      "displayNo": "14",
+      "numericOrder": 14,
+      "score": 5,
+      "baseLines": 3
+    },
+    {
+      "id": "q15",
+      "type": "omr_choice",
+      "displayNo": "15",
+      "numericOrder": 15,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false
+    },
+    {
+      "id": "q16",
+      "type": "lined_writing",
+      "displayNo": "16",
+      "numericOrder": 16,
+      "score": 6,
+      "baseLines": 4
+    },
+    {
+      "id": "q17",
+      "type": "mixed_inline",
+      "displayNo": "17",
+      "numericOrder": 17,
+      "score": 6,
+      "rows": [
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(1)",
+              "score": 2,
+              "blanksCount": 1
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        },
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(2)",
+              "score": 2,
+              "blanksCount": 1
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        },
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(3)",
+              "score": 2,
+              "blanksCount": 1
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "type": "omr_choice",
+      "displayNo": "18",
+      "numericOrder": 18,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "语言运用"
+    },
+    {
+      "id": "q19",
+      "type": "omr_choice",
+      "displayNo": "19",
+      "numericOrder": 19,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "语言运用"
+    },
+    {
+      "id": "q20",
+      "type": "omr_choice",
+      "displayNo": "20",
+      "numericOrder": 20,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "语言运用"
+    },
+    {
+      "id": "q21",
+      "type": "lined_writing",
+      "displayNo": "21",
+      "numericOrder": 21,
+      "score": 8,
+      "estimatedChars": 100,
+      "baseLines": 3
+    },
+    {
+      "id": "q22",
+      "type": "lined_writing",
+      "displayNo": "22",
+      "numericOrder": 22,
+      "score": 9,
+      "baseLines": 5
+    },
+    {
+      "id": "q23",
+      "type": "composition_grid",
+      "displayNo": "23",
+      "numericOrder": 23,
+      "score": 60,
+      "minWords": 800,
+      "totalGrids": 1000,
+      "hasTitleRow": false,
+      "milestones": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "calculatedScore": 150,
+    "issues": []
+  }
+}

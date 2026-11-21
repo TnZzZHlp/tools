@@ -60,6 +60,12 @@ const router = createRouter({
       component: () => import('@/views/ExamPaperView.vue'),
     },
     {
+      path: '/tools/answer-sheet',
+      name: 'answer-sheet',
+      meta: { fullscreen: true },
+      component: () => import('@/views/AnswerSheetView.vue'),
+    },
+    {
       path: '/tools/barcode-generator',
       name: 'barcode-generator',
       component: () => import('@/views/BarcodeGeneratorView.vue'),

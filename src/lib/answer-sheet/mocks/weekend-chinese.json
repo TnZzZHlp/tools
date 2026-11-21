@@ -1,0 +1,498 @@
+{
+  "meta": {
+    "title": "2027 届高三语文周末作业试题",
+    "subject": "chinese",
+    "totalScore": 150,
+    "recommendedPaperSpec": "8K_2COL",
+    "studentFields": ["班级", "姓名", "考场", "座位号"],
+    "headerMode": "barcode"
+  },
+  "assets": [],
+  "blocks": [
+    {
+      "id": "weekend-1",
+      "type": "omr_choice",
+      "displayNo": "1",
+      "numericOrder": 1,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-2",
+      "type": "omr_choice",
+      "displayNo": "2",
+      "numericOrder": 2,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-3",
+      "type": "omr_choice",
+      "displayNo": "3",
+      "numericOrder": 3,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-4",
+      "type": "lined_writing",
+      "displayNo": "4",
+      "numericOrder": 4,
+      "score": 4,
+      "baseLines": 2
+    },
+    {
+      "id": "weekend-5",
+      "type": "lined_writing",
+      "displayNo": "5",
+      "numericOrder": 5,
+      "score": 6,
+      "baseLines": 3
+    },
+    {
+      "id": "weekend-6",
+      "type": "omr_choice",
+      "displayNo": "6",
+      "numericOrder": 6,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-7",
+      "type": "omr_choice",
+      "displayNo": "7",
+      "numericOrder": 7,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-8",
+      "type": "lined_writing",
+      "displayNo": "8",
+      "numericOrder": 8,
+      "score": 4,
+      "baseLines": 4,
+      "subItems": [
+        {
+          "label": "8(1)",
+          "baseLines": 1,
+          "score": 1
+        },
+        {
+          "label": "8(2)",
+          "baseLines": 1,
+          "score": 1
+        },
+        {
+          "label": "8(3)",
+          "baseLines": 1,
+          "score": 1
+        },
+        {
+          "label": "8(4)",
+          "baseLines": 1,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "id": "weekend-9",
+      "type": "lined_writing",
+      "displayNo": "9",
+      "numericOrder": 9,
+      "score": 8,
+      "baseLines": 3,
+      "estimatedChars": 100
+    },
+    {
+      "id": "weekend-10",
+      "type": "omr_choice",
+      "displayNo": "10",
+      "numericOrder": 10,
+      "score": 3,
+      "options": ["A", "B", "C", "D", "E", "F", "G", "H"],
+      "isMultiple": true,
+      "groupTag": "阅读与运用",
+      "maxSelectCount": 3
+    },
+    {
+      "id": "weekend-11",
+      "type": "omr_choice",
+      "displayNo": "11",
+      "numericOrder": 11,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-12",
+      "type": "omr_choice",
+      "displayNo": "12",
+      "numericOrder": 12,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-13",
+      "type": "lined_writing",
+      "displayNo": "13",
+      "numericOrder": 13,
+      "score": 8,
+      "baseLines": 4,
+      "subItems": [
+        {
+          "label": "13(1)",
+          "baseLines": 2,
+          "score": 4
+        },
+        {
+          "label": "13(2)",
+          "baseLines": 2,
+          "score": 4
+        }
+      ]
+    },
+    {
+      "id": "weekend-14",
+      "type": "lined_writing",
+      "displayNo": "14",
+      "numericOrder": 14,
+      "score": 4,
+      "baseLines": 2
+    },
+    {
+      "id": "weekend-15",
+      "type": "omr_choice",
+      "displayNo": "15",
+      "numericOrder": 15,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-16",
+      "type": "lined_writing",
+      "displayNo": "16",
+      "numericOrder": 16,
+      "score": 6,
+      "baseLines": 3
+    },
+    {
+      "id": "weekend-17",
+      "type": "mixed_inline",
+      "displayNo": "17",
+      "numericOrder": 17,
+      "score": 6,
+      "rows": [
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(1)",
+              "score": 2,
+              "blanksCount": 1,
+              "separator": "，"
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        },
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(2)",
+              "score": 2,
+              "blanksCount": 1,
+              "separator": "，"
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        },
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "17(3)",
+              "score": 2,
+              "blanksCount": 1,
+              "separator": "？"
+            },
+            {
+              "label": "",
+              "blanksCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "weekend-18",
+      "type": "lined_writing",
+      "displayNo": "18",
+      "numericOrder": 18,
+      "score": 4,
+      "baseLines": 1
+    },
+    {
+      "id": "weekend-19",
+      "type": "omr_choice",
+      "displayNo": "19",
+      "numericOrder": 19,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-20",
+      "type": "lined_writing",
+      "displayNo": "20",
+      "numericOrder": 20,
+      "score": 4,
+      "baseLines": 2,
+      "subItems": [
+        {
+          "label": "①",
+          "baseLines": 1
+        },
+        {
+          "label": "②",
+          "baseLines": 1
+        }
+      ]
+    },
+    {
+      "id": "weekend-21",
+      "type": "lined_writing",
+      "displayNo": "21",
+      "numericOrder": 21,
+      "score": 6,
+      "baseLines": 3
+    },
+    {
+      "id": "weekend-22",
+      "type": "omr_choice",
+      "displayNo": "22",
+      "numericOrder": 22,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-23",
+      "type": "omr_choice",
+      "displayNo": "23",
+      "numericOrder": 23,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-24",
+      "type": "omr_choice",
+      "displayNo": "24",
+      "numericOrder": 24,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-25",
+      "type": "omr_choice",
+      "displayNo": "25",
+      "numericOrder": 25,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-26",
+      "type": "omr_choice",
+      "displayNo": "26",
+      "numericOrder": 26,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-27",
+      "type": "omr_choice",
+      "displayNo": "27",
+      "numericOrder": 27,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读与运用"
+    },
+    {
+      "id": "weekend-28",
+      "type": "omr_choice",
+      "displayNo": "28",
+      "numericOrder": 28,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-29",
+      "type": "omr_choice",
+      "displayNo": "29",
+      "numericOrder": 29,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-30",
+      "type": "omr_choice",
+      "displayNo": "30",
+      "numericOrder": 30,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-31",
+      "type": "omr_choice",
+      "displayNo": "31",
+      "numericOrder": 31,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-32",
+      "type": "omr_choice",
+      "displayNo": "32",
+      "numericOrder": 32,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-33",
+      "type": "omr_choice",
+      "displayNo": "33",
+      "numericOrder": 33,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-34",
+      "type": "omr_choice",
+      "displayNo": "34",
+      "numericOrder": 34,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-35",
+      "type": "omr_choice",
+      "displayNo": "35",
+      "numericOrder": 35,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-36",
+      "type": "omr_choice",
+      "displayNo": "36",
+      "numericOrder": 36,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-37",
+      "type": "omr_choice",
+      "displayNo": "37",
+      "numericOrder": 37,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-38",
+      "type": "omr_choice",
+      "displayNo": "38",
+      "numericOrder": 38,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-39",
+      "type": "omr_choice",
+      "displayNo": "39",
+      "numericOrder": 39,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-40",
+      "type": "omr_choice",
+      "displayNo": "40",
+      "numericOrder": 40,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    },
+    {
+      "id": "weekend-41",
+      "type": "omr_choice",
+      "displayNo": "41",
+      "numericOrder": 41,
+      "score": 3,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "选择题综合"
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "calculatedScore": 150,
+    "issues": []
+  }
+}

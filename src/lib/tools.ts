@@ -110,6 +110,17 @@ export const TOOLS: ToolDefinition[] = [
     keywords: ['pdf', 'merge', 'rotate', '文件处理', '合并', '旋转', '文档'],
   },
   {
+    id: 'answer-sheet',
+    name: '智能答题卡工作台',
+    shortName: '智能答题卡',
+    description:
+      '新高考 9 科智能答题卡生成与微调工作台，支持 A3 三栏/两栏、8 开两栏与 A4 单栏物理毫米排版、画布直觉微调与矢量打印。',
+    to: '/tools/answer-sheet',
+    category: 'document',
+    icon: FileStack,
+    keywords: ['答题卡', '样卷', '新高考', 'answer sheet', '排版', 'A3', '8开'],
+  },
+  {
     id: 'barcode-generator',
     name: '条形码批量生成',
     shortName: '条形码生成',

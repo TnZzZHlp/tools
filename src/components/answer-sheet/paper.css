@@ -1,0 +1,61 @@
+.sheet-page {
+  color-scheme: light;
+  color: black;
+  background: white;
+  font-size: 10pt;
+  line-height: 1.35;
+  font-family: var(
+    --sheet-font-family,
+    'Times New Roman',
+    'FZShuSong-Z01',
+    '方正书宋简体',
+    'FZNewShuSong-Z10',
+    'Noto Serif SC Variable',
+    'Source Han Serif SC',
+    'Songti SC',
+    'STSong',
+    SimSun,
+    '宋体',
+    serif
+  );
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+  font-synthesis: weight;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.sheet-page svg {
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+.sheet-block {
+  border: 0.27mm solid;
+  padding: var(--sheet-block-padding, 2mm);
+  padding-bottom: calc(var(--sheet-block-padding, 2mm) + var(--sheet-balance-padding, 0mm));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sheet-column > .sheet-placed + .sheet-placed .sheet-block {
+  margin-top: calc(var(--sheet-gap, 0mm) - 0.27mm);
+}
+.sheet-label {
+  font-size: 10.5pt;
+  font-weight: 400;
+}
+.sheet-rule {
+  border-bottom: 0.25mm solid;
+  min-width: 0;
+}
+.sheet-asset {
+  display: block;
+  object-fit: contain;
+  max-width: 100%;
+}
+.sheet-monochrome {
+  filter: grayscale(1) contrast(1.8);
+}
+
+[data-flow-unit] {
+  display: flow-root;
+}

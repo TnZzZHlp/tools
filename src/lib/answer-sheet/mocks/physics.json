@@ -1,0 +1,131 @@
+{
+  "meta": {
+    "title": "新高考理科综合模拟卷",
+    "subject": "physics",
+    "totalScore": 54,
+    "recommendedPaperSpec": "A3_2COL",
+    "studentFields": ["班级", "姓名", "考场", "座位号"],
+    "headerMode": "barcode"
+  },
+  "assets": [
+    {
+      "assetId": "IMG_01",
+      "mimeType": "image/svg+xml",
+      "widthPx": 240,
+      "heightPx": 120,
+      "usageType": "drawable",
+      "monochromeRecommended": true
+    }
+  ],
+  "blocks": [
+    {
+      "id": "q1",
+      "type": "omr_choice",
+      "displayNo": "1",
+      "numericOrder": 1,
+      "score": 5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false
+    },
+    {
+      "id": "q2",
+      "type": "omr_choice",
+      "displayNo": "2",
+      "numericOrder": 2,
+      "score": 6,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": true
+    },
+    {
+      "id": "q3",
+      "type": "compact_blank",
+      "displayNo": "3",
+      "numericOrder": 3,
+      "score": 10,
+      "preferredColumns": 2,
+      "items": [
+        {
+          "subNo": "(1)",
+          "score": 5,
+          "prefixLatex": "\\int_0^1 x^2\\,\\mathrm{d}x ="
+        },
+        {
+          "subNo": "(2)",
+          "score": 5,
+          "prefixLatex": "\\sqrt{a^2+b^2} ="
+        }
+      ]
+    },
+    {
+      "id": "q4",
+      "type": "mixed_inline",
+      "displayNo": "4",
+      "numericOrder": 4,
+      "score": 12,
+      "rows": [
+        {
+          "type": "inline_blank",
+          "segments": [
+            {
+              "label": "(1)",
+              "blanksCount": 1,
+              "suffixUnit": "\\mathrm{V}",
+              "separator": "，"
+            },
+            {
+              "label": "",
+              "blanksCount": 1,
+              "suffixUnit": "\\Omega"
+            }
+          ]
+        },
+        {
+          "type": "embedded_image",
+          "assetId": "IMG_01",
+          "widthRatio": 0.8
+        },
+        {
+          "type": "full_line",
+          "label": "(2)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "id": "q5",
+      "type": "drawing_grid",
+      "displayNo": "5",
+      "numericOrder": 5,
+      "score": 6,
+      "gridType": "coordinate_paper",
+      "rows": 15,
+      "cols": 20,
+      "baseHeightMm": 55
+    },
+    {
+      "id": "q6",
+      "type": "open_blank_box",
+      "displayNo": "6",
+      "numericOrder": 6,
+      "score": 15,
+      "baseHeightMm": 110,
+      "subQuestions": [
+        {
+          "subNo": "(1)",
+          "score": 6,
+          "heightRatio": 0.4
+        },
+        {
+          "subNo": "(2)",
+          "score": 9,
+          "heightRatio": 0.6
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "calculatedScore": 54,
+    "issues": []
+  }
+}

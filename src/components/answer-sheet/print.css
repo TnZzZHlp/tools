@@ -1,0 +1,49 @@
+@media print {
+  body:has(.sheet-print-root) {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body:has(.sheet-print-root)
+    :where(*):has(.sheet-print-root)
+    > :not(.sheet-print-root, :has(.sheet-print-root)),
+  body:has(.sheet-print-root) > :not(.sheet-print-root, :has(.sheet-print-root)) {
+    display: none !important;
+  }
+
+  body:has(.sheet-print-root)
+    :where(:has(.sheet-print-root), .sheet-print-root, .sheet-print-page, .sheet-print-content):not(
+      .sheet-page
+    ) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    background: transparent !important;
+  }
+
+  .sheet-print-page {
+    break-inside: avoid;
+    break-after: page;
+  }
+
+  .sheet-print-page:last-child {
+    break-after: auto;
+  }
+
+  .sheet-print-root[aria-busy='true'],
+  .sheet-print-root [data-sheet-screen-only] {
+    display: none !important;
+  }
+}

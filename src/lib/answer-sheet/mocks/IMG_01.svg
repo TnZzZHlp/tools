@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120" viewBox="0 0 240 120">
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M110 94H40V30H92 M148 30H200V94H122 M110 78V110 M122 86V102"/>
+    <rect x="92" y="22" width="56" height="16"/>
+    <path d="M72 30V63H105 M135 63H168V30"/>
+    <circle cx="120" cy="63" r="15"/>
+  </g>
+  <text x="120" y="68" text-anchor="middle" font-size="14">V</text>
+</svg>

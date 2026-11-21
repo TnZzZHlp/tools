@@ -1,0 +1,655 @@
+{
+  "meta": {
+    "title": "新高考英语模拟卷",
+    "subject": "english",
+    "totalScore": 150.0,
+    "recommendedPaperSpec": "A3_3COL",
+    "studentFields": ["班级", "姓名", "考场", "座位号"],
+    "headerMode": "barcode"
+  },
+  "assets": [],
+  "blocks": [
+    {
+      "id": "q1",
+      "type": "omr_choice",
+      "displayNo": "1",
+      "numericOrder": 1,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q2",
+      "type": "omr_choice",
+      "displayNo": "2",
+      "numericOrder": 2,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q3",
+      "type": "omr_choice",
+      "displayNo": "3",
+      "numericOrder": 3,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q4",
+      "type": "omr_choice",
+      "displayNo": "4",
+      "numericOrder": 4,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q5",
+      "type": "omr_choice",
+      "displayNo": "5",
+      "numericOrder": 5,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q6",
+      "type": "omr_choice",
+      "displayNo": "6",
+      "numericOrder": 6,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q7",
+      "type": "omr_choice",
+      "displayNo": "7",
+      "numericOrder": 7,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q8",
+      "type": "omr_choice",
+      "displayNo": "8",
+      "numericOrder": 8,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q9",
+      "type": "omr_choice",
+      "displayNo": "9",
+      "numericOrder": 9,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q10",
+      "type": "omr_choice",
+      "displayNo": "10",
+      "numericOrder": 10,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q11",
+      "type": "omr_choice",
+      "displayNo": "11",
+      "numericOrder": 11,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q12",
+      "type": "omr_choice",
+      "displayNo": "12",
+      "numericOrder": 12,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q13",
+      "type": "omr_choice",
+      "displayNo": "13",
+      "numericOrder": 13,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q14",
+      "type": "omr_choice",
+      "displayNo": "14",
+      "numericOrder": 14,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q15",
+      "type": "omr_choice",
+      "displayNo": "15",
+      "numericOrder": 15,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q16",
+      "type": "omr_choice",
+      "displayNo": "16",
+      "numericOrder": 16,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q17",
+      "type": "omr_choice",
+      "displayNo": "17",
+      "numericOrder": 17,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q18",
+      "type": "omr_choice",
+      "displayNo": "18",
+      "numericOrder": 18,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q19",
+      "type": "omr_choice",
+      "displayNo": "19",
+      "numericOrder": 19,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q20",
+      "type": "omr_choice",
+      "displayNo": "20",
+      "numericOrder": 20,
+      "score": 1.5,
+      "options": ["A", "B", "C"],
+      "isMultiple": false,
+      "groupTag": "听力"
+    },
+    {
+      "id": "q21",
+      "type": "omr_choice",
+      "displayNo": "21",
+      "numericOrder": 21,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q22",
+      "type": "omr_choice",
+      "displayNo": "22",
+      "numericOrder": 22,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q23",
+      "type": "omr_choice",
+      "displayNo": "23",
+      "numericOrder": 23,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q24",
+      "type": "omr_choice",
+      "displayNo": "24",
+      "numericOrder": 24,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q25",
+      "type": "omr_choice",
+      "displayNo": "25",
+      "numericOrder": 25,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q26",
+      "type": "omr_choice",
+      "displayNo": "26",
+      "numericOrder": 26,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q27",
+      "type": "omr_choice",
+      "displayNo": "27",
+      "numericOrder": 27,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q28",
+      "type": "omr_choice",
+      "displayNo": "28",
+      "numericOrder": 28,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q29",
+      "type": "omr_choice",
+      "displayNo": "29",
+      "numericOrder": 29,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q30",
+      "type": "omr_choice",
+      "displayNo": "30",
+      "numericOrder": 30,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q31",
+      "type": "omr_choice",
+      "displayNo": "31",
+      "numericOrder": 31,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q32",
+      "type": "omr_choice",
+      "displayNo": "32",
+      "numericOrder": 32,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q33",
+      "type": "omr_choice",
+      "displayNo": "33",
+      "numericOrder": 33,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q34",
+      "type": "omr_choice",
+      "displayNo": "34",
+      "numericOrder": 34,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q35",
+      "type": "omr_choice",
+      "displayNo": "35",
+      "numericOrder": 35,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "阅读"
+    },
+    {
+      "id": "q36",
+      "type": "omr_choice",
+      "displayNo": "36",
+      "numericOrder": 36,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D", "E", "F", "G"],
+      "isMultiple": false,
+      "groupTag": "七选五"
+    },
+    {
+      "id": "q37",
+      "type": "omr_choice",
+      "displayNo": "37",
+      "numericOrder": 37,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D", "E", "F", "G"],
+      "isMultiple": false,
+      "groupTag": "七选五"
+    },
+    {
+      "id": "q38",
+      "type": "omr_choice",
+      "displayNo": "38",
+      "numericOrder": 38,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D", "E", "F", "G"],
+      "isMultiple": false,
+      "groupTag": "七选五"
+    },
+    {
+      "id": "q39",
+      "type": "omr_choice",
+      "displayNo": "39",
+      "numericOrder": 39,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D", "E", "F", "G"],
+      "isMultiple": false,
+      "groupTag": "七选五"
+    },
+    {
+      "id": "q40",
+      "type": "omr_choice",
+      "displayNo": "40",
+      "numericOrder": 40,
+      "score": 2.5,
+      "options": ["A", "B", "C", "D", "E", "F", "G"],
+      "isMultiple": false,
+      "groupTag": "七选五"
+    },
+    {
+      "id": "q41",
+      "type": "omr_choice",
+      "displayNo": "41",
+      "numericOrder": 41,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q42",
+      "type": "omr_choice",
+      "displayNo": "42",
+      "numericOrder": 42,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q43",
+      "type": "omr_choice",
+      "displayNo": "43",
+      "numericOrder": 43,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q44",
+      "type": "omr_choice",
+      "displayNo": "44",
+      "numericOrder": 44,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q45",
+      "type": "omr_choice",
+      "displayNo": "45",
+      "numericOrder": 45,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q46",
+      "type": "omr_choice",
+      "displayNo": "46",
+      "numericOrder": 46,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q47",
+      "type": "omr_choice",
+      "displayNo": "47",
+      "numericOrder": 47,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q48",
+      "type": "omr_choice",
+      "displayNo": "48",
+      "numericOrder": 48,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q49",
+      "type": "omr_choice",
+      "displayNo": "49",
+      "numericOrder": 49,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q50",
+      "type": "omr_choice",
+      "displayNo": "50",
+      "numericOrder": 50,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q51",
+      "type": "omr_choice",
+      "displayNo": "51",
+      "numericOrder": 51,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q52",
+      "type": "omr_choice",
+      "displayNo": "52",
+      "numericOrder": 52,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q53",
+      "type": "omr_choice",
+      "displayNo": "53",
+      "numericOrder": 53,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q54",
+      "type": "omr_choice",
+      "displayNo": "54",
+      "numericOrder": 54,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q55",
+      "type": "omr_choice",
+      "displayNo": "55",
+      "numericOrder": 55,
+      "score": 1,
+      "options": ["A", "B", "C", "D"],
+      "isMultiple": false,
+      "groupTag": "完形填空"
+    },
+    {
+      "id": "q56",
+      "type": "compact_blank",
+      "displayNo": "56",
+      "numericOrder": 56,
+      "score": 15,
+      "sectionTitle": "语法填空",
+      "preferredColumns": 2,
+      "items": [
+        {
+          "subNo": "56",
+          "score": 1.5
+        },
+        {
+          "subNo": "57",
+          "score": 1.5
+        },
+        {
+          "subNo": "58",
+          "score": 1.5
+        },
+        {
+          "subNo": "59",
+          "score": 1.5
+        },
+        {
+          "subNo": "60",
+          "score": 1.5
+        },
+        {
+          "subNo": "61",
+          "score": 1.5
+        },
+        {
+          "subNo": "62",
+          "score": 1.5
+        },
+        {
+          "subNo": "63",
+          "score": 1.5
+        },
+        {
+          "subNo": "64",
+          "score": 1.5
+        },
+        {
+          "subNo": "65",
+          "score": 1.5
+        }
+      ]
+    },
+    {
+      "id": "q66",
+      "type": "lined_writing",
+      "displayNo": "66",
+      "numericOrder": 66,
+      "score": 15,
+      "baseLines": 6,
+      "estimatedChars": 80,
+      "englishWritingMeta": {
+        "salutation": "Dear Chris,",
+        "signOff": "Yours,\nLi Hua"
+      }
+    },
+    {
+      "id": "q67",
+      "type": "lined_writing",
+      "displayNo": "67",
+      "numericOrder": 67,
+      "score": 25,
+      "baseLines": 12,
+      "estimatedChars": 150,
+      "englishWritingMeta": {
+        "continuationParagraphs": [
+          {
+            "heading": "Paragraph 1:",
+            "leadText": "When I reached the station, I saw someone waving from the platform.",
+            "baseLines": 6
+          },
+          {
+            "heading": "Paragraph 2:",
+            "leadText": "The next morning, a small parcel arrived at our door.",
+            "baseLines": 6
+          }
+        ]
+      }
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "calculatedScore": 150.0,
+    "issues": []
+  }
+}
