@@ -21,12 +21,24 @@ export function usePrintPageSize(size: Readonly<Ref<PaperSize>>) {
 export async function printAnswerSheet(
   root: HTMLElement,
   isCurrent: () => boolean,
+  title?: string,
 ): Promise<boolean> {
   await waitForResources(root)
   if (!isCurrent() || !root.isConnected) return false
   if (Array.from(root.querySelectorAll('img')).some((img) => img.naturalWidth === 0)) {
     throw new Error('打印配图加载失败。')
   }
-  window.print()
+  const previousTitle = document.title
+  const cleanTitle = title?.trim()
+  if (cleanTitle) {
+    document.title = cleanTitle
+  }
+  try {
+    window.print()
+  } finally {
+    if (cleanTitle) {
+      document.title = previousTitle
+    }
+  }
   return true
 }

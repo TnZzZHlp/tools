@@ -14,14 +14,28 @@ const showTopBlockHeader = computed(() => {
   if (props.block.englishWritingMeta) return true
   return false
 })
+function normalizeSubText(text: string): string {
+  return text.trim().replace(/（/g, '(').replace(/）/g, ')')
+}
+
 function formatSubLabel(rawLabel: string | undefined, isFirstLineOfBlock: boolean): string {
   if (!rawLabel) return ''
-  const trimmed = rawLabel.trim()
-  if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(trimmed)) {
-    return isFirstLineOfBlock ? `${props.block.displayNo}、${trimmed}` : trimmed
+  const trimmed = normalizeSubText(rawLabel)
+  const baseNo = normalizeSubText(props.block.displayNo)
+  if (!baseNo) return trimmed
+  if (trimmed === baseNo || trimmed.startsWith(baseNo)) {
+    return trimmed
   }
-  if (/^\(\d+\)|^（\d+）/.test(trimmed)) {
-    return `${props.block.displayNo}${trimmed.replace(/（/g, '(').replace(/）/g, ')')}`
+  // Avoid duplicating trailing sub-question suffix when displayNo is already e.g. "20(1)" and rawLabel is "(1)" or "(1)①"
+  const suffixMatch = baseNo.match(/(\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩])$/)
+  if (suffixMatch && trimmed.startsWith(suffixMatch[1]!)) {
+    return `${baseNo}${trimmed.slice(suffixMatch[1]!.length)}`
+  }
+  if (/^\(\d+\)/.test(trimmed)) {
+    return `${baseNo}${trimmed}`
+  }
+  if (isFirstLineOfBlock) {
+    return `${baseNo}、${trimmed}`
   }
   return trimmed
 }

@@ -5,7 +5,7 @@ export type Writing = Extract<AnswerSheetBlock, { type: 'lined_writing' }>
 export type Mixed = Extract<AnswerSheetBlock, { type: 'mixed_inline' }>
 
 export interface ChoiceRow {
-  entries: { block: Choice; span: number }[]
+  entries: { block: Choice; span: number; colStart?: number }[]
   gapBefore: boolean
 }
 

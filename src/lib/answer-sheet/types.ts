@@ -31,6 +31,7 @@ export interface SheetMeta {
   recommendedPaperSpec: PaperSpecId
   studentFields: string[]
   headerMode: HeaderMode
+  idDigits?: number
 }
 
 export interface SheetAsset {

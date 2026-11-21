@@ -534,47 +534,51 @@ function setBlockImageWidthRatio(percent: number) {
       </div>
 
       <template v-if="store.semanticData">
-        <!-- Header Mode: Barcode vs ID Grid -->
-        <div class="space-y-1.5">
-          <Label for="inspector-header-mode" class="text-xs">卷头考号模式</Label>
-          <Select
-            :model-value="store.semanticData.meta.headerMode"
-            @update:model-value="(val) => store.setHeaderMode(val as HeaderMode)"
-          >
-            <SelectTrigger id="inspector-header-mode" class="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="barcode">条形码粘贴区</SelectItem>
-              <SelectItem value="id_grid">准考证号填涂区 (10位)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <!-- Subtitle & Total Score -->
-        <div class="grid grid-cols-2 gap-2">
-          <div class="space-y-1">
-            <Label for="inspector-subtitle" class="text-xs">副标题 / 批次</Label>
-            <Input
-              id="inspector-subtitle"
-              :model-value="store.semanticData.meta.subtitle ?? ''"
-              placeholder="如：2026年11月联考"
-              class="h-8 text-xs"
-              @update:model-value="(val) => store.setSubtitle(String(val))"
-            />
+        <!-- Header Mode: Barcode vs ID Grid & ID Digits Count -->
+        <div class="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2">
+          <div class="space-y-1.5">
+            <Label for="inspector-header-mode" class="text-xs">卷头考号模式</Label>
+            <Select
+              :model-value="store.semanticData.meta.headerMode"
+              @update:model-value="(val) => store.setHeaderMode(val as HeaderMode)"
+            >
+              <SelectTrigger id="inspector-header-mode" class="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="barcode">条形码粘贴区</SelectItem>
+                <SelectItem value="id_grid">准考证号填涂区</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div class="space-y-1">
-            <Label for="inspector-total-score" class="text-xs">卷面声明总分</Label>
+          <div class="space-y-1.5">
+            <Label for="inspector-id-digits" class="text-xs">考号位数</Label>
             <Input
-              id="inspector-total-score"
-              :model-value="store.semanticData.meta.totalScore"
+              id="inspector-id-digits"
+              :model-value="store.semanticData.meta.idDigits ?? 10"
               type="number"
-              min="1"
-              max="300"
+              min="4"
+              max="12"
               class="h-8 text-xs"
-              @update:model-value="(val) => store.setTotalScore(Number(val))"
+              @update:model-value="(val) => store.setIdDigits(Number(val))"
             />
           </div>
+        </div>
+        <p class="text-[11px] text-ink-muted">
+          考号填涂与手写格位数限制为 4 ~ 12 位（当前
+          {{ store.semanticData.meta.idDigits ?? 10 }} 位）。
+        </p>
+
+        <!-- Subtitle -->
+        <div class="space-y-1">
+          <Label for="inspector-subtitle" class="text-xs">副标题 / 批次</Label>
+          <Input
+            id="inspector-subtitle"
+            :model-value="store.semanticData.meta.subtitle ?? ''"
+            placeholder="如：2026年11月联考"
+            class="h-8 text-xs"
+            @update:model-value="(val) => store.setSubtitle(String(val))"
+          />
         </div>
 
         <!-- Font Selector -->
@@ -634,56 +638,6 @@ function setBlockImageWidthRatio(percent: number) {
             >
               <Plus class="size-3.5" />
             </Button>
-          </div>
-        </div>
-
-        <Separator />
-
-        <!-- Composition Grid Global Defaults -->
-        <div class="space-y-2">
-          <Label class="text-xs font-semibold text-ink">作文格默认字数与每行格数</Label>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="space-y-1">
-              <Label for="inspector-comp-words" class="text-[11px] text-ink-muted">
-                要求字数 (如 800)
-              </Label>
-              <Input
-                id="inspector-comp-words"
-                :model-value="store.layoutConfig.defaultCompositionWords ?? 800"
-                type="number"
-                step="50"
-                min="200"
-                max="1500"
-                class="h-8 text-xs"
-                @update:model-value="
-                  (val) =>
-                    store.setDefaultCompositionConfig(
-                      Number(val) || 800,
-                      store.layoutConfig.defaultCompositionCols ?? 20,
-                    )
-                "
-              />
-            </div>
-            <div class="space-y-1">
-              <Label for="inspector-comp-cols" class="text-[11px] text-ink-muted">
-                每行格数 (宽栏)
-              </Label>
-              <Input
-                id="inspector-comp-cols"
-                :model-value="store.layoutConfig.defaultCompositionCols ?? 25"
-                type="number"
-                min="12"
-                max="28"
-                class="h-8 text-xs"
-                @update:model-value="
-                  (val) =>
-                    store.setDefaultCompositionConfig(
-                      store.layoutConfig.defaultCompositionWords ?? 800,
-                      Number(val) || 25,
-                    )
-                "
-              />
-            </div>
           </div>
         </div>
       </template>

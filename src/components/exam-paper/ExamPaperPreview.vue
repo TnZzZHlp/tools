@@ -69,9 +69,7 @@ function paragraphClass(p: RenderedParagraph): string {
     p.sectionId || p.itemId
       ? 'cursor-pointer rounded-[4px] transition-colors hover:bg-control/50'
       : ''
-  const activeStyle = isParagraphActive(p)
-    ? 'border-l-2 border-accent bg-surface pl-2.5 -ml-3'
-    : ''
+  const activeStyle = isParagraphActive(p) ? 'border-l-2 border-accent bg-surface pl-2.5 -ml-3' : ''
 
   switch (p.role) {
     case 'title':

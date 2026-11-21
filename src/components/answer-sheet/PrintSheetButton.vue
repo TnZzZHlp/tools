@@ -26,6 +26,7 @@ const props = withDefaults(
     layout?: PaginatedSheetModel
     disabled: boolean
     paper: PaperProfile
+    sheetTitle?: string
     unpassedGroups?: UnpassedGroupItem[]
   }>(),
   {
@@ -70,6 +71,7 @@ async function confirmPrint() {
       await printAnswerSheet(
         root,
         () => !props.disabled && props.layout === layout && props.paper === paper && open.value,
+        props.sheetTitle,
       )
     )
       open.value = false

@@ -258,6 +258,15 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 }
 
+watch(
+  () => store.semanticData?.meta.title,
+  (title) => {
+    const clean = title?.trim()
+    document.title = clean ? clean : '智能答题卡 · Tools'
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown)
   await store.initializeWorkbench()
@@ -265,6 +274,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  document.title = '智能答题卡 · Tools'
 })
 </script>
 

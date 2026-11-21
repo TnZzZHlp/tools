@@ -10,6 +10,17 @@ const props = defineProps<{
   paddingMm?: number
 }>()
 const matrix = computed(() => choiceRows(props.blocks ?? [], props.columnWidthMm, props.paddingMm))
+function rowEntriesWithColumns(row: ChoiceRow) {
+  let nextCol = 1
+  return row.entries.map((entry) => {
+    const startCol = entry.colStart ?? nextCol
+    nextCol = startCol + entry.span
+    return {
+      ...entry,
+      startCol,
+    }
+  })
+}
 </script>
 
 <template>
@@ -23,11 +34,11 @@ const matrix = computed(() => choiceRows(props.blocks ?? [], props.columnWidthMm
       :style="{ gridTemplateColumns: `repeat(${matrix.columns}, minmax(0, 1fr))` }"
     >
       <div
-        v-for="{ block, span } in row.entries"
+        v-for="{ block, span, startCol } in rowEntriesWithColumns(row)"
         :key="block.id"
         class="question"
         :data-block-id="block.id"
-        :style="{ gridColumn: `span ${span}` }"
+        :style="{ gridColumn: `${startCol} / span ${span}` }"
       >
         <span class="sheet-label number">{{ block.displayNo }}</span>
         <div class="marks">
@@ -46,30 +57,35 @@ const matrix = computed(() => choiceRows(props.blocks ?? [], props.columnWidthMm
 <style scoped>
 .group {
   display: grid;
-  gap: 1.4mm 2mm;
+  gap: 1.1mm 1.8mm;
   align-items: center;
-  padding-bottom: 1.5mm;
+  padding-bottom: 1.1mm;
+}
+.group:last-child {
+  padding-bottom: 0;
 }
 .group-start {
-  padding-top: 2mm;
+  padding-top: 1.8mm;
 }
 .question {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 1.2mm;
+  gap: 1mm;
 }
 .number {
   flex: none;
-  width: 5.5mm;
+  min-width: 5mm;
   text-align: right;
   font-size: 9pt;
   font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
 }
 .marks {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5mm;
+  gap: 1.1mm;
 }
 </style>

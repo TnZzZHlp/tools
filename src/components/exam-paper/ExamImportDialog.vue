@@ -186,7 +186,8 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
             spellcheck="false"
           />
           <p class="text-[12px] text-ink-muted">
-            自动识别大题（一、）、题组分隔符（（一）/ 第一节 / A）、连续题号（1. / 18.（本题10分））、子题（（1））及【难度】【知识点】【答案】【解析】【步骤N】标签。
+            自动识别大题（一、）、题组分隔符（（一）/ 第一节 / A）、连续题号（1. /
+            18.（本题10分））、子题（（1））及【难度】【知识点】【答案】【解析】【步骤N】标签。
           </p>
         </TabsContent>
 
@@ -215,7 +216,13 @@ onBeforeUnmount(() => clearTimeout(copyTimer))
               <FileUp v-else class="size-5 animate-pulse" />
             </div>
             <p class="text-[14px] font-medium text-ink">
-              {{ fileLoading ? '正在解析文件…' : fileName ? `已选择：${fileName}` : '点击或拖拽上传文件' }}
+              {{
+                fileLoading
+                  ? '正在解析文件…'
+                  : fileName
+                    ? `已选择：${fileName}`
+                    : '点击或拖拽上传文件'
+              }}
             </p>
             <p class="text-[12px] text-ink-muted">
               支持 .pdf、.docx（含模板原文件）、.txt 或 .json，全程本地解析

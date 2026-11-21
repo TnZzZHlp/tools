@@ -10,14 +10,33 @@ const props = defineProps<{
 const columns = computed(() =>
   Math.max(1, Math.min(props.block.preferredColumns, Math.floor((props.columnWidthMm - 2.6) / 49))),
 )
+function normalizeSubText(text: string): string {
+  return text.trim().replace(/（/g, '(').replace(/）/g, ')')
+}
+
+function formatItemSubNo(rawSubNo: string, isFirstItem: boolean): string {
+  const trimmed = normalizeSubText(rawSubNo)
+  const baseNo = normalizeSubText(props.block.displayNo)
+  if (!trimmed) return isFirstItem ? baseNo : ''
+  if (!baseNo) return trimmed
+  if (trimmed === baseNo || trimmed.startsWith(baseNo)) {
+    return trimmed
+  }
+  const suffixMatch = baseNo.match(/(\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩])$/)
+  if (suffixMatch && trimmed.startsWith(suffixMatch[1]!)) {
+    return `${baseNo}${trimmed.slice(suffixMatch[1]!.length)}`
+  }
+  if (/^\(\d+\)/.test(trimmed)) {
+    return `${baseNo}${trimmed}`
+  }
+  if (isFirstItem) {
+    return `${baseNo}、${trimmed}`
+  }
+  return trimmed
+}
 </script>
 <template>
   <section class="sheet-block" :data-block-id="block.id">
-    <BlockLabel
-      v-if="block.items.length > 1 && block.items[0]?.subNo.startsWith('(')"
-      :display-no="block.displayNo"
-      :score="block.score"
-    />
     <div class="blanks" :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }">
       <div
         v-for="(item, index) in block.items"
@@ -25,7 +44,7 @@ const columns = computed(() =>
         class="blank"
         :data-sub-no="item.subNo"
       >
-        <BlockLabel :display-no="item.subNo" :score="item.score" />
+        <BlockLabel :display-no="formatItemSubNo(item.subNo, index === 0)" :score="item.score" />
         <LatexText v-if="item.prefixLatex" :text="item.prefixLatex" />
         <span class="sheet-rule" :style="{ flexGrow: Math.max(1, item.minWidthWeight ?? 1) }" />
         <LatexText v-if="item.suffixUnit" :text="item.suffixUnit" />
@@ -36,19 +55,21 @@ const columns = computed(() =>
 <style scoped>
 .blanks {
   display: grid;
-  gap: 0 2mm;
+  gap: 1.2mm 2.6mm;
 }
 .blank {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   flex-wrap: wrap;
-  gap: 0 0.7mm;
-  min-height: 8mm;
-  align-content: center;
+  gap: 0 1mm;
+  min-height: var(--sheet-line-height, 9mm);
+  line-height: var(--sheet-line-height, 9mm);
+}
+.blank > :not(.sheet-rule) {
+  line-height: 1.35;
 }
 .blank .sheet-rule {
   flex: 1;
   min-width: min(100%, 40mm);
-  min-height: 4mm;
 }
 </style>

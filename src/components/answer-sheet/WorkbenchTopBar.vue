@@ -468,6 +468,7 @@ function stepZoom(delta: number) {
         :layout="layout"
         :disabled="busy || !layout"
         :paper="paper"
+        :sheet-title="store.semanticData?.meta.title"
         :unpassed-groups="store.unpassedQuestionGroups"
       />
     </div>

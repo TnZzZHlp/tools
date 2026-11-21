@@ -1,81 +1,80 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, FolderPlus, Layers, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, FolderPlus, Layers, Plus, Trash2 } from 'lucide-vue-next'
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useExamPaperContext } from "@/composables/useExamPaperEditor";
-import { SECTION_PRESETS, type SectionPreset } from "@/lib/exam-paper/presets";
-import { formatGroupDelimiter, formatScore, toChineseNumeral } from "@/lib/exam-paper/render";
-import type { ExamSection, SectionItem } from "@/lib/exam-paper/types";
+} from '@/components/ui/dropdown-menu'
+import { useExamPaperContext } from '@/composables/useExamPaperEditor'
+import { SECTION_PRESETS, type SectionPreset } from '@/lib/exam-paper/presets'
+import { formatGroupDelimiter, formatScore, toChineseNumeral } from '@/lib/exam-paper/render'
+import type { ExamSection, SectionItem } from '@/lib/exam-paper/types'
 
 const emit = defineEmits<{
-  itemSelected: [];
-}>();
+  itemSelected: []
+}>()
 
-const editor = useExamPaperContext();
+const editor = useExamPaperContext()
 
 function sectionScoreBadge(section: ExamSection): string {
-  if (section.scoreMode === "uniform") {
-    if (typeof section.scorePerQuestion === "number" && section.scorePerQuestion > 0) {
-      return `${formatScore(section.scorePerQuestion)}分/题`;
+  if (section.scoreMode === 'uniform') {
+    if (typeof section.scorePerQuestion === 'number' && section.scorePerQuestion > 0) {
+      return `${formatScore(section.scorePerQuestion)}分/题`
     }
-    return "待标分";
+    return '待标分'
   }
-  if (section.scoreMode === "per-question") {
-    return "逐题";
+  if (section.scoreMode === 'per-question') {
+    return '逐题'
   }
-  return "";
+  return ''
 }
 
 function itemLabel(item: SectionItem): string {
-  if (item.kind === "group") {
-    const passage = item.passage.trim().replace(/\s+/g, " ");
-    return passage || "题组材料待填写";
+  if (item.kind === 'group') {
+    const passage = item.passage.trim().replace(/\s+/g, ' ')
+    return passage || '题组材料待填写'
   }
-  const clean = item.stem.trim().replace(/\s+/g, " ");
-  return clean || "未填题干";
+  const clean = item.stem.trim().replace(/\s+/g, ' ')
+  return clean || '未填题干'
 }
 
 function itemHasAnswer(item: SectionItem): boolean {
-  if (item.kind === "standard") return item.answer.trim().length > 0;
-  if (item.kind === "compound")
-    return item.subQuestions.some((sub) => sub.answer.trim().length > 0);
-  return false;
+  if (item.kind === 'standard') return item.answer.trim().length > 0
+  if (item.kind === 'compound') return item.subQuestions.some((sub) => sub.answer.trim().length > 0)
+  return false
 }
 
 function itemHasAnalysis(item: SectionItem): boolean {
-  if (item.kind === "standard") return item.analysis.trim().length > 0;
-  if (item.kind === "compound") {
-    return item.subQuestions.some((sub) => sub.analysis.trim().length > 0);
+  if (item.kind === 'standard') return item.analysis.trim().length > 0
+  if (item.kind === 'compound') {
+    return item.subQuestions.some((sub) => sub.analysis.trim().length > 0)
   }
-  return false;
+  return false
 }
 
 function handleSelectSection(sectionId: string) {
-  editor.selectSection(sectionId);
-  emit("itemSelected");
+  editor.selectSection(sectionId)
+  emit('itemSelected')
 }
 
 function handleSelectItem(sectionId: string, itemId: string, childId?: string) {
-  editor.selectItem(sectionId, itemId, childId);
-  emit("itemSelected");
+  editor.selectItem(sectionId, itemId, childId)
+  emit('itemSelected')
 }
 
 function handleAddQuickItem(section: ExamSection) {
-  const hasGroup = section.items.some((it) => it.kind === "group");
-  editor.addItem(section.id, hasGroup ? "group" : "standard");
-  emit("itemSelected");
+  const hasGroup = section.items.some((it) => it.kind === 'group')
+  editor.addItem(section.id, hasGroup ? 'group' : 'standard')
+  emit('itemSelected')
 }
 
 function handleAddSection(preset: SectionPreset) {
-  editor.addSectionFromPreset(preset);
-  emit("itemSelected");
+  editor.addSectionFromPreset(preset)
+  emit('itemSelected')
 }
 </script>
 
@@ -112,7 +111,7 @@ function handleAddSection(preset: SectionPreset) {
             @click="handleSelectSection(section.id)"
           >
             <span class="shrink-0 font-mono text-ink">{{ toChineseNumeral(secIdx + 1) }}、</span>
-            <span class="truncate text-ink">{{ section.title.trim() || "未命名大题" }}</span>
+            <span class="truncate text-ink">{{ section.title.trim() || '未命名大题' }}</span>
             <span
               v-if="sectionScoreBadge(section)"
               class="shrink-0 rounded-[5px] border border-line bg-surface px-1 py-0 text-[10px] font-normal text-ink-muted"
@@ -189,7 +188,7 @@ function handleAddSection(preset: SectionPreset) {
                   }}
                 </span>
                 <span class="min-w-0 flex-1 truncate">
-                  {{ item.passage.trim() ? item.passage.trim() : "题组材料待填写" }}
+                  {{ item.passage.trim() ? item.passage.trim() : '题组材料待填写' }}
                 </span>
                 <span
                   v-if="(editor.issueCountByItem.value.get(item.id)?.errors ?? 0) > 0"
@@ -215,13 +214,13 @@ function handleAddSection(preset: SectionPreset) {
                   <span
                     class="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-[5px] bg-surface px-1 font-mono text-[10px] text-ink tabular-nums"
                   >
-                    {{ editor.numbering.value.questionNumbers.get(child.id) ?? "?" }}
+                    {{ editor.numbering.value.questionNumbers.get(child.id) ?? '?' }}
                   </span>
                   <span
                     class="min-w-0 flex-1 truncate"
                     :class="!child.stem.trim() && 'text-ink-faint italic'"
                   >
-                    {{ child.stem.trim() || "未填题干" }}
+                    {{ child.stem.trim() || '未填题干' }}
                   </span>
                   <span
                     v-if="child.answer.trim()"
@@ -254,7 +253,7 @@ function handleAddSection(preset: SectionPreset) {
               <span
                 class="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-[5px] bg-surface px-1 font-mono text-[10px] text-ink tabular-nums"
               >
-                {{ editor.numbering.value.questionNumbers.get(item.id) ?? "?" }}
+                {{ editor.numbering.value.questionNumbers.get(item.id) ?? '?' }}
               </span>
               <span
                 class="min-w-0 flex-1 truncate"

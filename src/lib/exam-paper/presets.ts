@@ -157,7 +157,8 @@ export function createSampleExamDocument(): ExamDocument {
               createSubQuestion({
                 stem: '若 f(x) 在区间 [1, 4] 上单调递增，求实数 a 的取值范围。',
                 answer: 'a ≤ 1',
-                analysis: '抛物线开口向上，对称轴为 x = a。要使函数在 [1, 4] 上单调递增，需对称轴位于区间左端点左侧。',
+                analysis:
+                  '抛物线开口向上，对称轴为 x = a。要使函数在 [1, 4] 上单调递增，需对称轴位于区间左端点左侧。',
                 steps: [
                   '确定函数 f(x) = (x - a)² + 3 - a² 的对称轴为 x = a。',
                   '结合开口向上性质，令 a ≤ 1，即得实数 a 的取值范围为 (-∞, 1]。',
@@ -221,7 +222,8 @@ export function createSampleExamDocument(): ExamDocument {
                   { label: 'D', text: '5 和 7' },
                 ],
                 answer: 'D',
-                analysis: '调整后数据为 4, 5, 5, 6, 7, 7, 8，其中 5 和 7 均出现 2 次，故众数为 5 和 7。',
+                analysis:
+                  '调整后数据为 4, 5, 5, 6, 7, 7, 8，其中 5 和 7 均出现 2 次，故众数为 5 和 7。',
               }),
               createGroupChildQuestion({
                 stem: '调整后保持不变的数字特征是（ ）',

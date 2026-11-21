@@ -4,6 +4,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HeaderBlock from '@/components/answer-sheet/HeaderBlock.vue'
 import BlockLabel from '@/components/answer-sheet/blocks/BlockLabel.vue'
+import MixedInlineBlock from '@/components/answer-sheet/blocks/MixedInlineBlock.vue'
+import OpenBlankBoxBlock from '@/components/answer-sheet/blocks/OpenBlankBoxBlock.vue'
 import { parseAnswerSheetStream } from '@/lib/answer-sheet/api'
 import { clearAnswerSheetDrafts, loadAnswerSheetDraft } from '@/lib/answer-sheet/draft'
 import { DEFAULT_SHEET_FONT, SHEET_FONTS } from '@/lib/answer-sheet/fonts'
@@ -364,13 +366,13 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
 
     const idGridHeader = mount(HeaderBlock, {
       props: {
-        meta: { ...previewSamples.chinese.meta, headerMode: 'id_grid' },
+        meta: { ...previewSamples.chinese.meta, headerMode: 'id_grid', idDigits: 8 },
         columnWidthMm: 179.7,
       },
     })
     expect(idGridHeader.find('.id-title').text()).toBe('准 考 证 号')
-    expect(idGridHeader.findAll('.id-column')).toHaveLength(10)
-    expect(idGridHeader.findAll('.id-write-cell')).toHaveLength(10)
+    expect(idGridHeader.findAll('.id-column')).toHaveLength(8)
+    expect(idGridHeader.findAll('.id-write-cell')).toHaveLength(8)
 
     // 2. Verify BlockLabel formats question numbers with 顿号 and half-width score parentheses
     const label4 = mount(BlockLabel, { props: { displayNo: '4', score: 4 } })
@@ -378,26 +380,212 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     const labelSub = mount(BlockLabel, { props: { displayNo: '13(1)', score: 4 } })
     expect(labelSub.text()).toBe('13(1)、(4分)')
 
-    // 3. Verify OMR choiceRows packs questions in 4-row vertical columns matching 2027+届高三语文周末作业试题.pdf
+    // 3. Verify OMR choiceRows strictly keeps consecutive question numbers in each vertical column
     const weekendChoices = previewSamples.weekend.blocks.filter(
       (b): b is Choice => b.type === 'omr_choice',
     )
-    const { rows } = choiceRows(weekendChoices, 179.7, 2)
-    // First 4 rows are group 1 ("阅读与运用"):
-    // Row 0 has questions 1, 7, 15, 24
-    // Row 1 has questions 2, 10 (A-H 2-col span), 19, 25
-    expect(rows[0]?.entries.map((e) => e.block.displayNo)).toEqual(['1', '7', '15', '24'])
-    expect(rows[1]?.entries.map((e) => e.block.displayNo)).toEqual(['2', '10', '19', '25'])
-    expect(rows[2]?.entries.map((e) => e.block.displayNo)).toEqual(['3', '11', '22', '26'])
-    expect(rows[3]?.entries.map((e) => e.block.displayNo)).toEqual(['6', '12', '23', '27'])
-    // Group 2 ("选择题综合"):
-    expect(rows[4]?.entries.map((e) => e.block.displayNo)).toEqual(['28', '32', '36', '40'])
-    expect(rows[5]?.entries.map((e) => e.block.displayNo)).toEqual(['29', '33', '37', '41'])
+    const { columns: weekendCols, rows } = choiceRows(weekendChoices, 179.7, 2)
+    expect(weekendCols).toBe(5)
+    // Every vertical column in Group 1 has strictly consecutive question numbers
+    // and each vertical column group's width equals the widest question in that group:
+    // Col 1: [1, 2, 3] (span 1), Col 2: [6, 7] (span 1), Col 3-4: [10, 11, 12] (entire group has span 2!), Col 5: [15] (span 1)
+    // Next band: Col 1: [19], Col 2: [22, 23, 24], Col 3: [25, 26, 27]
+    expect(rows[0]?.entries.map((e) => e.block.displayNo)).toEqual(['1', '6', '10', '15'])
+    expect(rows[1]?.entries.map((e) => e.block.displayNo)).toEqual(['2', '7', '11'])
+    expect(rows[2]?.entries.map((e) => e.block.displayNo)).toEqual(['3', '12'])
+    expect(rows[3]?.entries.map((e) => e.block.displayNo)).toEqual(['19', '22', '25'])
+    expect(rows[4]?.entries.map((e) => e.block.displayNo)).toEqual(['23', '26'])
+    expect(rows[5]?.entries.map((e) => e.block.displayNo)).toEqual(['24', '27'])
+    // Group 2 ("选择题综合", consecutive 28..41) fits into 5 horizontal columns with 3 consecutive rows per column:
+    expect(rows[6]?.entries.map((e) => e.block.displayNo)).toEqual(['28', '31', '34', '37', '40'])
+    expect(rows[7]?.entries.map((e) => e.block.displayNo)).toEqual(['29', '32', '35', '38', '41'])
+    expect(rows[8]?.entries.map((e) => e.block.displayNo)).toEqual(['30', '33', '36', '39'])
+
+    // Verify Hubei 10-question set (1..3, 6..7, 10..12, 15, 18) splits into consecutive vertical columns
+    // where the [10, 11, 12] group takes the width of question 10 (span 2) for all 3 rows in that group:
+    const hubeiStyleChoices: Choice[] = [
+      {
+        id: 'h1',
+        type: 'omr_choice',
+        displayNo: '1',
+        numericOrder: 1,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h2',
+        type: 'omr_choice',
+        displayNo: '2',
+        numericOrder: 2,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h3',
+        type: 'omr_choice',
+        displayNo: '3',
+        numericOrder: 3,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h6',
+        type: 'omr_choice',
+        displayNo: '6',
+        numericOrder: 6,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h7',
+        type: 'omr_choice',
+        displayNo: '7',
+        numericOrder: 7,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h10',
+        type: 'omr_choice',
+        displayNo: '10',
+        numericOrder: 10,
+        options: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+        isMultiple: true,
+      },
+      {
+        id: 'h11',
+        type: 'omr_choice',
+        displayNo: '11',
+        numericOrder: 11,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h12',
+        type: 'omr_choice',
+        displayNo: '12',
+        numericOrder: 12,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h15',
+        type: 'omr_choice',
+        displayNo: '15',
+        numericOrder: 15,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+      {
+        id: 'h18',
+        type: 'omr_choice',
+        displayNo: '18',
+        numericOrder: 18,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+    ]
+    const hubeiMatrix = choiceRows(hubeiStyleChoices, 179.7, 2)
+    expect(hubeiMatrix.rows).toHaveLength(4)
+    expect(hubeiMatrix.rows[0]?.entries.map((e) => e.block.displayNo)).toEqual([
+      '1',
+      '6',
+      '10',
+      '15',
+    ])
+    expect(hubeiMatrix.rows[1]?.entries.map((e) => e.block.displayNo)).toEqual(['2', '7', '11'])
+    expect(hubeiMatrix.rows[2]?.entries.map((e) => e.block.displayNo)).toEqual(['3', '12'])
+    expect(hubeiMatrix.rows[0]?.entries.find((e) => e.block.displayNo === '10')?.span).toBe(2)
+    expect(hubeiMatrix.rows[1]?.entries.find((e) => e.block.displayNo === '11')?.span).toBe(2)
+    expect(hubeiMatrix.rows[2]?.entries.find((e) => e.block.displayNo === '12')?.span).toBe(2)
+    expect(hubeiMatrix.rows[0]?.entries.find((e) => e.block.displayNo === '15')?.colStart).toBe(5)
 
     // 4. Verify Gaokao printing font stack is default
     expect(DEFAULT_SHEET_FONT).toBe('gaokaoPrint')
     expect(SHEET_FONTS[DEFAULT_SHEET_FONT].family).toContain('Times New Roman')
     expect(SHEET_FONTS[DEFAULT_SHEET_FONT].family).toContain('FZShuSong-Z01')
     expect(SHEET_FONTS[DEFAULT_SHEET_FONT].family).toContain('Noto Serif SC Variable')
+  })
+
+  it('deduplicates repeated sub-question prefixes in MixedInlineBlock / OpenBlankBoxBlock and keeps 1..15 consecutive choices grouped cleanly', () => {
+    // 1. MixedInlineBlock: displayNo="20(1)" + segment.label="(1)" -> "20(1)、", NOT "20(1)(1)、"
+    const mixed20 = mount(MixedInlineBlock, {
+      props: {
+        block: {
+          id: 'q20-1',
+          type: 'mixed_inline',
+          displayNo: '20(1)',
+          numericOrder: 20,
+          rows: [{ type: 'inline_blank', segments: [{ label: '(1)', blanksCount: 1 }] }],
+        },
+        columnWidthMm: 179.7,
+        assetUrls: {},
+      },
+    })
+    expect(mixed20.text()).toBe('20(1)、')
+
+    // 2. MixedInlineBlock: displayNo="18(2)②" + segment.label="②-1" -> "18(2)②-1、", NOT "18(2)②、②-1、"
+    const mixed18 = mount(MixedInlineBlock, {
+      props: {
+        block: {
+          id: 'q18-2-2',
+          type: 'mixed_inline',
+          displayNo: '18(2)②',
+          numericOrder: 18,
+          rows: [{ type: 'inline_blank', segments: [{ label: '②-1', blanksCount: 1 }] }],
+        },
+        columnWidthMm: 179.7,
+        assetUrls: {},
+      },
+    })
+    expect(mixed18.text()).toBe('18(2)②-1、')
+
+    // 3. OpenBlankBoxBlock: displayNo="16" + subNo="16(2)②" -> does not print redundant top "16、"
+    const open16 = mount(OpenBlankBoxBlock, {
+      props: {
+        block: {
+          id: 'q16-2-2',
+          type: 'open_blank_box',
+          displayNo: '16',
+          numericOrder: 16,
+          baseHeightMm: 40,
+          subQuestions: [{ subNo: '16(2)②' }],
+        },
+        columnWidthMm: 179.7,
+        assetUrls: {},
+        assets: {},
+      },
+    })
+    expect(open16.text()).toBe('16(2)②、')
+
+    // 4. Choice layout: 1..15 consecutive integers + 18(1) -> packs into 4 rows total (5 columns wide: [1..4], [5..8], [9..12], [13..15], [18(1)])
+    const bioChoices: Choice[] = [
+      ...Array.from({ length: 15 }, (_, i) => ({
+        id: `b${i + 1}`,
+        type: 'omr_choice' as const,
+        displayNo: String(i + 1),
+        numericOrder: i + 1,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      })),
+      {
+        id: 'b18-1',
+        type: 'omr_choice',
+        displayNo: '18(1)',
+        numericOrder: 18,
+        options: ['A', 'B', 'C', 'D'],
+        isMultiple: false,
+      },
+    ]
+    const bioMatrix = choiceRows(bioChoices, 179.7, 2)
+    expect(bioMatrix.rows).toHaveLength(4)
+    expect(bioMatrix.rows[0]?.entries.map((e) => e.block.displayNo)).toEqual([
+      '1',
+      '5',
+      '9',
+      '13',
+      '18(1)',
+    ])
+    expect(bioMatrix.rows[3]?.entries.map((e) => e.block.displayNo)).toEqual(['4', '8', '12'])
   })
 })

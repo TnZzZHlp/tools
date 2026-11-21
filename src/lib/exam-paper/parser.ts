@@ -94,9 +94,7 @@ function parseSectionHeader(rawLine: string): {
     const baseTitle = (parenMatch[1] ?? '').trim() || cleaned
     const inner = (parenMatch[2] ?? '').trim()
 
-    const perItemScoreMatch = inner.match(
-      /每\s*(?:小题|题|空格|空|道题|道)\s*(\d+(?:\.\d+)?)\s*分/,
-    )
+    const perItemScoreMatch = inner.match(/每\s*(?:小题|题|空格|空|道题|道)\s*(\d+(?:\.\d+)?)\s*分/)
     if (perItemScoreMatch) {
       const score = Number(perItemScoreMatch[1])
       return {
@@ -131,10 +129,7 @@ function parseSectionHeader(rawLine: string): {
   }
 }
 
-function isPageArtifactOrPreambleBoilerplate(
-  line: string,
-  beforeFirstSection: boolean,
-): boolean {
+function isPageArtifactOrPreambleBoilerplate(line: string, beforeFirstSection: boolean): boolean {
   if (
     /^第\s*\d+\s*页(?:\s*[/／,，]?\s*共\s*\d+\s*页)?$/.test(line) ||
     /^-\s*\d+\s*-$/.test(line) ||
@@ -284,7 +279,9 @@ export function parseExamText(rawText: string): ExamDocument {
         currentGroup = createQuestionGroup({
           delimiterStyle: delimiter.style,
           passage:
-            delimiter.trailing && !delimiter.trailing.startsWith('说明：') ? delimiter.trailing : '',
+            delimiter.trailing && !delimiter.trailing.startsWith('说明：')
+              ? delimiter.trailing
+              : '',
           questions: [],
         })
         section.items.push(currentGroup)
@@ -421,8 +418,7 @@ export function parseExamText(rawText: string): ExamDocument {
         tagMode = 'step'
         const stepBody = (stepMatch[1] ?? '').trim()
         if ('subQuestions' in currentQuestion) {
-          const targetSub =
-            currentQuestion.subQuestions[activeSubIndex >= 0 ? activeSubIndex : 0]
+          const targetSub = currentQuestion.subQuestions[activeSubIndex >= 0 ? activeSubIndex : 0]
           if (targetSub) {
             targetSub.steps.push(stepBody)
           }
@@ -451,8 +447,7 @@ export function parseExamText(rawText: string): ExamDocument {
 
       // Continuation lines within active question/tag
       if ('subQuestions' in currentQuestion) {
-        const sub =
-          activeSubIndex >= 0 ? currentQuestion.subQuestions[activeSubIndex] : undefined
+        const sub = activeSubIndex >= 0 ? currentQuestion.subQuestions[activeSubIndex] : undefined
         if (tagMode === 'step' && sub && sub.steps.length > 0) {
           const lastIdx = sub.steps.length - 1
           sub.steps[lastIdx] = appendLine(sub.steps[lastIdx] ?? '', line)
@@ -518,7 +513,8 @@ function parseNumberingDefinitions(numberingXml: string | undefined): {
   for (let i = 0; i < abstractNodes.length; i += 1) {
     const absNode = abstractNodes.item(i)
     if (!absNode) continue
-    const absId = absNode.getAttributeNS(W_NS, 'abstractNumId') ?? absNode.getAttribute('w:abstractNumId')
+    const absId =
+      absNode.getAttributeNS(W_NS, 'abstractNumId') ?? absNode.getAttribute('w:abstractNumId')
     if (!absId) continue
     const lvlNodes = absNode.getElementsByTagNameNS(W_NS, 'lvl')
     for (let j = 0; j < lvlNodes.length; j += 1) {
@@ -810,8 +806,7 @@ export async function parseExamPdf(data: ArrayBuffer | Uint8Array): Promise<Exam
             !/[：:]$/.test(prevRow.text) &&
             minX <= prevRow.baseX + 6
           ) {
-            const needsSpace =
-              /[A-Za-z0-9]$/.test(prevRow.text) && /^[A-Za-z0-9]/.test(lineText)
+            const needsSpace = /[A-Za-z0-9]$/.test(prevRow.text) && /^[A-Za-z0-9]/.test(lineText)
             prevRow.text = `${prevRow.text}${needsSpace ? ' ' : ''}${lineText}`
             prevRow.maxX = maxX
           } else {
@@ -846,7 +841,8 @@ function normalizeOptionsInput(raw: unknown): QuestionOption[] {
       result.push(parsed ?? { label: fallbackLabel, text: entry.trim() })
     } else if (entry && typeof entry === 'object') {
       const obj = entry as Record<string, unknown>
-      const label = typeof obj.label === 'string' && obj.label.trim() ? obj.label.trim() : fallbackLabel
+      const label =
+        typeof obj.label === 'string' && obj.label.trim() ? obj.label.trim() : fallbackLabel
       const text = typeof obj.text === 'string' ? obj.text : ''
       result.push({ label, text })
     }
@@ -956,9 +952,7 @@ function normalizeSectionItem(raw: unknown) {
     score: normalizeScore(obj.score),
     difficulty: normalizeDifficulty(obj.difficulty),
     knowledgePoints:
-      typeof obj.knowledgePoints === 'string'
-        ? normalizeKnowledgePoints(obj.knowledgePoints)
-        : '',
+      typeof obj.knowledgePoints === 'string' ? normalizeKnowledgePoints(obj.knowledgePoints) : '',
     answer: typeof obj.answer === 'string' ? obj.answer : '',
     analysis: typeof obj.analysis === 'string' ? obj.analysis : '',
     steps: normalizeStepsInput(obj.steps),

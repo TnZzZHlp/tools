@@ -13,15 +13,35 @@ const props = defineProps<{
   assetUrls: Readonly<Record<string, string>>
 }>()
 const rows = computed(() => mixedFlow(props.block).slice(props.start, props.end))
+function normalizeSubText(text: string): string {
+  return text.trim().replace(/（/g, '(').replace(/）/g, ')')
+}
+
 const hasInlineRowLabels = computed(() => {
   const first = props.block.rows[0]
-  return first?.type === 'inline_blank' && Boolean(first.segments[0]?.label)
+  if (first?.type === 'inline_blank') return Boolean(first.segments[0]?.label?.trim())
+  if (first?.type === 'full_line') return Boolean(first.label?.trim())
+  return false
 })
-function formatSegmentLabel(rawLabel: string): string {
-  const trimmed = rawLabel.trim()
-  if (!trimmed) return ''
-  if (/^\(\d+\)|^（\d+）/.test(trimmed)) {
-    return `${props.block.displayNo}${trimmed.replace(/（/g, '(').replace(/）/g, ')')}`
+
+function formatSegmentLabel(rawLabel: string, isFirstSegmentOfBlock = false): string {
+  const trimmed = normalizeSubText(rawLabel)
+  const baseNo = normalizeSubText(props.block.displayNo)
+  if (!trimmed) return isFirstSegmentOfBlock ? baseNo : ''
+  if (!baseNo) return trimmed
+  if (trimmed === baseNo || trimmed.startsWith(baseNo)) {
+    return trimmed
+  }
+  // Avoid duplicating trailing sub-question suffix when displayNo is already e.g. "20(1)" and label is "(1)" or "18(2)②" and label is "②-1"
+  const suffixMatch = baseNo.match(/(\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩])$/)
+  if (suffixMatch && trimmed.startsWith(suffixMatch[1]!)) {
+    return `${baseNo}${trimmed.slice(suffixMatch[1]!.length)}`
+  }
+  if (/^\(\d+\)/.test(trimmed)) {
+    return `${baseNo}${trimmed}`
+  }
+  if (isFirstSegmentOfBlock) {
+    return `${baseNo}、${trimmed}`
   }
   return trimmed
 }
@@ -48,8 +68,10 @@ function formatSegmentLabel(rawLabel: string): string {
           :style="{ flexGrow: segment.blanksCount }"
         >
           <BlockLabel
-            v-if="segment.label || segment.score !== undefined"
-            :display-no="formatSegmentLabel(segment.label)"
+            v-if="
+              segment.label || segment.score !== undefined || (!start && index === 0 && i === 0)
+            "
+            :display-no="formatSegmentLabel(segment.label, !start && index === 0 && i === 0)"
             :score="segment.score"
           />
           <LatexText v-if="segment.prefix" :text="segment.prefix" />
@@ -60,7 +82,7 @@ function formatSegmentLabel(rawLabel: string): string {
       <WritingLines
         v-else-if="row.type === 'full_line'"
         :lines="row.lines"
-        :label="row.label ? formatSegmentLabel(row.label) : undefined"
+        :label="row.label ? formatSegmentLabel(row.label, !start && index === 0) : undefined"
       />
       <img
         v-else-if="assetUrls[row.assetId]"

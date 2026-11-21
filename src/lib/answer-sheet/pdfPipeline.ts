@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import {
+  AnswerSheetHttpError,
   readAnswerSheetStream,
   type ParsedQuestionEvent,
   type ParseReasoningDeltaEvent,
@@ -11,6 +12,7 @@ import type { QuestionGroup, QuestionSourceImage, ReviewSourceImage } from './re
 import type { SubjectType } from './types'
 
 const MAX_PAGES = 20
+const PARSE_CONCURRENCY = 4
 const BASE = '/api/v1/answer-sheet'
 type PageUnit = Extract<PdfCheckpoint, { type: 'page' }>
 type QuestionUnit = Extract<PdfCheckpoint, { type: 'question' }>
@@ -29,10 +31,11 @@ export function isPdf(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 }
 
-export async function runTwoAtATime<T>(
+export async function runWithConcurrency<T>(
   units: T[],
   signal: AbortSignal,
   run: (unit: T) => Promise<void>,
+  concurrency = PARSE_CONCURRENCY,
 ): Promise<void> {
   const iterator = units.values()
   const worker = async () => {
@@ -41,8 +44,17 @@ export async function runTwoAtATime<T>(
       await run(unit)
     }
   }
-  const results = await Promise.allSettled([worker(), worker()])
+  const workerCount = Math.max(1, Math.min(concurrency, units.length || 1))
+  const results = await Promise.allSettled(Array.from({ length: workerCount }, () => worker()))
   for (const result of results) if (result.status === 'rejected') throw result.reason
+}
+
+export async function runTwoAtATime<T>(
+  units: T[],
+  signal: AbortSignal,
+  run: (unit: T) => Promise<void>,
+): Promise<void> {
+  return runWithConcurrency(units, signal, run, PARSE_CONCURRENCY)
 }
 
 async function renderPage(
@@ -77,6 +89,105 @@ async function renderPage(
   }
 }
 
+const SUBJECT_KEYWORDS: Array<{ subject: SubjectType; pattern: RegExp }> = [
+  { subject: 'chinese', pattern: /语\s*文/ },
+  { subject: 'math', pattern: /数\s*学/ },
+  { subject: 'english', pattern: /英\s*语/ },
+  { subject: 'physics', pattern: /物\s*理/ },
+  { subject: 'chemistry', pattern: /化\s*学/ },
+  { subject: 'biology', pattern: /生\s*物/ },
+  { subject: 'politics', pattern: /思\s*想\s*政\s*治|政\s*治|道\s*德\s*与\s*法\s*治/ },
+  { subject: 'history', pattern: /历\s*史/ },
+  { subject: 'geography', pattern: /地\s*理/ },
+]
+
+export function inferSubjectFromText(
+  ...sources: Array<string | undefined>
+): SubjectType | undefined {
+  for (const raw of sources) {
+    if (!raw) continue
+    const text = raw.trim()
+    if (!text) continue
+    for (const entry of SUBJECT_KEYWORDS) {
+      if (entry.pattern.test(text)) {
+        return entry.subject
+      }
+    }
+  }
+  return undefined
+}
+
+const NOISE_TITLE_RE =
+  /^(?:\d+\s*[.．、]|[（(]\d+[)）])?\s*(?:作答前|答题前|作答时|答题时|考试结束后|注意事项|考生务必|保持卡面|请在|本试卷|试卷共|满分)/
+
+function isValidExamTitle(candidate: string): boolean {
+  const text = candidate.trim()
+  if (!text || text.length > 48) return false
+  if (NOISE_TITLE_RE.test(text)) return false
+  if (/[。！？]$/.test(text)) return false
+  return true
+}
+
+function extractTitleFromFirstPage(lines: string[], fallbackFileName: string): string {
+  const candidates: string[] = []
+  for (const raw of lines.slice(0, 12)) {
+    const line = raw
+      .replace(/^#+\s*/, '')
+      .replace(/\*\*/g, '')
+      .trim()
+    if (!line) continue
+    if (/^(?:注意事项|一、|第[一二]部分|选择题|机密|绝密|保密)/.test(line)) break
+    if (/^第\s*\d+\s*页/.test(line)) continue
+    if (isValidExamTitle(line)) {
+      candidates.push(line)
+      if (candidates.length >= 2) break
+    }
+  }
+  if (candidates.length > 0) {
+    return candidates.join(' ')
+  }
+  const fromFile = fallbackFileName
+    .replace(/\.[^.]+$/, '')
+    .replace(/^\d{10,}/, '')
+    .replace(/试题及答案$|试卷及答案$|及答案$/, '')
+    .trim()
+  return fromFile || '未命名试卷'
+}
+
+export function sanitizeMetaTitle(
+  metaTitle: string,
+  firstPageLines: string[],
+  fallbackFileName: string,
+): string {
+  const cleaned = metaTitle.trim()
+  if (isValidExamTitle(cleaned)) return cleaned
+  return extractTitleFromFirstPage(firstPageLines, fallbackFileName)
+}
+
+function isAnswerOrAdPage(markdown: string): boolean {
+  const headLines = markdown
+    .split('\n')
+    .map((l) =>
+      l
+        .replace(/^#+\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim(),
+    )
+    .filter(Boolean)
+    .slice(0, 8)
+  const headText = headLines.join(' ')
+  if (/^(?:参考答案|答案及解析|试题答案|评分标准|评分细则)(?:\s|$)/.test(headLines[0] ?? '')) {
+    return true
+  }
+  if (
+    /^(?:关于我们|北京高考在线|京考一点通|微信搜一搜|扫码关注)/.test(headLines[0] ?? '') ||
+    (headText.includes('关于我们') && /微信公众号|官方网站|咨询热线/.test(markdown))
+  ) {
+    return true
+  }
+  return false
+}
+
 export function assembleOcrPages(units: ReadonlyMap<number, PageUnit>, total: number) {
   const lines: string[] = []
   const pageEndLines: number[] = []
@@ -85,6 +196,10 @@ export function assembleOcrPages(units: ReadonlyMap<number, PageUnit>, total: nu
   for (let index = 1; index <= total; index++) {
     const unit = units.get(index)
     if (!unit) throw new Error(`第 ${index} 页尚未识别，不能开始拆题。`)
+    // Stop assembling once we hit an appended "参考答案" or promotional "关于我们" page after page 1
+    if (index > 1 && isAnswerOrAdPage(unit.result.markdown)) {
+      continue
+    }
     for (const line of unit.result.markdown.trimEnd().split('\n')) lines.push(line)
     pageEndLines.push(lines.length)
     for (const image of unit.result.sourceImages) metadata.set(image.assetId, image)
@@ -157,13 +272,23 @@ async function recognizePages(
         signal.throwIfAborted()
         const form = new FormData()
         form.append('file', blob, `page-${page}.jpg`)
-        const output = await readAnswerSheetStream<OcrPage>(
-          `${BASE}/ocr-page?page=${page}`,
-          form,
-          'page_completed',
-          (result) => result.sourceImages,
-          { signal, onReasoningDelta: (event) => onReasoning(event, `第 ${page} 页`) },
-        )
+        const request = (retry = false) =>
+          readAnswerSheetStream<OcrPage>(
+            `${BASE}/ocr-page?page=${page}`,
+            form,
+            'page_completed',
+            (result) => result.sourceImages,
+            {
+              signal,
+              onReasoningDelta: (event) =>
+                onReasoning(event, `第 ${page} 页${retry ? '（重试）' : ''}`),
+            },
+          )
+        const output = await request().catch((error: unknown) => {
+          if (!(error instanceof AnswerSheetHttpError) || error.status !== 554) throw error
+          signal.throwIfAborted()
+          return request(true)
+        })
         if (output.result.page !== page || !output.result.markdown.trim())
           throw new Error('OCR 页码或文本无效。')
         if (output.result.sourceImages.some((entry) => !entry.assetId.startsWith(`P${page}_`)))
@@ -194,6 +319,10 @@ export async function parsePdfByPage(
   if (file.size > 20 * 1024 * 1024) throw new Error('上传文件超过 20 MiB 大小上限。')
   const checkpoints = await loadPdfCheckpoints(sheetId)
   const paper = await recognizePages(file, checkpoints, options)
+  const firstPageHeader = paper.lines.slice(0, 15).join('\n')
+  const inferredHintSubject =
+    hintSubject !== 'auto' ? hintSubject : inferSubjectFromText(firstPageHeader, file.name)
+
   const splitResponse = await fetch(`${BASE}/split`, {
     method: 'POST',
     signal,
@@ -201,7 +330,7 @@ export async function parsePdfByPage(
     body: JSON.stringify({
       markdown: paper.lines.join('\n'),
       pageEndLines: paper.pageEndLines,
-      hintSubject: hintSubject === 'auto' ? undefined : hintSubject,
+      hintSubject: inferredHintSubject,
     }),
   })
   if (!splitResponse.ok) {
@@ -209,6 +338,10 @@ export async function parsePdfByPage(
     throw new Error(error?.error ?? `拆题失败 (HTTP ${splitResponse.status})`)
   }
   const split = (await splitResponse.json()) as SplitPaperResult
+  split.meta = {
+    ...split.meta,
+    title: sanitizeMetaTitle(split.meta.title, paper.lines, file.name),
+  }
   const groups = split.questions.map((range) => makeGroup(range, paper))
   const cached = new Map(
     checkpoints.flatMap((unit) =>

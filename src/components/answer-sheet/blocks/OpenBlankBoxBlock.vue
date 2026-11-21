@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { AnswerSheetBlock, SheetAsset } from '@/lib/answer-sheet/types'
 import BlockLabel from './BlockLabel.vue'
-defineProps<{
+const props = defineProps<{
   block: Extract<AnswerSheetBlock, { type: 'open_blank_box' }>
   columnWidthMm: number
   assetUrls: Readonly<Record<string, string>>
@@ -9,6 +10,32 @@ defineProps<{
   monochrome?: boolean
   imageWidthMm?: number
 }>()
+
+function normalizeSubText(text: string): string {
+  return text.trim().replace(/（/g, '(').replace(/）/g, ')')
+}
+
+function formatOpenSubNo(rawSubNo: string): string {
+  const trimmed = normalizeSubText(rawSubNo)
+  const baseNo = normalizeSubText(props.block.displayNo)
+  if (!trimmed || !baseNo) return trimmed
+  if (trimmed === baseNo || trimmed.startsWith(baseNo)) return trimmed
+  const suffixMatch = baseNo.match(/(\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩])$/)
+  if (suffixMatch && trimmed.startsWith(suffixMatch[1]!)) {
+    return `${baseNo}${trimmed.slice(suffixMatch[1]!.length)}`
+  }
+  return trimmed
+}
+const hideTopHeader = computed(() => {
+  if (!props.block.subQuestions?.length) return false
+  const firstSub = normalizeSubText(props.block.subQuestions[0]?.subNo ?? '')
+  const baseNo = normalizeSubText(props.block.displayNo)
+  if (!firstSub || !baseNo) return false
+  if (firstSub === baseNo || firstSub.startsWith(baseNo)) return true
+  const suffixMatch = baseNo.match(/(\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩])$/)
+  if (suffixMatch && firstSub.startsWith(suffixMatch[1]!)) return true
+  return false
+})
 </script>
 <template>
   <section
@@ -16,7 +43,7 @@ defineProps<{
     :data-block-id="block.id"
     :style="{ minHeight: `calc(${block.baseHeightMm}mm + var(--sheet-balance-padding, 0mm))` }"
   >
-    <BlockLabel :display-no="block.displayNo" :score="block.score" />
+    <BlockLabel v-if="!hideTopHeader" :display-no="block.displayNo" :score="block.score" />
     <template v-for="(asset, index) in block.attachedAssetIds" :key="index">
       <img
         v-if="asset.position !== 'bottom' && assetUrls[asset.assetId]"
@@ -38,7 +65,7 @@ defineProps<{
       :style="{ flexGrow: question.heightRatio ?? 1 }"
       :data-sub-no="question.subNo"
     >
-      <BlockLabel :display-no="question.subNo" :score="question.score" />
+      <BlockLabel :display-no="formatOpenSubNo(question.subNo)" :score="question.score" />
     </div>
     <div v-if="!block.subQuestions?.length" class="blank-area" data-blank-area />
     <template v-for="(asset, index) in block.attachedAssetIds" :key="`bottom-${index}`">

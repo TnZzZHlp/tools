@@ -48,9 +48,10 @@ function showCountAtCell(cellNumber: number): boolean {
       <BlockLabel :display-no="block.displayNo" :score="block.score" />
     </div>
     <div
-      v-for="row in rows"
+      v-for="(row, rowIndex) in rows"
       :key="row[0]"
       class="grid-row"
+      :class="{ 'is-last-row': rowIndex === rows.length - 1 }"
       data-grid-row
       data-flow-unit
       :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }"
@@ -68,22 +69,31 @@ function showCountAtCell(cellNumber: number): boolean {
 }
 .grid-row {
   display: grid;
-  padding-bottom: 2.8mm;
+  padding-bottom: 2.9mm;
+  border-inline: 0.25mm solid;
 }
-.grid-row:last-child {
+.grid-row.is-last-row {
   padding-bottom: 2.5mm;
+  border-inline: 0;
+}
+.grid-row.is-last-row .cell:first-child {
+  border-inline-start: 0.25mm solid;
+}
+.grid-row.is-last-row .cell:last-child {
+  border-inline-end: 0.25mm solid;
 }
 .cell {
   position: relative;
   height: 6.62mm;
   border: 0.25mm solid;
-}
-.cell + .cell {
   border-inline-start: 0;
+}
+.cell:last-child {
+  border-inline-end: 0;
 }
 .milestone {
   position: absolute;
-  right: 0;
+  right: 0.3mm;
   top: calc(100% + 0.15mm);
   font-size: 8.5pt;
   line-height: 1;

@@ -364,16 +364,7 @@ function pushCompoundQuestion(
   sectionId: string,
 ) {
   const prefix = buildQuestionPrefix(qNumber, item.score, includeScorePrefix)
-  pushStemWithOptions(
-    out,
-    prefix,
-    item.stem,
-    [],
-    'question-stem',
-    sectionId,
-    item.id,
-    qNumber,
-  )
+  pushStemWithOptions(out, prefix, item.stem, [], 'question-stem', sectionId, item.id, qNumber)
 
   for (let subIdx = 0; subIdx < item.subQuestions.length; subIdx += 1) {
     const sub = item.subQuestions[subIdx]
@@ -556,15 +547,7 @@ export function buildRenderedParagraphs(doc: ExamDocument): RenderedParagraph[] 
 
         for (const child of item.questions) {
           const qNum = questionNumbers.get(child.id) ?? 1
-          pushStandardOrGroupChild(
-            out,
-            child,
-            qNum,
-            includeScorePrefix,
-            false,
-            section.id,
-            item.id,
-          )
+          pushStandardOrGroupChild(out, child, qNum, includeScorePrefix, false, section.id, item.id)
         }
       } else if (item.kind === 'compound') {
         const qNum = questionNumbers.get(item.id) ?? 1
@@ -901,10 +884,7 @@ export function splitEmbeddedOptions(rawStem: string): {
   const startIdx = lines.findIndex((line) => /^A\s*[.．、)\]]\s*\S/.test(line.trim()))
   if (startIdx <= 0) return null
 
-  const stem = lines
-    .slice(0, startIdx)
-    .join('\n')
-    .trim()
+  const stem = lines.slice(0, startIdx).join('\n').trim()
   if (!stem) return null
 
   const parsedOptions: QuestionOption[] = []

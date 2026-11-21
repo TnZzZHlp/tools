@@ -326,7 +326,9 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" class="w-60 space-y-2.5 p-3">
-            <p class="text-[12px] font-medium text-ink">向“{{ editor.activeSection.value.title }}”批量追加空题</p>
+            <p class="text-[12px] font-medium text-ink">
+              向“{{ editor.activeSection.value.title }}”批量追加空题
+            </p>
             <div class="flex flex-wrap gap-1.5">
               <Button
                 v-for="n in [3, 5, 10]"
@@ -495,9 +497,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                 editor.activeSection.value.items.length - 1
               "
               aria-label="下移当前题目"
-              @click="
-                editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)
-              "
+              @click="editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)"
             >
               <ArrowDown class="size-3.5" />
             </Button>
@@ -519,9 +519,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
               size="sm"
               class="min-h-7 w-7 px-0 text-danger hover:text-danger"
               aria-label="删除当前题目"
-              @click="
-                editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)
-              "
+              @click="editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)"
             >
               <Trash2 class="size-3.5" />
             </Button>
@@ -547,7 +545,8 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
           >
             <span class="text-ink">
               <Wand2 class="mr-1 inline size-3.5 text-accent" />
-              检测到题干中包含 {{ standardEmbeddedOptions.options.length }} 个选项，是否拆分到选项栏？
+              检测到题干中包含
+              {{ standardEmbeddedOptions.options.length }} 个选项，是否拆分到选项栏？
             </span>
             <Button
               type="button"
@@ -582,7 +581,9 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                 "
               >
                 <Plus class="size-3.5" />
-                {{ editor.activeItem.value.options.length === 0 ? '添加 A/B/C/D 选项' : '添加选项' }}
+                {{
+                  editor.activeItem.value.options.length === 0 ? '添加 A/B/C/D 选项' : '添加选项'
+                }}
               </Button>
               <Button
                 v-if="editor.activeItem.value.options.length > 0"
@@ -858,9 +859,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                 editor.activeSection.value.items.length - 1
               "
               aria-label="下移当前题目"
-              @click="
-                editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)
-              "
+              @click="editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)"
             >
               <ArrowDown class="size-3.5" />
             </Button>
@@ -882,9 +881,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
               size="sm"
               class="min-h-7 w-7 px-0 text-danger hover:text-danger"
               aria-label="删除当前题目"
-              @click="
-                editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)
-              "
+              @click="editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)"
             >
               <Trash2 class="size-3.5" />
             </Button>
@@ -1062,7 +1059,10 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
             </div>
           </div>
 
-          <div v-if="activeCompoundSub" class="space-y-3 rounded-control border border-line bg-raised p-3">
+          <div
+            v-if="activeCompoundSub"
+            class="space-y-3 rounded-control border border-line bg-raised p-3"
+          >
             <div class="space-y-1.5">
               <Label for="focused-sub-stem" class="text-[12px]">
                 子题（{{ editor.selectedSubQuestionIndex.value + 1 }}）题干
@@ -1086,7 +1086,9 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                   variant="secondary"
                   size="sm"
                   class="min-h-6 px-2 text-[11px]"
-                  @click="activeCompoundSub && applySplitOptions(activeCompoundSub, subEmbeddedOptions)"
+                  @click="
+                    activeCompoundSub && applySplitOptions(activeCompoundSub, subEmbeddedOptions)
+                  "
                 >
                   拆分到选项栏
                 </Button>
@@ -1225,7 +1227,9 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                     variant="ghost"
                     size="sm"
                     class="mt-1 min-h-7 w-7 shrink-0 px-0 text-ink-muted hover:text-danger"
-                    @click="activeCompoundSub && editor.removeStepAt(activeCompoundSub.steps, stepIdx)"
+                    @click="
+                      activeCompoundSub && editor.removeStepAt(activeCompoundSub.steps, stepIdx)
+                    "
                   >
                     <Trash2 class="size-3.5" />
                   </Button>
@@ -1292,9 +1296,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                 editor.activeSection.value.items.length - 1
               "
               aria-label="下移题组"
-              @click="
-                editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)
-              "
+              @click="editor.moveItem(editor.activeSection.value.id, editor.activeItem.value.id, 1)"
             >
               <ArrowDown class="size-3.5" />
             </Button>
@@ -1316,9 +1318,7 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
               size="sm"
               class="min-h-7 w-7 px-0 text-danger hover:text-danger"
               aria-label="删除题组"
-              @click="
-                editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)
-              "
+              @click="editor.removeItem(editor.activeSection.value.id, editor.activeItem.value.id)"
             >
               <Trash2 class="size-3.5" />
             </Button>
@@ -1361,7 +1361,11 @@ const GROUP_DELIMITER_OPTIONS: Array<{ value: GroupDelimiterStyle; label: string
                 @click="
                   editor.activeSection.value &&
                   editor.activeItem.value &&
-                  editor.selectItem(editor.activeSection.value.id, editor.activeItem.value.id, child.id)
+                  editor.selectItem(
+                    editor.activeSection.value.id,
+                    editor.activeItem.value.id,
+                    child.id,
+                  )
                 "
               >
                 第 {{ editor.numbering.value.questionNumbers.get(child.id) ?? '?' }} 题

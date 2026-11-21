@@ -30,6 +30,15 @@ export interface ParseNormalizedEvent {
   hintSubject?: SubjectType
 }
 
+export class AnswerSheetHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
 export interface ParseFailedEvent {
   code: string
   message: string
@@ -118,6 +127,10 @@ export async function readAnswerSheetStream<T>(
   const response = await fetch(url, { method: 'POST', body: formData, signal: callbacks?.signal })
 
   if (!response.ok) {
+    if (response.status === 554) {
+      await response.body?.cancel().catch(() => undefined)
+      throw new AnswerSheetHttpError(554, '答题卡 API 的 EdgeOne 回源响应超时（554）。')
+    }
     let detail = ''
     try {
       const errJson = (await response.json()) as { message?: string; error?: string }
@@ -125,7 +138,10 @@ export async function readAnswerSheetStream<T>(
     } catch {
       detail = await response.text().catch(() => '')
     }
-    throw new Error(detail || `解析请求失败 (HTTP ${response.status})`)
+    throw new AnswerSheetHttpError(
+      response.status,
+      detail || `解析请求失败 (HTTP ${response.status})`,
+    )
   }
 
   if (!response.body) {

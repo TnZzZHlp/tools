@@ -26,7 +26,7 @@ import {
   type DraftSource,
   type GroupReviewStatus,
 } from '@/lib/answer-sheet/draft'
-import { isPdf, parsePdfByPage } from '@/lib/answer-sheet/pdfPipeline'
+import { inferSubjectFromText, isPdf, parsePdfByPage } from '@/lib/answer-sheet/pdfPipeline'
 import type { PaginatedSheetModel } from '@/lib/answer-sheet/layout/model'
 import { captureQuestionReview } from '@/lib/answer-sheet/layout/reviewCapture'
 import { PAPER_PROFILES, type PaperProfile } from '@/lib/answer-sheet/paper'
@@ -1015,7 +1015,14 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
         return true
       }
 
-      const output = await parseAnswerSheetStream(source, hintSubject, {
+      const effectiveHintSubject: SubjectType | 'auto' =
+        hintSubject !== 'auto'
+          ? hintSubject
+          : (inferSubjectFromText(
+              source.type === 'file' ? source.file.name : source.text.slice(0, 400),
+            ) ?? 'auto')
+
+      const output = await parseAnswerSheetStream(source, effectiveHintSubject, {
         signal,
         onStageUpdate(event) {
           parseStage.value = event
@@ -1147,6 +1154,15 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     if (!semanticData.value || semanticData.value.meta.headerMode === mode) return
     applyMutation(() => {
       if (semanticData.value) semanticData.value.meta.headerMode = mode
+    })
+  }
+
+  function setIdDigits(digits: number) {
+    if (!semanticData.value || !Number.isFinite(digits)) return
+    const clamped = Math.max(4, Math.min(12, Math.round(digits)))
+    if ((semanticData.value.meta.idDigits ?? 10) === clamped) return
+    applyMutation(() => {
+      if (semanticData.value) semanticData.value.meta.idDigits = clamped
     })
   }
 
@@ -1943,6 +1959,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     setSubject,
     setTotalScore,
     setHeaderMode,
+    setIdDigits,
     setStudentFields,
     switchPaperSpec,
     setCustomPaperSize,

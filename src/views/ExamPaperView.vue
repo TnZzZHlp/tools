@@ -178,11 +178,7 @@ function handleExportDocx() {
   if (exporting.value) return
   if (editor.errorIssues.value.length > 0) {
     issuesPopoverOpen.value = true
-    notify(
-      '请先修正模板错误',
-      editor.errorIssues.value[0]?.message ?? '存在必填项缺失。',
-      'danger',
-    )
+    notify('请先修正模板错误', editor.errorIssues.value[0]?.message ?? '存在必填项缺失。', 'danger')
     return
   }
 
@@ -191,11 +187,7 @@ function handleExportDocx() {
     const filename = downloadDocxFile(editor.doc.value)
     notify('Word 试卷已生成', `已下载 ${filename}`, 'success')
   } catch (err) {
-    notify(
-      '导出失败',
-      err instanceof Error ? err.message : '生成 .docx 文件时发生错误。',
-      'danger',
-    )
+    notify('导出失败', err instanceof Error ? err.message : '生成 .docx 文件时发生错误。', 'danger')
   } finally {
     exporting.value = false
   }
@@ -561,10 +553,18 @@ function handlePreviewSelect(payload: { sectionId?: string; itemId?: string; chi
           </DialogDescription>
         </div>
         <ul class="list-disc space-y-1.5 pl-5 text-[13px] leading-relaxed text-ink-muted">
-          <li>页面设置：A4 竖向，宋体（标题三号加粗居中、大题小四加粗、正文五号）+ Times New Roman，1.5 倍行距。</li>
-          <li>连续题号：全卷小题号从 1 起连续递增；子母题只占 1 个母题号，子题以（1）（2）编号。</li>
+          <li>
+            页面设置：A4 竖向，宋体（标题三号加粗居中、大题小四加粗、正文五号）+ Times New
+            Roman，1.5 倍行距。
+          </li>
+          <li>
+            连续题号：全卷小题号从 1 起连续递增；子母题只占 1 个母题号，子题以（1）（2）编号。
+          </li>
           <li>子母题标签：仅支持设置整体【难度】【知识点】，子题解析后的【步骤N】紧跟各自子题。</li>
-          <li>题组材料：题组必须填写非空“题组题干内容”，以（一）/ 第一节 / A 分隔，小题不支持【难度】【知识点】。</li>
+          <li>
+            题组材料：题组必须填写非空“题组题干内容”，以（一）/ 第一节 / A
+            分隔，小题不支持【难度】【知识点】。
+          </li>
           <li>空白省略：未填写的选项、难度、知识点、答案、解析或步骤在导出时会自动省略。</li>
         </ul>
         <div class="flex justify-end pt-1">

@@ -463,8 +463,7 @@ export function createExamPaperEditor(): ExamPaperEditorContext {
     selectedSectionId.value = section.id
     const first = section.items[0] ?? null
     selectedItemId.value = first?.id ?? null
-    selectedGroupChildId.value =
-      first?.kind === 'group' ? (first.questions[0]?.id ?? null) : null
+    selectedGroupChildId.value = first?.kind === 'group' ? (first.questions[0]?.id ?? null) : null
     selectedSubQuestionIndex.value = 0
   }
 

@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { SheetMeta } from '@/lib/answer-sheet/types'
 import BubbleMark from './blocks/BubbleMark.vue'
 
-defineProps<{ meta: SheetMeta; columnWidthMm: number }>()
+const props = defineProps<{ meta: SheetMeta; columnWidthMm: number }>()
+
+const idDigitCount = computed(() => {
+  const raw = props.meta.idDigits ?? 10
+  return Math.max(4, Math.min(12, Math.round(raw)))
+})
 </script>
 
 <template>
@@ -40,8 +46,12 @@ defineProps<{ meta: SheetMeta; columnWidthMm: number }>()
 
       <div v-if="meta.headerMode === 'barcode'" class="id-area barcode">
         <div class="barcode-outline">
-          <div class="barcode-cells" aria-hidden="true">
-            <span v-for="cell in 10" :key="cell" />
+          <div
+            class="barcode-cells"
+            aria-hidden="true"
+            :style="{ gridTemplateColumns: `repeat(${idDigitCount}, minmax(0, 1fr))` }"
+          >
+            <span v-for="cell in idDigitCount" :key="cell" />
           </div>
           <span class="barcode-caption">条形码粘贴区</span>
         </div>
@@ -49,8 +59,11 @@ defineProps<{ meta: SheetMeta; columnWidthMm: number }>()
 
       <div v-else class="id-area id-grid-box">
         <div class="id-title">准 考 证 号</div>
-        <div class="id-columns">
-          <div v-for="column in 10" :key="column" class="id-column">
+        <div
+          class="id-columns"
+          :style="{ gridTemplateColumns: `repeat(${idDigitCount}, minmax(0, 1fr))` }"
+        >
+          <div v-for="column in idDigitCount" :key="column" class="id-column">
             <span class="id-write-cell" />
             <div class="id-bubbles">
               <BubbleMark v-for="digit in 10" :key="digit" :option="String(digit - 1)" />

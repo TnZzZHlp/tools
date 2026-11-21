@@ -8,12 +8,7 @@ import { nextTick } from 'vue'
 import ExamPaperPreview from '@/components/exam-paper/ExamPaperPreview.vue'
 import { tabIndicator, tabPanel } from '@/components/ui/tabs/styles'
 import { buildExamDocxBytes, buildExamDocumentXml } from '@/lib/exam-paper/docxBuilder'
-import {
-  parseExamDocx,
-  parseExamJson,
-  parseExamPdf,
-  parseExamText,
-} from '@/lib/exam-paper/parser'
+import { parseExamDocx, parseExamJson, parseExamPdf, parseExamText } from '@/lib/exam-paper/parser'
 import { createSampleExamDocument } from '@/lib/exam-paper/presets'
 import {
   buildRenderedParagraphs,
@@ -76,8 +71,18 @@ describe('exam-paper helpers & numbering', () => {
     const doc: ExamDocument = {
       title: '测试试卷',
       sections: [
-        createSection({ title: '选择题', scoreMode: 'uniform', scorePerQuestion: 3, items: [q1, q2] }),
-        createSection({ title: '阅读理解', scoreMode: 'uniform', scorePerQuestion: 2, items: [group1, group2] }),
+        createSection({
+          title: '选择题',
+          scoreMode: 'uniform',
+          scorePerQuestion: 3,
+          items: [q1, q2],
+        }),
+        createSection({
+          title: '阅读理解',
+          scoreMode: 'uniform',
+          scorePerQuestion: 2,
+          items: [group1, group2],
+        }),
         createSection({ title: '解答题', scoreMode: 'per-question', items: [q6] }),
       ],
     }
@@ -260,9 +265,7 @@ describe('exam-paper rendering & validation', () => {
       ],
     })
 
-    const twoCols = splitEmbeddedOptions(
-      '计算结果为（ ）\nA. 1    B. 2\nC. 3    D. 4',
-    )
+    const twoCols = splitEmbeddedOptions('计算结果为（ ）\nA. 1    B. 2\nC. 3    D. 4')
     expect(twoCols?.options.length).toBe(4)
 
     expect(splitEmbeddedOptions('这是一道没有选项的填空题________。')).toBeNull()
@@ -315,12 +318,7 @@ describe('exam-paper docx builder & parser round-trip', () => {
     const parsed = await parseExamDocx(fileBytes)
 
     expect(parsed.title).toBe('请在此处输入试卷名称')
-    expect(parsed.sections.map((s) => s.title)).toEqual([
-      '选择题',
-      '阅读理解',
-      '填空题',
-      '解答题',
-    ])
+    expect(parsed.sections.map((s) => s.title)).toEqual(['选择题', '阅读理解', '填空题', '解答题'])
     expect(parsed.sections[0]?.scoreMode).toBe('uniform')
     expect(parsed.sections[0]?.scorePerQuestion).toBe(3)
     expect(parsed.sections[3]?.scoreMode).toBe('per-question')
@@ -367,7 +365,7 @@ describe('exam-paper docx builder & parser round-trip', () => {
     expect(stats.totalScore).toBe(100)
 
     const q1 = parsed.sections[0]?.items[0] as Extract<
-      NonNullable<typeof parsed.sections[0]>['items'][0],
+      NonNullable<(typeof parsed.sections)[0]>['items'][0],
       { kind: 'standard' }
     >
     expect(q1.kind).toBe('standard')
@@ -376,30 +374,30 @@ describe('exam-paper docx builder & parser round-trip', () => {
     expect(q1.options[1]?.text).toBe('《山海经》')
 
     const q15 = parsed.sections[0]?.items[14] as Extract<
-      NonNullable<typeof parsed.sections[0]>['items'][0],
+      NonNullable<(typeof parsed.sections)[0]>['items'][0],
       { kind: 'standard' }
     >
     expect(q15.stem).toContain('千古情语之祖')
 
     const q16 = parsed.sections[1]?.items[0] as Extract<
-      NonNullable<typeof parsed.sections[1]>['items'][0],
+      NonNullable<(typeof parsed.sections)[1]>['items'][0],
       { kind: 'standard' }
     >
     expect(q16.options.map((o) => o.label)).toEqual(['A', 'B', 'C', 'D', 'E'])
 
     const q21 = parsed.sections[2]?.items[0] as Extract<
-      NonNullable<typeof parsed.sections[2]>['items'][0],
+      NonNullable<(typeof parsed.sections)[2]>['items'][0],
       { kind: 'standard' }
     >
     const q26 = parsed.sections[2]?.items[5] as Extract<
-      NonNullable<typeof parsed.sections[2]>['items'][0],
+      NonNullable<(typeof parsed.sections)[2]>['items'][0],
       { kind: 'standard' }
     >
     expect(q21.stem).toContain('我东曰归，______。')
     expect(q26.stem).toContain('包括《______》《夏书》《商书》和《周书》四部分')
 
     const q31 = parsed.sections[3]?.items[0] as Extract<
-      NonNullable<typeof parsed.sections[3]>['items'][0],
+      NonNullable<(typeof parsed.sections)[3]>['items'][0],
       { kind: 'compound' }
     >
     expect(q31.kind).toBe('compound')
@@ -408,7 +406,7 @@ describe('exam-paper docx builder & parser round-trip', () => {
     expect(q31.subQuestions[1]?.stem).toBe('亢：')
 
     const q38 = parsed.sections[5]?.items[0] as Extract<
-      NonNullable<typeof parsed.sections[5]>['items'][0],
+      NonNullable<(typeof parsed.sections)[5]>['items'][0],
       { kind: 'standard' }
     >
     expect(q38.stem).toContain('桃之夭夭、灼灼其华。之子于归、宜其室家。\n桃之夭夭、有蕡其实。')
@@ -511,9 +509,7 @@ describe('ExamPaperView UX', () => {
       ).toBeUndefined()
 
       // Open 高级设置 and toggle 【难度】 & 【答案】 ON
-      const advancedBtn = wrapper
-        .findAll('button')
-        .find((btn) => btn.text().includes('高级设置'))
+      const advancedBtn = wrapper.findAll('button').find((btn) => btn.text().includes('高级设置'))
       expect(advancedBtn).toBeDefined()
       await advancedBtn?.trigger('click')
       await nextTick()
@@ -548,9 +544,7 @@ describe('ExamPaperView UX', () => {
       expect(wrapper.text()).toContain('【难度】较难')
 
       // Rapid-entry "+ 新增下一题 (Ctrl+Enter)" adds a new question and updates numbering
-      const addNextBtn = wrapper
-        .findAll('button')
-        .find((btn) => btn.text().includes('新增下一题'))
+      const addNextBtn = wrapper.findAll('button').find((btn) => btn.text().includes('新增下一题'))
       expect(addNextBtn).toBeDefined()
       await addNextBtn?.trigger('click')
       expect(wrapper.text()).toContain('10 题')
@@ -562,9 +556,7 @@ describe('ExamPaperView UX', () => {
       expect(wrapper.text()).toContain('9 题')
 
       // Export .docx downloads generated file
-      const exportBtn = wrapper
-        .findAll('button')
-        .find((btn) => btn.text().includes('导出 .docx'))
+      const exportBtn = wrapper.findAll('button').find((btn) => btn.text().includes('导出 .docx'))
       expect(exportBtn).toBeDefined()
       await exportBtn?.trigger('click')
 
