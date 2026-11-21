@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HeaderBlock from '@/components/answer-sheet/HeaderBlock.vue'
+import PaperPage from '@/components/answer-sheet/PaperPage.vue'
 import BlockLabel from '@/components/answer-sheet/blocks/BlockLabel.vue'
 import MixedInlineBlock from '@/components/answer-sheet/blocks/MixedInlineBlock.vue'
 import OpenBlankBoxBlock from '@/components/answer-sheet/blocks/OpenBlankBoxBlock.vue'
@@ -11,6 +12,7 @@ import { clearAnswerSheetDrafts, loadAnswerSheetDraft } from '@/lib/answer-sheet
 import { DEFAULT_SHEET_FONT, SHEET_FONTS } from '@/lib/answer-sheet/fonts'
 import { choiceRows } from '@/lib/answer-sheet/layout/flow'
 import type { Choice } from '@/lib/answer-sheet/layout/model'
+import { PAPER_PROFILES } from '@/lib/answer-sheet/paper'
 import { previewSamples } from '@/lib/answer-sheet/preview'
 import { clearPendingAutoSave, useAnswerSheetStore } from '@/stores/answerSheet'
 import AnswerSheetView from '@/views/AnswerSheetView.vue'
@@ -38,6 +40,19 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     setActivePinia(createPinia())
     await clearAnswerSheetDrafts()
     vi.restoreAllMocks()
+  })
+
+  it('fills page marks from left to right with binary weights 1, 2, 4, and 8', async () => {
+    const wrapper = mount(PaperPage, {
+      props: { profile: PAPER_PROFILES.A4_1COL, page: 3, totalPages: 8 },
+    })
+    const fills = () => wrapper.findAll('[data-page-mark] rect').map((mark) => mark.attributes('fill'))
+
+    expect(fills()).toEqual(['currentColor', 'currentColor', 'none', 'none'])
+    await wrapper.setProps({ page: 4 })
+    expect(fills()).toEqual(['none', 'none', 'currentColor', 'none'])
+    await wrapper.setProps({ page: 8 })
+    expect(fills()).toEqual(['none', 'none', 'none', 'currentColor'])
   })
 
   it('invalidates only affected question group on edit and discards stale review responses', async () => {

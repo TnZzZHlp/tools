@@ -57,9 +57,7 @@ const bottomMarkY = computed(() =>
           :y="markInset + 1.15"
           width="4.5"
           height="2.4"
-          :fill="
-            page === index || (page > 4 && page & (1 << (index - 1))) ? 'currentColor' : 'none'
-          "
+          :fill="(page & (1 << (index - 1))) !== 0 ? 'currentColor' : 'none'"
           stroke-width="0.22"
         />
       </g>
