@@ -46,7 +46,8 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     const wrapper = mount(PaperPage, {
       props: { profile: PAPER_PROFILES.A4_1COL, page: 3, totalPages: 8 },
     })
-    const fills = () => wrapper.findAll('[data-page-mark] rect').map((mark) => mark.attributes('fill'))
+    const fills = () =>
+      wrapper.findAll('[data-page-mark] rect').map((mark) => mark.attributes('fill'))
 
     expect(fills()).toEqual(['currentColor', 'currentColor', 'none', 'none'])
     await wrapper.setProps({ page: 4 })

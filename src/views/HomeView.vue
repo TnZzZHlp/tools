@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   getCategoryLabel,
-  TOOL_CATEGORIES,
-  TOOLS,
+  HOME_TOOL_CATEGORIES,
+  HOME_TOOLS,
   useRecentTools,
   type ToolCategoryId,
   type ToolDefinition,
@@ -21,14 +21,14 @@ const { recentIds } = useRecentTools()
 
 const recentTools = computed(() =>
   recentIds.value
-    .map((id) => TOOLS.find((tool) => tool.id === id))
+    .map((id) => HOME_TOOLS.find((tool) => tool.id === id))
     .filter((tool): tool is ToolDefinition => Boolean(tool)),
 )
 
 const filteredTools = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
 
-  return TOOLS.filter((tool) => {
+  return HOME_TOOLS.filter((tool) => {
     if (activeCategory.value !== 'all' && tool.category !== activeCategory.value) {
       return false
     }
@@ -46,9 +46,9 @@ const filteredTools = computed(() => {
 })
 
 const categoryCounts = computed(() => {
-  const counts: Record<string, number> = { all: TOOLS.length }
-  for (const cat of TOOL_CATEGORIES) {
-    counts[cat.id] = TOOLS.filter((t) => t.category === cat.id).length
+  const counts: Record<string, number> = { all: HOME_TOOLS.length }
+  for (const cat of HOME_TOOL_CATEGORIES) {
+    counts[cat.id] = HOME_TOOLS.filter((t) => t.category === cat.id).length
   }
   return counts
 })
@@ -112,7 +112,7 @@ function resetFilters() {
         </Button>
 
         <Button
-          v-for="cat in TOOL_CATEGORIES"
+          v-for="cat in HOME_TOOL_CATEGORIES"
           :key="cat.id"
           type="button"
           size="sm"

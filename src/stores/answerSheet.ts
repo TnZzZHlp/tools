@@ -17,6 +17,7 @@ import {
   ensurePaperOverrides,
   listAnswerSheetDrafts,
   loadAnswerSheetDraft,
+  loadPdfCheckpoints,
   saveAnswerSheetDraft,
   saveDraftAsset,
   type AnswerSheetDraft,
@@ -27,6 +28,7 @@ import {
   type GroupReviewStatus,
 } from '@/lib/answer-sheet/draft'
 import { inferSubjectFromText, isPdf, parsePdfByPage } from '@/lib/answer-sheet/pdfPipeline'
+import type { OcrPage } from '@/lib/answer-sheet/pdfPipelineTypes'
 import type { PaginatedSheetModel } from '@/lib/answer-sheet/layout/model'
 import { captureQuestionReview } from '@/lib/answer-sheet/layout/reviewCapture'
 import { PAPER_PROFILES, type PaperProfile } from '@/lib/answer-sheet/paper'
@@ -45,6 +47,10 @@ import type {
   QuestionReviewResult,
   QuestionSourceImage,
 } from '@/lib/answer-sheet/review'
+import {
+  sanitizeBigQuestionOmrBlocks,
+  sanitizeSheetQuestionGroups,
+} from '@/lib/answer-sheet/sanitize'
 import type {
   AnswerSheetBlock,
   AnswerSheetLayoutConfig,
@@ -280,6 +286,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
   const pdfParseFailures = shallowRef<string[]>([])
   const parseStage = ref<ParseStageUpdateEvent | null>(null)
   const parseReasoning = shallowRef<ParseReasoningDeltaEvent[]>([])
+  const ocrPages = shallowRef<OcrPage[]>([])
   const parsedQuestions = shallowRef<ParsedQuestionEvent[]>([])
   const totalParseQuestions = ref(0)
   const parseError = ref<string>('')
@@ -658,6 +665,8 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     draftSource.value = { type: 'text', text: `${sample.meta.title} 原文草稿` }
     pdfParseIncomplete.value = false
     pdfParseFailures.value = []
+    ocrPages.value = []
+    parsedQuestions.value = []
     semanticData.value = recalcValidationReport(sample)
 
     if (key === 'weekend') {
@@ -699,6 +708,56 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     await persistDraftToLocal(true)
   }
 
+  function upsertOcrPage(page: OcrPage) {
+    const next = ocrPages.value.filter((item) => item.page !== page.page)
+    next.push(page)
+    next.sort((a, b) => a.page - b.page)
+    ocrPages.value = next
+  }
+
+  function upsertParsedQuestion(event: ParsedQuestionEvent) {
+    const next = parsedQuestions.value.filter((item) => item.group.groupId !== event.group.groupId)
+    next.push(event)
+    next.sort((a, b) => a.questionIndex - b.questionIndex)
+    parsedQuestions.value = next
+  }
+
+  async function loadDebugCheckpoints(targetSheetId = sheetId.value): Promise<void> {
+    try {
+      const checkpoints = await loadPdfCheckpoints(targetSheetId)
+      if (sheetId.value !== targetSheetId) return
+      const pages: OcrPage[] = []
+      const questions: ParsedQuestionEvent[] = []
+      const extraBlobs: Record<string, Blob> = {}
+      for (const unit of checkpoints) {
+        if (unit.type === 'page') {
+          pages.push(unit.result)
+          if (unit.assets instanceof Map) {
+            for (const [assetId, blob] of unit.assets.entries()) {
+              if (!assetBlobs.value[assetId]) {
+                extraBlobs[assetId] = blob
+              }
+            }
+          }
+        } else if (unit.type === 'question') {
+          questions.push(unit.result)
+        }
+      }
+      pages.sort((a, b) => a.page - b.page)
+      questions.sort((a, b) => a.questionIndex - b.questionIndex)
+      ocrPages.value = pages
+      if (questions.length > 0) {
+        parsedQuestions.value = questions
+      }
+      if (Object.keys(extraBlobs).length > 0) {
+        assetBlobs.value = { ...extraBlobs, ...assetBlobs.value }
+        rebuildAssetUrls(assetBlobs.value)
+      }
+    } catch {
+      // Ignore debug checkpoint read errors
+    }
+  }
+
   async function restoreFromIndexedDB(targetSheetId?: string): Promise<boolean> {
     try {
       await refreshSheetList()
@@ -720,17 +779,25 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
       }
       assetBlobs.value = blobs
       rebuildAssetUrls(blobs)
+      ocrPages.value = []
+      parsedQuestions.value = []
+      void loadDebugCheckpoints(draft.sheetId)
 
       if (draft.semanticData) {
-        semanticData.value = recalcValidationReport(draft.semanticData)
+        const rawGroups = questionGroups.value.length
+          ? questionGroups.value
+          : buildQuestionGroupsFromBlocks(draft.semanticData.blocks)
+        const sanitized = sanitizeSheetQuestionGroups(rawGroups, draft.semanticData.blocks)
+        questionGroups.value = sanitized.questionGroups
+        semanticData.value = recalcValidationReport({
+          ...draft.semanticData,
+          blocks: sanitized.blocks,
+        })
         layoutConfig.value = ensurePaperOverrides(
           draft.layoutConfig ??
             createDefaultLayoutConfig(draft.semanticData.meta.recommendedPaperSpec),
           draft.layoutConfig?.activePaperSpec ?? draft.semanticData.meta.recommendedPaperSpec,
         )
-        if (!questionGroups.value.length) {
-          questionGroups.value = buildQuestionGroupsFromBlocks(draft.semanticData.blocks)
-        }
         undoStack.value = []
         redoStack.value = []
         selectedBlockId.value = null
@@ -782,6 +849,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     parseError.value = ''
     parseStage.value = null
     parseReasoning.value = []
+    ocrPages.value = []
     parsedQuestions.value = []
     totalParseQuestions.value = 0
 
@@ -808,6 +876,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     parseError.value = ''
     parseStage.value = null
     parseReasoning.value = []
+    ocrPages.value = []
     parsedQuestions.value = []
     return restoreFromIndexedDB(targetSheetId)
   }
@@ -830,6 +899,8 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
         semanticData.value = null
         questionGroups.value = []
         sourceImages.value = []
+        ocrPages.value = []
+        parsedQuestions.value = []
         reviews.value = {}
         assetBlobs.value = {}
         rebuildAssetUrls({})
@@ -878,7 +949,9 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
       const map = previous ? previousBlocks : parsedBlocks
       return (previous ?? group).blockIds.flatMap((id) => map.get(id) ?? [])
     })
-    questionGroups.value = result.questionGroups.map((group) => completeBefore(group) ?? group)
+    const rawGroups = result.questionGroups.map((group) => completeBefore(group) ?? group)
+    const sanitized = sanitizeSheetQuestionGroups(rawGroups, blocks)
+    questionGroups.value = sanitized.questionGroups
     const sameSubject = previousSemantic?.meta.subject === result.semanticData.meta.subject
     const assets = new Map(result.semanticData.assets.map((asset) => [asset.assetId, asset]))
     if (sameSubject) {
@@ -888,7 +961,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
       ...result.semanticData,
       meta: sameSubject && previousSemantic ? previousSemantic.meta : result.semanticData.meta,
       assets: [...assets.values()],
-      blocks,
+      blocks: sanitized.blocks,
     })
     sourceImages.value = result.sourceImages
     reviews.value = Object.fromEntries(
@@ -964,6 +1037,8 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
           semanticData.value = null
           questionGroups.value = []
           sourceImages.value = []
+          ocrPages.value = []
+          parsedQuestions.value = []
           reviews.value = {}
           undoStack.value = []
           redoStack.value = []
@@ -975,6 +1050,12 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
           sheetId: activeId,
           signal,
           hintSubject,
+          onPageOcr(page) {
+            if (!signal.aborted && sheetId.value === activeId) upsertOcrPage(page)
+          },
+          onQuestionParsed(event) {
+            if (!signal.aborted && sheetId.value === activeId) upsertParsedQuestion(event)
+          },
           onProgress({ phase, ok, total, failed }) {
             if (signal.aborted || sheetId.value !== activeId) return
             pdfParseFailures.value = failed
@@ -1051,14 +1132,19 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
 
       signal.throwIfAborted()
       if (sheetId.value !== activeId) return false
-      const nextSemantic = recalcValidationReport(output.result.semanticData)
+      const rawGroups = output.result.questionGroups.length
+        ? output.result.questionGroups
+        : buildQuestionGroupsFromBlocks(output.result.semanticData.blocks)
+      const sanitized = sanitizeSheetQuestionGroups(rawGroups, output.result.semanticData.blocks)
+      const nextSemantic = recalcValidationReport({
+        ...output.result.semanticData,
+        blocks: sanitized.blocks,
+      })
       if (hintSubject !== 'auto') {
         nextSemantic.meta.subject = hintSubject
       }
       const nextLayout = createDefaultLayoutConfig(nextSemantic.meta.recommendedPaperSpec)
-      const nextGroups = output.result.questionGroups.length
-        ? output.result.questionGroups
-        : buildQuestionGroupsFromBlocks(nextSemantic.blocks)
+      const nextGroups = sanitized.questionGroups
 
       const blobs: Record<string, Blob> = {}
       for (const [assetId, blob] of output.assets.entries()) {
@@ -1806,12 +1892,13 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
           imgMap,
         )
         if (reparseResult.blocks.length > 0 && semanticData.value) {
+          const sanitized = sanitizeBigQuestionOmrBlocks(group, reparseResult.blocks)
           const oldSet = new Set(group.blockIds)
           const remaining = semanticData.value.blocks.filter((b) => !oldSet.has(b.id))
-          semanticData.value.blocks = [...remaining, ...reparseResult.blocks].sort(
+          semanticData.value.blocks = [...remaining, ...sanitized.blocks].sort(
             (a, b) => a.numericOrder - b.numericOrder,
           )
-          group.blockIds = reparseResult.blocks.map((b) => b.id)
+          group.blockIds = sanitized.group.blockIds
         }
       } catch {
         // Fallback if backend reparse is unavailable
@@ -1933,8 +2020,10 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     pdfParseFailures,
     parseStage,
     parseReasoning,
+    ocrPages,
     parsedQuestions,
     parseError,
+    loadDebugCheckpoints,
     isSaving,
     lastSavedAt,
     saveError,

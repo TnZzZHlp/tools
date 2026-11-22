@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
+import ParseDebugDialog from '@/components/answer-sheet/ParseDebugDialog.vue'
 import SheetRenderItem from '@/components/answer-sheet/SheetRenderItem.vue'
 import WorkbenchCanvas from '@/components/answer-sheet/WorkbenchCanvas.vue'
 import WorkbenchLeftOutline from '@/components/answer-sheet/WorkbenchLeftOutline.vue'
@@ -124,6 +125,20 @@ const { width: centerZoneWidth } = useElementSize(centerZoneRef)
 const zoomPercent = ref(90)
 const fitWidthMode = ref(true)
 const dualPageView = ref(false)
+const debugDialogOpen = ref(false)
+const debugInitialTab = ref<'pages' | 'questions'>('pages')
+const debugInitialGroupId = ref<string | null>(null)
+
+function openDebugDialog(groupId?: string) {
+  if (groupId) {
+    debugInitialTab.value = 'questions'
+    debugInitialGroupId.value = groupId
+  } else {
+    debugInitialTab.value = store.ocrPages.length > 0 ? 'pages' : 'questions'
+    debugInitialGroupId.value = null
+  }
+  debugDialogOpen.value = true
+}
 
 const effectiveZoom = computed(() => {
   if (fitWidthMode.value && centerZoneWidth.value > 80) {
@@ -293,6 +308,7 @@ onBeforeUnmount(() => {
       @switch-paper="handleSwitchPaper"
       @compress-to-prev-page="handleCompressToPrevPage"
       @save-local="handleExplicitSave"
+      @open-debug="openDebugDialog()"
       @update:zoom-percent="(val) => (zoomPercent = val)"
       @update:fit-width-mode="(val) => (fitWidthMode = val)"
       @update:dual-page-view="(val) => (dualPageView = val)"
@@ -367,8 +383,16 @@ onBeforeUnmount(() => {
         class="hidden lg:flex"
         :font="font"
         @update:font="(val) => (font = val)"
+        @open-debug="(groupId) => openDebugDialog(groupId)"
       />
     </div>
+
+    <ParseDebugDialog
+      v-model:open="debugDialogOpen"
+      :initial-tab="debugInitialTab"
+      :initial-group-id="debugInitialGroupId"
+      @locate-block="handleLocateBlock"
+    />
 
     <!-- 3. Offscreen Sandbox Measurement Container -->
     <div

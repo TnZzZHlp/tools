@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import {
   AlertCircle,
+  Bug,
   CheckCircle2,
   FileUp,
   ImagePlus,
@@ -47,6 +48,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:font': [val: SheetFont]
+  openDebug: [groupId?: string]
 }>()
 
 const store = useAnswerSheetStore()
@@ -85,6 +87,12 @@ async function handleRetryParse() {
 }
 
 const columnWidthMm = computed(() => Math.round(getColumnSizeMm(store.activePaperProfile).widthMm))
+
+const selectedBlockGroup = computed(() => {
+  const block = store.selectedBlock
+  if (!block) return null
+  return store.questionGroups.find((g) => g.blockIds.includes(block.id)) ?? null
+})
 
 const optionPresets: Array<{ label: string; options: string[] }> = [
   { label: 'A-C (3选)', options: ['A', 'B', 'C'] },
@@ -391,10 +399,24 @@ function setBlockImageWidthRatio(percent: number) {
       <div class="space-y-3 rounded-control border border-line bg-surface p-3">
         <div class="flex items-center justify-between gap-2">
           <p class="text-xs font-semibold text-ink">试卷文件与智能解析</p>
-          <Badge v-if="store.isParsing" variant="accent" class="text-[10px]"> 解析中 </Badge>
-          <Badge v-else-if="store.semanticData" variant="neutral" class="text-[10px]">
-            已解析
-          </Badge>
+          <div class="flex items-center gap-1.5">
+            <Button
+              v-if="
+                store.ocrPages.length || store.questionGroups.length || store.parsedQuestions.length
+              "
+              variant="ghost"
+              size="sm"
+              class="h-6 px-1.5 text-[11px]"
+              @click="emit('openDebug')"
+            >
+              <template #leading><Bug class="size-3" /></template>
+              识别详情
+            </Button>
+            <Badge v-if="store.isParsing" variant="accent" class="text-[10px]"> 解析中 </Badge>
+            <Badge v-else-if="store.semanticData" variant="neutral" class="text-[10px]">
+              已解析
+            </Badge>
+          </div>
         </div>
 
         <div class="flex items-center justify-between gap-2">
@@ -664,6 +686,31 @@ function setBlockImageWidthRatio(percent: number) {
         >
           返回全局
         </Button>
+      </div>
+
+      <!-- Original Question Source Preview (Debug) -->
+      <div
+        v-if="selectedBlockGroup"
+        class="space-y-2 rounded-control border border-line bg-surface p-2.5"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-semibold text-ink">
+            原题文本（第 {{ selectedBlockGroup.displayNo }} 题）
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-6 px-1.5 text-[11px]"
+            @click="emit('openDebug', selectedBlockGroup.groupId)"
+          >
+            <template #leading><Bug class="size-3" /></template>
+            对比详情
+          </Button>
+        </div>
+        <pre
+          class="max-h-36 overflow-y-auto whitespace-pre-wrap break-words rounded-[6px] border border-line bg-raised p-2 font-mono text-[11px] leading-relaxed text-ink-muted"
+          >{{ selectedBlockGroup.sourceMarkdown || '（无原题文本）' }}</pre
+        >
       </div>
 
       <!-- Common Block Fields: Question No, Score, Convert Component Type -->

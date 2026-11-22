@@ -30,6 +30,8 @@ watch(
     const tool = findToolByPath(path)
     if (path === '/') {
       document.title = 'Tools · 实用工具集'
+    } else if (path === '/company') {
+      document.title = 'Company · Tools'
     } else if (tool) {
       document.title = `${tool.shortName} · Tools`
     }

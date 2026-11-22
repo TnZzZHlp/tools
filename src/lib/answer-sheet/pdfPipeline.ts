@@ -9,6 +9,7 @@ import {
 import { loadPdfCheckpoints, savePdfCheckpoint } from './draft'
 import type { OcrPage, PdfCheckpoint, SplitPaperResult, SplitQuestion } from './pdfPipelineTypes'
 import type { QuestionGroup, QuestionSourceImage, ReviewSourceImage } from './review'
+import { sanitizeBigQuestionOmrBlocks } from './sanitize'
 import type { SubjectType } from './types'
 
 const MAX_PAGES = 20
@@ -25,6 +26,8 @@ interface PipelineOptions {
   onProgress: (update: { phase: Phase; ok: number; total: number; failed: string[] }) => void
   onReasoning: (event: ParseReasoningDeltaEvent, unit: string) => void
   onPartial: (output: ParseStreamOutput) => Promise<void>
+  onPageOcr?: (page: OcrPage) => void
+  onQuestionParsed?: (event: ParsedQuestionEvent) => void
 }
 
 export function isPdf(file: File): boolean {
@@ -164,7 +167,7 @@ export function sanitizeMetaTitle(
   return extractTitleFromFirstPage(firstPageLines, fallbackFileName)
 }
 
-function isAnswerOrAdPage(markdown: string): boolean {
+export function isAnswerOrAdPage(markdown: string): boolean {
   const headLines = markdown
     .split('\n')
     .map((l) =>
@@ -237,7 +240,7 @@ async function recognizePages(
   checkpoints: PdfCheckpoint[],
   options: PipelineOptions,
 ): Promise<Assembled> {
-  const { sheetId, signal, onProgress, onReasoning } = options
+  const { sheetId, signal, onProgress, onReasoning, onPageOcr } = options
   const { loadPdfPreview } = await import('@/lib/pdf/preview')
   signal.throwIfAborted()
   const task = loadPdfPreview(new Uint8Array(await file.arrayBuffer()))
@@ -254,6 +257,9 @@ async function recognizePages(
         unit.type === 'page' ? [[unit.result.page, unit] as const] : [],
       ),
     )
+    for (const unit of pages.values()) {
+      onPageOcr?.(unit.result)
+    }
     const failures = new Map<number, string>()
     const progress = () =>
       onProgress({
@@ -296,6 +302,7 @@ async function recognizePages(
         const unit: PageUnit = { type: 'page', ...output }
         await savePdfCheckpoint(sheetId, unit)
         pages.set(page, unit)
+        onPageOcr?.(unit.result)
       } catch (error) {
         if (signal.aborted) throw error
         failures.set(page, `第 ${page} 页：${error instanceof Error ? error.message : '识别失败'}`)
@@ -315,7 +322,8 @@ export async function parsePdfByPage(
   file: File,
   options: PipelineOptions,
 ): Promise<ParseStreamOutput> {
-  const { sheetId, hintSubject, signal, onProgress, onReasoning, onPartial } = options
+  const { sheetId, hintSubject, signal, onProgress, onReasoning, onPartial, onQuestionParsed } =
+    options
   if (file.size > 20 * 1024 * 1024) throw new Error('上传文件超过 20 MiB 大小上限。')
   const checkpoints = await loadPdfCheckpoints(sheetId)
   const paper = await recognizePages(file, checkpoints, options)
@@ -354,8 +362,16 @@ export async function parsePdfByPage(
   const failures = new Map<string, string>()
   for (const group of groups) {
     const result = cached.get(group.groupId)
-    if (result && result.group.sourceMarkdown === group.sourceMarkdown)
-      done.set(group.groupId, result)
+    if (result && result.group.sourceMarkdown === group.sourceMarkdown) {
+      const sanitized = sanitizeBigQuestionOmrBlocks(result.group, result.blocks)
+      const normalizedResult: ParsedQuestionEvent = {
+        ...result,
+        group: sanitized.group,
+        blocks: sanitized.blocks,
+      }
+      done.set(group.groupId, normalizedResult)
+      onQuestionParsed?.(normalizedResult)
+    }
   }
   const snapshot = (): ParseStreamOutput => {
     const ordered = groups.flatMap((group) => done.get(group.groupId) ?? [])
@@ -452,9 +468,20 @@ export async function parsePdfByPage(
         !result.blocks.length
       )
         throw new Error('返回的题目与请求不匹配。')
-      const unit: QuestionUnit = { type: 'question', subject: split.meta.subject, result }
+      const sanitized = sanitizeBigQuestionOmrBlocks(result.group, result.blocks)
+      const normalizedResult: ParsedQuestionEvent = {
+        ...result,
+        group: sanitized.group,
+        blocks: sanitized.blocks,
+      }
+      const unit: QuestionUnit = {
+        type: 'question',
+        subject: split.meta.subject,
+        result: normalizedResult,
+      }
       await savePdfCheckpoint(sheetId, unit)
-      done.set(group.groupId, result)
+      done.set(group.groupId, normalizedResult)
+      onQuestionParsed?.(normalizedResult)
     } catch (error) {
       if (signal.aborted) throw error
       failures.set(

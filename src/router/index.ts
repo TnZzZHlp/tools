@@ -54,6 +54,11 @@ const router = createRouter({
       component: () => import('@/views/PdfMergeView.vue'),
     },
     {
+      path: '/company',
+      name: 'company-tools',
+      component: () => import('@/views/CompanyToolsView.vue'),
+    },
+    {
       path: '/tools/exam-paper',
       name: 'exam-paper-generator',
       meta: { fullscreen: true },

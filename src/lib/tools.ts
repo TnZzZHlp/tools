@@ -6,6 +6,7 @@ import {
   Braces,
   Cpu,
   FileStack,
+  FileText,
   Gauge,
   Guitar,
   QrCode,
@@ -13,11 +14,12 @@ import {
   Shuffle,
 } from 'lucide-vue-next'
 
-export type ToolCategoryId = 'network' | 'document' | 'barcode' | 'dev' | 'learn'
+export type ToolCategoryId = 'network' | 'document' | 'barcode' | 'dev' | 'learn' | 'company'
 
 export interface ToolCategory {
   id: ToolCategoryId
   label: string
+  hiddenOnHome?: boolean
 }
 
 export interface ToolDefinition {
@@ -42,6 +44,7 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { id: 'barcode', label: '条码与扫描' },
   { id: 'dev', label: '开发与文本' },
   { id: 'learn', label: '音乐与训练' },
+  { id: 'company', label: 'Company', hiddenOnHome: true },
 ]
 
 export const TOOLS: ToolDefinition[] = [
@@ -116,9 +119,20 @@ export const TOOLS: ToolDefinition[] = [
     description:
       '新高考 9 科智能答题卡生成与微调工作台，支持 A3 三栏/两栏、8 开两栏与 A4 单栏物理毫米排版、画布直觉微调与矢量打印。',
     to: '/tools/answer-sheet',
-    category: 'document',
+    category: 'company',
     icon: FileStack,
-    keywords: ['答题卡', '样卷', '新高考', 'answer sheet', '排版', 'A3', '8开'],
+    keywords: ['答题卡', '样卷', '新高考', 'answer sheet', '排版', 'A3', '8开', 'company'],
+  },
+  {
+    id: 'exam-paper',
+    name: '试卷模板生成',
+    shortName: '试卷模板',
+    description:
+      '可视化编辑试卷大纲与题组，支持从文本、DOCX、PDF 或 JSON 导入解析并一键导出标准 Word 试卷模板。',
+    to: '/tools/exam-paper',
+    category: 'company',
+    icon: FileText,
+    keywords: ['exam', 'paper', 'docx', 'word', '试卷', '模板', '组卷', '出题', 'company'],
   },
   {
     id: 'barcode-generator',
@@ -196,6 +210,18 @@ const CATEGORY_MAP = new Map<ToolCategoryId, string>(
   TOOL_CATEGORIES.map((item) => [item.id, item.label]),
 )
 
+const HIDDEN_HOME_CATEGORIES = new Set<ToolCategoryId>(
+  TOOL_CATEGORIES.filter((item) => item.hiddenOnHome).map((item) => item.id),
+)
+
+export const HOME_TOOL_CATEGORIES: ToolCategory[] = TOOL_CATEGORIES.filter(
+  (item) => !item.hiddenOnHome,
+)
+
+export const HOME_TOOLS: ToolDefinition[] = TOOLS.filter(
+  (tool) => !HIDDEN_HOME_CATEGORIES.has(tool.category),
+)
+
 export function getCategoryLabel(categoryId: ToolCategoryId): string {
   return CATEGORY_MAP.get(categoryId) ?? categoryId
 }
@@ -209,19 +235,19 @@ export function resolveRouteBreadcrumbs(path: string): BreadcrumbItem[] {
 
   const matchedTool = findToolByPath(path)
   if (matchedTool) {
-    return [
-      { label: '首页', to: '/' },
-      { label: getCategoryLabel(matchedTool.category) },
-      { label: matchedTool.shortName },
-    ]
+    const categoryCrumb: BreadcrumbItem =
+      matchedTool.category === 'company'
+        ? { label: getCategoryLabel(matchedTool.category), to: '/company' }
+        : { label: getCategoryLabel(matchedTool.category) }
+    return [{ label: '首页', to: '/' }, categoryCrumb, { label: matchedTool.shortName }]
+  }
+
+  if (path === '/company') {
+    return [{ label: '首页', to: '/' }, { label: 'Company' }]
   }
 
   if (path === '/tools/files') {
     return [{ label: '首页', to: '/' }, { label: '文件处理' }]
-  }
-
-  if (path === '/tools/exam-paper') {
-    return [{ label: '首页', to: '/' }, { label: '试卷模板' }]
   }
 
   if (path === '/novels') {
@@ -242,6 +268,9 @@ export function resolveRouteBreadcrumbs(path: string): BreadcrumbItem[] {
 export function resolveBackTarget(path: string): string {
   if (path.startsWith('/novels/') && path !== '/novels') {
     return '/novels'
+  }
+  if (findToolByPath(path)?.category === 'company') {
+    return '/company'
   }
   return '/'
 }

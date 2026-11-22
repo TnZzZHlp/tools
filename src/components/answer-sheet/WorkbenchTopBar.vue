@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   ArrowLeft,
+  Bug,
   Columns2,
   FilePlus2,
   Maximize2,
@@ -48,6 +49,7 @@ const emit = defineEmits<{
   switchPaper: [spec: PaperSpecId]
   compressToPrevPage: []
   saveLocal: []
+  openDebug: []
   'update:zoomPercent': [val: number]
   'update:fitWidthMode': [val: boolean]
   'update:dualPageView': [val: boolean]
@@ -449,6 +451,18 @@ function stepZoom(delta: number) {
           <span class="hidden xl:inline">双页并排</span>
         </button>
       </div>
+
+      <!-- Parse & Recognition Debug Panel -->
+      <Button
+        variant="secondary"
+        size="sm"
+        class="h-8 px-2.5 text-xs"
+        title="查看逐页 OCR 原文与逐题识别对比"
+        @click="emit('openDebug')"
+      >
+        <template #leading><Bug class="size-3.5" /></template>
+        识别调试
+      </Button>
 
       <!-- Explicit Save to Local IndexedDB -->
       <Button
