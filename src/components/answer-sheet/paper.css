@@ -37,7 +37,7 @@
   overflow-wrap: anywhere;
 }
 .sheet-column > .sheet-placed + .sheet-placed .sheet-block {
-  margin-top: calc(var(--sheet-gap, 0mm) - 0.27mm);
+  margin-top: calc(min(var(--sheet-gap, 0mm), 0.27mm) - 0.27mm);
 }
 .sheet-label {
   font-size: 10.5pt;

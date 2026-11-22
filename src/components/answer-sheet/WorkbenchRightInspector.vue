@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Bug,
   CheckCircle2,
   FileUp,
@@ -37,6 +39,7 @@ import type {
   AnswerSheetBlock,
   AssetPosition,
   BlockType,
+  GridType,
   HeaderMode,
   SubjectType,
 } from '@/lib/answer-sheet/types'
@@ -198,6 +201,242 @@ function removeCompactBlankItem(idx: number) {
   store.updateBlock(block.id, (b) => {
     if (b.type !== 'compact_blank') return b
     b.items.splice(idx, 1)
+    return b
+  })
+}
+
+function updateCompactBlankColumns(cols: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'compact_blank') return
+  const clamped = Math.max(1, Math.min(4, Math.round(cols) || 2))
+  store.updateBlock(block.id, (b) =>
+    b.type === 'compact_blank' ? { ...b, preferredColumns: clamped } : b,
+  )
+}
+
+function addMixedRow(rowType: 'inline_blank' | 'full_line') {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    const nextIdx = b.rows.length + 1
+    if (rowType === 'inline_blank') {
+      b.rows.push({
+        type: 'inline_blank',
+        segments: [{ label: `(${nextIdx})`, blanksCount: 1 }],
+      })
+    } else {
+      b.rows.push({
+        type: 'full_line',
+        label: `(${nextIdx})`,
+        lines: 2,
+      })
+    }
+    return b
+  })
+}
+
+function removeMixedRow(rowIdx: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline' || block.rows.length <= 1) return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    b.rows.splice(rowIdx, 1)
+    return b
+  })
+}
+
+function moveMixedRow(rowIdx: number, delta: -1 | 1) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline') return
+  const targetIdx = rowIdx + delta
+  if (targetIdx < 0 || targetIdx >= block.rows.length) return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    const [moved] = b.rows.splice(rowIdx, 1)
+    if (moved) b.rows.splice(targetIdx, 0, moved)
+    return b
+  })
+}
+
+function addMixedSegment(rowIdx: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    const row = b.rows[rowIdx]
+    if (!row || row.type !== 'inline_blank') return b
+    row.segments.push({ label: `(${row.segments.length + 1})`, blanksCount: 1 })
+    return b
+  })
+}
+
+function removeMixedSegment(rowIdx: number, segIdx: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    const row = b.rows[rowIdx]
+    if (!row || row.type !== 'inline_blank' || row.segments.length <= 1) return b
+    row.segments.splice(segIdx, 1)
+    return b
+  })
+}
+
+function updateMixedFullLine(rowIdx: number, field: 'label' | 'lines', value: string | number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'mixed_inline') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'mixed_inline') return b
+    const row = b.rows[rowIdx]
+    if (!row || row.type !== 'full_line') return b
+    if (field === 'lines') {
+      row.lines = Math.max(1, Math.min(20, Math.round(Number(value)) || 1))
+    } else {
+      row.label = String(value) || undefined
+    }
+    return b
+  })
+}
+
+function updateLinedBaseLines(lines: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'lined_writing') return
+  const clamped = Math.max(1, Math.min(40, Math.round(lines) || 1))
+  store.updateBlockOverride(block.id, { manualLines: clamped })
+  store.updateBlock(block.id, (b) =>
+    b.type === 'lined_writing' ? { ...b, baseLines: clamped } : b,
+  )
+}
+
+function addLinedSubItem() {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'lined_writing') return
+  store.updateBlockOverride(block.id, { manualLines: undefined })
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'lined_writing') return b
+    const existing = b.subItems ?? []
+    b.subItems = [...existing, { label: `(${existing.length + 1})`, baseLines: 2 }]
+    return b
+  })
+}
+
+function removeLinedSubItem(idx: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'lined_writing') return
+  store.updateBlockOverride(block.id, { manualLines: undefined })
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'lined_writing' || !b.subItems) return b
+    b.subItems.splice(idx, 1)
+    if (b.subItems.length === 0) delete b.subItems
+    return b
+  })
+}
+
+function updateLinedSubItem(
+  idx: number,
+  field: 'label' | 'baseLines' | 'score',
+  value: string | number,
+) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'lined_writing') return
+  store.updateBlockOverride(block.id, { manualLines: undefined })
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'lined_writing' || !b.subItems?.[idx]) return b
+    const item = b.subItems[idx]!
+    if (field === 'baseLines') {
+      item.baseLines = Math.max(1, Math.min(20, Math.round(Number(value)) || 1))
+    } else if (field === 'score') {
+      const n = Number(value)
+      item.score = Number.isFinite(n) && n > 0 ? n : undefined
+    } else {
+      item.label = String(value)
+    }
+    return b
+  })
+}
+
+function addOpenSubQuestion() {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'open_blank_box') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'open_blank_box') return b
+    const existing = b.subQuestions ?? []
+    b.subQuestions = [...existing, { subNo: `(${existing.length + 1})` }]
+    return b
+  })
+}
+
+function removeOpenSubQuestion(idx: number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'open_blank_box') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'open_blank_box' || !b.subQuestions) return b
+    b.subQuestions.splice(idx, 1)
+    if (b.subQuestions.length === 0) delete b.subQuestions
+    return b
+  })
+}
+
+function updateOpenSubQuestion(
+  idx: number,
+  field: 'subNo' | 'score' | 'heightRatio',
+  value: string | number,
+) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'open_blank_box') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'open_blank_box' || !b.subQuestions?.[idx]) return b
+    const item = b.subQuestions[idx]!
+    if (field === 'subNo') {
+      item.subNo = String(value)
+    } else if (field === 'score') {
+      const n = Number(value)
+      item.score = Number.isFinite(n) && n > 0 ? n : undefined
+    } else {
+      const n = Number(value)
+      item.heightRatio = Number.isFinite(n) && n > 0 ? Math.min(1, Math.max(0.1, n)) : undefined
+    }
+    return b
+  })
+}
+
+function updateCompositionField(
+  field: 'totalGrids' | 'minWords' | 'hasTitleRow' | 'milestones',
+  value: string | number | boolean,
+) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'composition_grid') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'composition_grid') return b
+    if (field === 'hasTitleRow') {
+      b.hasTitleRow = Boolean(value)
+    } else if (field === 'totalGrids') {
+      b.totalGrids = Math.max(100, Math.min(2000, Math.round(Number(value)) || 800))
+    } else if (field === 'minWords') {
+      b.minWords = Math.max(50, Math.min(2000, Math.round(Number(value)) || 800))
+    } else {
+      b.milestones = String(value)
+        .split(/[,，\s]+/)
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0)
+    }
+    return b
+  })
+}
+
+function updateDrawingGridField(field: 'gridType' | 'rows' | 'cols', value: string | number) {
+  const block = store.selectedBlock
+  if (!block || block.type !== 'drawing_grid') return
+  store.updateBlock(block.id, (b) => {
+    if (b.type !== 'drawing_grid') return b
+    if (field === 'gridType') {
+      b.gridType = value as GridType
+    } else if (field === 'rows') {
+      b.rows = Math.max(2, Math.min(40, Math.round(Number(value)) || 10))
+    } else {
+      b.cols = Math.max(2, Math.min(40, Math.round(Number(value)) || 15))
+    }
     return b
   })
 }
@@ -859,6 +1098,39 @@ function setBlockImageWidthRatio(percent: number) {
           </Button>
         </div>
 
+        <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-1">
+            <Label class="text-[10px] text-ink-muted">每行列数 (1~4)</Label>
+            <Input
+              :model-value="store.selectedBlock.preferredColumns"
+              type="number"
+              min="1"
+              max="4"
+              class="h-7 text-xs"
+              @update:model-value="(val) => updateCompactBlankColumns(Number(val))"
+            />
+          </div>
+          <div class="space-y-1">
+            <Label class="text-[10px] text-ink-muted">最小高度 (mm)</Label>
+            <Input
+              :model-value="store.selectedBlockOverride.manualHeightMm ?? ''"
+              type="number"
+              min="14"
+              max="240"
+              placeholder="自动"
+              class="h-7 text-xs"
+              @update:model-value="
+                (val) =>
+                  String(val).trim()
+                    ? store.setBlockHeightMm(store.selectedBlock!.id, Number(val))
+                    : store.updateBlockOverride(store.selectedBlock!.id, {
+                        manualHeightMm: undefined,
+                      })
+              "
+            />
+          </div>
+        </div>
+
         <div class="space-y-2">
           <div
             v-for="(item, idx) in store.selectedBlock.items"
@@ -866,12 +1138,23 @@ function setBlockImageWidthRatio(percent: number) {
             class="space-y-1.5 rounded-[8px] border border-line bg-raised p-2"
           >
             <div class="flex items-center justify-between gap-1.5">
-              <Input
-                :model-value="item.subNo"
-                placeholder="小题号"
-                class="h-6 w-20 text-xs"
-                @update:model-value="(val) => updateCompactBlankItem(idx, 'subNo', String(val))"
-              />
+              <div class="flex items-center gap-1.5">
+                <Input
+                  :model-value="item.subNo"
+                  placeholder="小题号"
+                  class="h-6 w-20 text-xs"
+                  @update:model-value="(val) => updateCompactBlankItem(idx, 'subNo', String(val))"
+                />
+                <Input
+                  :model-value="item.score ?? ''"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  placeholder="分值"
+                  class="h-6 w-16 text-xs"
+                  @update:model-value="(val) => updateCompactBlankItem(idx, 'score', Number(val))"
+                />
+              </div>
               <button
                 v-if="store.selectedBlock.items.length > 1"
                 type="button"
@@ -887,7 +1170,7 @@ function setBlockImageWidthRatio(percent: number) {
                 <Input
                   :model-value="item.prefixLatex ?? ''"
                   placeholder="如 \sqrt{x}="
-                  class="h-7 text-xs font-mono"
+                  class="h-7 font-mono text-xs"
                   @update:model-value="
                     (val) => updateCompactBlankItem(idx, 'prefixLatex', String(val))
                   "
@@ -898,7 +1181,7 @@ function setBlockImageWidthRatio(percent: number) {
                 <Input
                   :model-value="item.suffixUnit ?? ''"
                   placeholder="如 \mathrm{m/s^2}"
-                  class="h-7 text-xs font-mono"
+                  class="h-7 font-mono text-xs"
                   @update:model-value="
                     (val) => updateCompactBlankItem(idx, 'suffixUnit', String(val))
                   "
@@ -920,27 +1203,118 @@ function setBlockImageWidthRatio(percent: number) {
       </div>
 
       <!-- ------------------------------------------------------ -->
-      <!-- 2.3 Mixed Inline (`mixed_inline`) - Units & Segments   -->
+      <!-- 2.3 Mixed Inline (`mixed_inline`) - Full Row Editor    -->
       <!-- ------------------------------------------------------ -->
       <div
         v-if="store.selectedBlock.type === 'mixed_inline'"
         class="space-y-3 rounded-control border border-line bg-surface p-2.5"
       >
-        <p class="text-xs font-semibold text-ink">混合填空行与单位 / LaTeX 公式</p>
+        <div class="flex flex-wrap items-center justify-between gap-1.5">
+          <p class="text-xs font-semibold text-ink">混合填空与横线行编辑</p>
+          <div class="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              class="h-6 px-1.5 text-[10px]"
+              @click="addMixedRow('inline_blank')"
+            >
+              <Plus class="mr-0.5 size-2.5" />行内填空
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              class="h-6 px-1.5 text-[10px]"
+              @click="addMixedRow('full_line')"
+            >
+              <Plus class="mr-0.5 size-2.5" />整行横线
+            </Button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <Label class="text-[10px] text-ink-muted">最小高度 (mm，留空自动)</Label>
+          <Input
+            :model-value="store.selectedBlockOverride.manualHeightMm ?? ''"
+            type="number"
+            min="14"
+            max="240"
+            placeholder="自动"
+            class="h-7 text-xs"
+            @update:model-value="
+              (val) =>
+                String(val).trim()
+                  ? store.setBlockHeightMm(store.selectedBlock!.id, Number(val))
+                  : store.updateBlockOverride(store.selectedBlock!.id, {
+                      manualHeightMm: undefined,
+                    })
+            "
+          />
+        </div>
 
         <div class="space-y-2">
-          <template v-for="(row, rIdx) in store.selectedBlock.rows" :key="rIdx">
-            <div
-              v-if="row.type === 'inline_blank'"
-              class="space-y-2 rounded-[8px] border border-line bg-raised p-2"
-            >
-              <p class="text-[11px] font-medium text-ink-muted">第 {{ rIdx + 1 }} 行（行内填空）</p>
+          <div
+            v-for="(row, rIdx) in store.selectedBlock.rows"
+            :key="rIdx"
+            class="space-y-2 rounded-[8px] border border-line bg-raised p-2"
+          >
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] font-medium text-ink-muted">
+                第 {{ rIdx + 1 }} 行（{{
+                  row.type === 'inline_blank'
+                    ? '行内填空'
+                    : row.type === 'full_line'
+                      ? '整行横线'
+                      : '内嵌配图'
+                }}）
+              </span>
+              <div class="flex items-center gap-1">
+                <button
+                  v-if="row.type === 'inline_blank'"
+                  type="button"
+                  title="本行新增填空段"
+                  class="rounded-[4px] border border-line bg-surface px-1.5 py-0.5 text-[10px] text-ink hover:bg-control"
+                  @click="addMixedSegment(rIdx)"
+                >
+                  +空
+                </button>
+                <button
+                  type="button"
+                  title="上移"
+                  :disabled="rIdx === 0"
+                  class="text-ink-muted hover:text-ink disabled:opacity-30"
+                  @click="moveMixedRow(rIdx, -1)"
+                >
+                  <ArrowUp class="size-3" />
+                </button>
+                <button
+                  type="button"
+                  title="下移"
+                  :disabled="rIdx === store.selectedBlock.rows.length - 1"
+                  class="text-ink-muted hover:text-ink disabled:opacity-30"
+                  @click="moveMixedRow(rIdx, 1)"
+                >
+                  <ArrowDown class="size-3" />
+                </button>
+                <button
+                  v-if="store.selectedBlock.rows.length > 1"
+                  type="button"
+                  title="删除该行"
+                  class="text-ink-muted hover:text-danger"
+                  @click="removeMixedRow(rIdx)"
+                >
+                  <Trash2 class="size-3" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Inline blank segments -->
+            <template v-if="row.type === 'inline_blank'">
               <div
                 v-for="(seg, sIdx) in row.segments"
                 :key="sIdx"
                 class="space-y-1.5 border-t border-line pt-1.5 first:border-0 first:pt-0"
               >
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="grid grid-cols-[minmax(0,1fr)_3.5rem_auto] items-end gap-1.5">
                   <div>
                     <Label class="text-[10px] text-ink-muted">标号</Label>
                     <Input
@@ -948,6 +1322,41 @@ function setBlockImageWidthRatio(percent: number) {
                       class="h-6 text-xs"
                       @update:model-value="
                         (v) => updateMixedSegment(rIdx, sIdx, 'label', String(v))
+                      "
+                    />
+                  </div>
+                  <div>
+                    <Label class="text-[10px] text-ink-muted">空数</Label>
+                    <Input
+                      :model-value="seg.blanksCount"
+                      type="number"
+                      min="1"
+                      max="6"
+                      class="h-6 text-xs"
+                      @update:model-value="
+                        (v) => updateMixedSegment(rIdx, sIdx, 'blanksCount', Number(v))
+                      "
+                    />
+                  </div>
+                  <button
+                    v-if="row.segments.length > 1"
+                    type="button"
+                    title="移除该空"
+                    class="mb-1 text-ink-muted hover:text-danger"
+                    @click="removeMixedSegment(rIdx, sIdx)"
+                  >
+                    <X class="size-3.5" />
+                  </button>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <div>
+                    <Label class="text-[10px] text-ink-muted">空前文本/LaTeX</Label>
+                    <Input
+                      :model-value="seg.prefix ?? ''"
+                      placeholder="如 F="
+                      class="h-6 font-mono text-xs"
+                      @update:model-value="
+                        (v) => updateMixedSegment(rIdx, sIdx, 'prefix', String(v))
                       "
                     />
                   </div>
@@ -984,20 +1393,50 @@ function setBlockImageWidthRatio(percent: number) {
                   <LatexText v-if="seg.suffixUnit" :text="seg.suffixUnit" />
                 </div>
               </div>
+            </template>
+
+            <!-- Full line row editor -->
+            <div v-else-if="row.type === 'full_line'" class="grid grid-cols-2 gap-1.5">
+              <div>
+                <Label class="text-[10px] text-ink-muted">小问标号</Label>
+                <Input
+                  :model-value="row.label ?? ''"
+                  placeholder="如 (2)"
+                  class="h-6 text-xs"
+                  @update:model-value="(v) => updateMixedFullLine(rIdx, 'label', String(v))"
+                />
+              </div>
+              <div>
+                <Label class="text-[10px] text-ink-muted">横线行数</Label>
+                <Input
+                  :model-value="row.lines"
+                  type="number"
+                  min="1"
+                  max="20"
+                  class="h-6 text-xs"
+                  @update:model-value="(v) => updateMixedFullLine(rIdx, 'lines', Number(v))"
+                />
+              </div>
             </div>
-          </template>
+
+            <!-- Embedded image row info -->
+            <div v-else class="flex items-center justify-between text-[11px] text-ink-muted">
+              <span class="font-mono">图片 ID：{{ row.assetId }}</span>
+              <span>宽度 {{ Math.round((row.widthRatio ?? 0.45) * 100) }}%</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- ------------------------------------------------------ -->
-      <!-- 2.4 Lined Writing (`lined_writing`) - Lines & English  -->
+      <!-- 2.4 Lined Writing (`lined_writing`) - Lines & SubItems -->
       <!-- ------------------------------------------------------ -->
       <div
         v-if="store.selectedBlock.type === 'lined_writing'"
         class="space-y-3 rounded-control border border-line bg-surface p-2.5"
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-semibold text-ink">横线写作与英语专项配置</p>
+          <p class="text-xs font-semibold text-ink">横线作答与小问编辑</p>
           <div class="flex items-center gap-1">
             <Button
               size="sm"
@@ -1018,89 +1457,224 @@ function setBlockImageWidthRatio(percent: number) {
           </div>
         </div>
 
-        <div class="space-y-1.5">
-          <Label for="english-salutation" class="text-[11px] text-ink-muted">
-            英语应用文开头称呼 (Salutation)
-          </Label>
+        <div
+          v-if="
+            !store.selectedBlock.subItems?.length &&
+            !store.selectedBlock.englishWritingMeta?.continuationParagraphs?.length
+          "
+          class="space-y-1"
+        >
+          <Label for="lined-base-lines" class="text-[11px] text-ink-muted">作答总行数</Label>
           <Input
-            id="english-salutation"
-            :model-value="store.selectedBlock.englishWritingMeta?.salutation ?? ''"
-            placeholder="如：Dear Chris,"
+            id="lined-base-lines"
+            :model-value="store.selectedBlockOverride.manualLines ?? store.selectedBlock.baseLines"
+            type="number"
+            min="1"
+            max="40"
             class="h-7 text-xs"
-            @update:model-value="(val) => updateEnglishSalutation(String(val))"
+            @update:model-value="(val) => updateLinedBaseLines(Number(val))"
           />
         </div>
 
-        <div class="space-y-1.5">
-          <Label for="english-signoff" class="text-[11px] text-ink-muted">
-            英语应用文右下角落款 (Sign-off)
-          </Label>
-          <Textarea
-            id="english-signoff"
-            :model-value="store.selectedBlock.englishWritingMeta?.signOff ?? ''"
-            :rows="2"
-            placeholder="如：Yours,&#10;Li Hua"
-            class="text-xs"
-            @update:model-value="(val) => updateEnglishSignOff(String(val))"
-          />
-        </div>
-
+        <!-- Sub-items editor -->
         <div class="space-y-2 border-t border-line pt-2">
           <div class="flex items-center justify-between">
-            <Label for="english-continuation-toggle" class="text-xs font-medium">
-              读后续写双段首句模式
-            </Label>
-            <Switch
-              id="english-continuation-toggle"
-              :model-value="
-                Boolean(store.selectedBlock.englishWritingMeta?.continuationParagraphs?.length)
-              "
-              @update:model-value="(val) => enableEnglishContinuation(Boolean(val))"
-            />
-          </div>
-
-          <div
-            v-if="store.selectedBlock.englishWritingMeta?.continuationParagraphs?.length"
-            class="space-y-2"
-          >
-            <div
-              v-for="(para, pIdx) in store.selectedBlock.englishWritingMeta.continuationParagraphs"
-              :key="pIdx"
-              class="space-y-1.5 rounded-[8px] border border-line bg-raised p-2"
+            <Label class="text-[11px] font-medium text-ink">小问列表</Label>
+            <Button
+              size="sm"
+              variant="secondary"
+              class="h-6 px-2 text-[10px]"
+              @click="addLinedSubItem"
             >
-              <div class="flex items-center justify-between gap-2">
-                <Input
-                  :model-value="para.heading"
-                  class="h-6 w-28 text-xs font-semibold"
-                  @update:model-value="
-                    (val) => updateContinuationParagraph(pIdx, 'heading', String(val))
+              <Plus class="mr-0.5 size-2.5" />添加小问
+            </Button>
+          </div>
+          <div v-if="store.selectedBlock.subItems?.length" class="space-y-1.5">
+            <div
+              v-for="(sub, sIdx) in store.selectedBlock.subItems"
+              :key="sIdx"
+              class="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_auto] items-center gap-1.5 rounded-[6px] border border-line bg-raised p-1.5"
+            >
+              <Input
+                :model-value="sub.label"
+                placeholder="标号"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateLinedSubItem(sIdx, 'label', String(v))"
+              />
+              <Input
+                :model-value="sub.baseLines"
+                type="number"
+                min="1"
+                max="20"
+                title="行数"
+                placeholder="行"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateLinedSubItem(sIdx, 'baseLines', Number(v))"
+              />
+              <Input
+                :model-value="sub.score ?? ''"
+                type="number"
+                step="0.5"
+                min="0"
+                title="分值"
+                placeholder="分"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateLinedSubItem(sIdx, 'score', Number(v))"
+              />
+              <button
+                type="button"
+                class="text-ink-muted hover:text-danger"
+                @click="removeLinedSubItem(sIdx)"
+              >
+                <Trash2 class="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <details class="border-t border-line pt-2">
+          <summary class="cursor-pointer text-[11px] font-medium text-ink-muted hover:text-ink">
+            英语作文专项配置（称呼 / 落款 / 读后续写）
+          </summary>
+          <div class="mt-2 space-y-2.5">
+            <div class="space-y-1">
+              <Label for="english-salutation" class="text-[11px] text-ink-muted">
+                英语应用文开头称呼 (Salutation)
+              </Label>
+              <Input
+                id="english-salutation"
+                :model-value="store.selectedBlock.englishWritingMeta?.salutation ?? ''"
+                placeholder="如：Dear Chris,"
+                class="h-7 text-xs"
+                @update:model-value="(val) => updateEnglishSalutation(String(val))"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <Label for="english-signoff" class="text-[11px] text-ink-muted">
+                英语应用文右下角落款 (Sign-off)
+              </Label>
+              <Textarea
+                id="english-signoff"
+                :model-value="store.selectedBlock.englishWritingMeta?.signOff ?? ''"
+                :rows="2"
+                placeholder="如：Yours,&#10;Li Hua"
+                class="text-xs"
+                @update:model-value="(val) => updateEnglishSignOff(String(val))"
+              />
+            </div>
+
+            <div class="space-y-2 border-t border-line pt-2">
+              <div class="flex items-center justify-between">
+                <Label for="english-continuation-toggle" class="text-xs font-medium">
+                  读后续写双段首句模式
+                </Label>
+                <Switch
+                  id="english-continuation-toggle"
+                  :model-value="
+                    Boolean(store.selectedBlock.englishWritingMeta?.continuationParagraphs?.length)
                   "
+                  @update:model-value="(val) => enableEnglishContinuation(Boolean(val))"
                 />
-                <div class="flex items-center gap-1 text-[11px] text-ink-muted">
-                  <span>行数</span>
-                  <Input
-                    :model-value="para.baseLines"
-                    type="number"
-                    min="2"
-                    max="16"
-                    class="h-6 w-14 text-xs"
+              </div>
+
+              <div
+                v-if="store.selectedBlock.englishWritingMeta?.continuationParagraphs?.length"
+                class="space-y-2"
+              >
+                <div
+                  v-for="(para, pIdx) in store.selectedBlock.englishWritingMeta
+                    .continuationParagraphs"
+                  :key="pIdx"
+                  class="space-y-1.5 rounded-[8px] border border-line bg-raised p-2"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <Input
+                      :model-value="para.heading"
+                      class="h-6 w-28 text-xs font-semibold"
+                      @update:model-value="
+                        (val) => updateContinuationParagraph(pIdx, 'heading', String(val))
+                      "
+                    />
+                    <div class="flex items-center gap-1 text-[11px] text-ink-muted">
+                      <span>行数</span>
+                      <Input
+                        :model-value="para.baseLines"
+                        type="number"
+                        min="2"
+                        max="16"
+                        class="h-6 w-14 text-xs"
+                        @update:model-value="
+                          (val) => updateContinuationParagraph(pIdx, 'baseLines', Number(val))
+                        "
+                      />
+                    </div>
+                  </div>
+                  <Textarea
+                    :model-value="para.leadText"
+                    :rows="2"
+                    placeholder="输入读后续写给定英文首句..."
+                    class="text-xs"
                     @update:model-value="
-                      (val) => updateContinuationParagraph(pIdx, 'baseLines', Number(val))
+                      (val) => updateContinuationParagraph(pIdx, 'leadText', String(val))
                     "
                   />
                 </div>
               </div>
-              <Textarea
-                :model-value="para.leadText"
-                :rows="2"
-                placeholder="输入读后续写给定英文首句..."
-                class="text-xs"
-                @update:model-value="
-                  (val) => updateContinuationParagraph(pIdx, 'leadText', String(val))
-                "
-              />
             </div>
           </div>
+        </details>
+      </div>
+
+      <!-- ------------------------------------------------------ -->
+      <!-- 2.45 Composition Grid (`composition_grid`) Editor      -->
+      <!-- ------------------------------------------------------ -->
+      <div
+        v-if="store.selectedBlock.type === 'composition_grid'"
+        class="space-y-3 rounded-control border border-line bg-surface p-2.5"
+      >
+        <p class="text-xs font-semibold text-ink">作文方格内部配置</p>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-1">
+            <Label class="text-[10px] text-ink-muted">总方格数</Label>
+            <Input
+              :model-value="store.selectedBlock.totalGrids"
+              type="number"
+              min="100"
+              max="2000"
+              step="20"
+              class="h-7 text-xs"
+              @update:model-value="(val) => updateCompositionField('totalGrids', Number(val))"
+            />
+          </div>
+          <div class="space-y-1">
+            <Label class="text-[10px] text-ink-muted">要求最少字数</Label>
+            <Input
+              :model-value="store.selectedBlock.minWords"
+              type="number"
+              min="50"
+              max="2000"
+              step="50"
+              class="h-7 text-xs"
+              @update:model-value="(val) => updateCompositionField('minWords', Number(val))"
+            />
+          </div>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-[10px] text-ink-muted">字数标尺（逗号分隔，如 600, 700, 800）</Label>
+          <Input
+            :model-value="store.selectedBlock.milestones.join(', ')"
+            class="h-7 font-mono text-xs"
+            @update:model-value="(val) => updateCompositionField('milestones', String(val))"
+          />
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <Label for="comp-title-row" class="text-xs">显示题目居中行</Label>
+          <Switch
+            id="comp-title-row"
+            :model-value="store.selectedBlock.hasTitleRow"
+            @update:model-value="(val) => updateCompositionField('hasTitleRow', Boolean(val))"
+          />
         </div>
       </div>
 
@@ -1156,6 +1730,115 @@ function setBlockImageWidthRatio(percent: number) {
               (val) => store.setBlockHeightMm(store.selectedBlock!.id, Number(val))
             "
           />
+        </div>
+
+        <!-- Drawing Grid internal config -->
+        <div
+          v-if="store.selectedBlock.type === 'drawing_grid'"
+          class="space-y-2 border-t border-line pt-2"
+        >
+          <div class="space-y-1">
+            <Label class="text-[11px] text-ink-muted">作图区类型</Label>
+            <Select
+              :model-value="store.selectedBlock.gridType"
+              @update:model-value="(val) => updateDrawingGridField('gridType', String(val))"
+            >
+              <SelectTrigger class="h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="coordinate_paper">坐标方格纸</SelectItem>
+                <SelectItem value="image_canvas">配图作图画布</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div
+            v-if="store.selectedBlock.gridType === 'coordinate_paper'"
+            class="grid grid-cols-2 gap-2"
+          >
+            <div class="space-y-1">
+              <Label class="text-[10px] text-ink-muted">网格行数</Label>
+              <Input
+                :model-value="store.selectedBlock.rows ?? 15"
+                type="number"
+                min="2"
+                max="40"
+                class="h-7 text-xs"
+                @update:model-value="(val) => updateDrawingGridField('rows', Number(val))"
+              />
+            </div>
+            <div class="space-y-1">
+              <Label class="text-[10px] text-ink-muted">网格列数</Label>
+              <Input
+                :model-value="store.selectedBlock.cols ?? 20"
+                type="number"
+                min="2"
+                max="40"
+                class="h-7 text-xs"
+                @update:model-value="(val) => updateDrawingGridField('cols', Number(val))"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Open Blank Box sub-questions editor -->
+        <div
+          v-if="store.selectedBlock.type === 'open_blank_box'"
+          class="space-y-2 border-t border-line pt-2"
+        >
+          <div class="flex items-center justify-between">
+            <Label class="text-[11px] font-medium text-ink">内部小问列表</Label>
+            <Button
+              size="sm"
+              variant="secondary"
+              class="h-6 px-2 text-[10px]"
+              @click="addOpenSubQuestion"
+            >
+              <Plus class="mr-0.5 size-2.5" />添加小问
+            </Button>
+          </div>
+          <div v-if="store.selectedBlock.subQuestions?.length" class="space-y-1.5">
+            <div
+              v-for="(sub, sIdx) in store.selectedBlock.subQuestions"
+              :key="sIdx"
+              class="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_auto] items-center gap-1.5 rounded-[6px] border border-line bg-raised p-1.5"
+            >
+              <Input
+                :model-value="sub.subNo"
+                placeholder="小问"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateOpenSubQuestion(sIdx, 'subNo', String(v))"
+              />
+              <Input
+                :model-value="sub.score ?? ''"
+                type="number"
+                step="0.5"
+                min="0"
+                title="分值"
+                placeholder="分"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateOpenSubQuestion(sIdx, 'score', Number(v))"
+              />
+              <Input
+                :model-value="sub.heightRatio ?? ''"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="1"
+                title="高度占比"
+                placeholder="占比"
+                class="h-6 text-xs"
+                @update:model-value="(v) => updateOpenSubQuestion(sIdx, 'heightRatio', Number(v))"
+              />
+              <button
+                type="button"
+                class="text-ink-muted hover:text-danger"
+                @click="removeOpenSubQuestion(sIdx)"
+              >
+                <Trash2 class="size-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-if="store.selectedBlock.type === 'open_blank_box'" class="space-y-1">

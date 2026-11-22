@@ -1419,7 +1419,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
 
   function setBlockHeightMm(blockId: string, heightMm: number) {
     if (!semanticData.value) return
-    const clamped = Math.max(20, Math.min(250, Math.round(heightMm)))
+    const clamped = Math.max(14, Math.min(250, Math.round(heightMm)))
     const spec = layoutConfig.value.activePaperSpec
     applyMutation(
       () => {

@@ -60,11 +60,15 @@ let panStartY = 0
 let panScrollLeft = 0
 let panScrollTop = 0
 
-// Height Resize Handle state (for open_blank_box / drawing_grid)
+// Height Resize Handle state (for all non-OMR subjective blocks)
 const resizingBlockId = ref<string | null>(null)
 const liveResizeHeightMm = ref<number | null>(null)
+const liveResizeLines = ref<number | null>(null)
+const liveResizeGrids = ref<number | null>(null)
 let resizeStartY = 0
 let resizeInitialHeightMm = 60
+let resizeInitialLines = 4
+let resizeInitialGrids = 800
 
 function itemBlock(item: RenderItem): AnswerSheetBlock | null {
   if (item.type === 'block') return item.block
@@ -72,10 +76,24 @@ function itemBlock(item: RenderItem): AnswerSheetBlock | null {
 }
 
 function isResizableBlock(block: AnswerSheetBlock | null): boolean {
-  return block?.type === 'open_blank_box' || block?.type === 'drawing_grid'
+  return Boolean(block && block.type !== 'omr_choice')
 }
 
-function getEffectiveBlockHeightMm(block: AnswerSheetBlock): number {
+function getLinedWritingTotalLines(
+  block: Extract<AnswerSheetBlock, { type: 'lined_writing' }>,
+): number {
+  const ov = store.currentPaperOverrides.blockOverrides[block.id]
+  if (ov?.manualLines !== undefined) return ov.manualLines
+  if (block.englishWritingMeta?.continuationParagraphs?.length) {
+    return block.englishWritingMeta.continuationParagraphs.reduce((s, p) => s + p.baseLines, 0)
+  }
+  if (block.subItems?.length) {
+    return block.subItems.reduce((s, p) => s + p.baseLines, 0)
+  }
+  return block.baseLines
+}
+
+function getEffectiveBlockHeightMm(block: AnswerSheetBlock, fallbackMm = 60): number {
   if (resizingBlockId.value === block.id && liveResizeHeightMm.value !== null) {
     return liveResizeHeightMm.value
   }
@@ -84,7 +102,25 @@ function getEffectiveBlockHeightMm(block: AnswerSheetBlock): number {
   if (block.type === 'open_blank_box' || block.type === 'drawing_grid') {
     return block.baseHeightMm
   }
-  return 60
+  return Math.round(fallbackMm)
+}
+
+function getResizeHandleLabel(block: AnswerSheetBlock, fallbackMm: number): string {
+  if (block.type === 'lined_writing') {
+    const lines =
+      resizingBlockId.value === block.id && liveResizeLines.value !== null
+        ? liveResizeLines.value
+        : getLinedWritingTotalLines(block)
+    return `${lines} 行`
+  }
+  if (block.type === 'composition_grid') {
+    const grids =
+      resizingBlockId.value === block.id && liveResizeGrids.value !== null
+        ? liveResizeGrids.value
+        : block.totalGrids
+    return `${grids} 格`
+  }
+  return `${getEffectiveBlockHeightMm(block, fallbackMm)}mm`
 }
 
 function hasSubQuestions(block: AnswerSheetBlock): boolean {
@@ -95,29 +131,76 @@ function hasSubQuestions(block: AnswerSheetBlock): boolean {
   return false
 }
 
-function onResizePointerDown(event: PointerEvent, block: AnswerSheetBlock) {
+function onResizePointerDown(event: PointerEvent, block: AnswerSheetBlock, placedHeightMm: number) {
   event.stopPropagation()
   event.preventDefault()
   store.selectBlock(block.id)
   resizingBlockId.value = block.id
   resizeStartY = event.clientY
-  resizeInitialHeightMm = getEffectiveBlockHeightMm(block)
-  liveResizeHeightMm.value = resizeInitialHeightMm
+
+  const lineHeightMm = props.layout?.settings.lineHeightMm ?? 9
+  const compCols = store.layoutConfig.defaultCompositionCols ?? 20
+
+  if (block.type === 'lined_writing') {
+    resizeInitialLines = getLinedWritingTotalLines(block)
+    liveResizeLines.value = resizeInitialLines
+    liveResizeHeightMm.value = null
+    liveResizeGrids.value = null
+  } else if (block.type === 'composition_grid') {
+    resizeInitialGrids = block.totalGrids
+    liveResizeGrids.value = resizeInitialGrids
+    liveResizeHeightMm.value = null
+    liveResizeLines.value = null
+  } else {
+    resizeInitialHeightMm = getEffectiveBlockHeightMm(block, placedHeightMm)
+    liveResizeHeightMm.value = resizeInitialHeightMm
+    liveResizeLines.value = null
+    liveResizeGrids.value = null
+  }
 
   const onMove = (moveEvent: PointerEvent) => {
     const dyPx = moveEvent.clientY - resizeStartY
     const dyMm = dyPx / (PX_PER_MM * props.zoom)
-    liveResizeHeightMm.value = Math.max(20, Math.min(240, Math.round(resizeInitialHeightMm + dyMm)))
+    if (block.type === 'lined_writing') {
+      const deltaLines = Math.round(dyMm / Math.max(5, lineHeightMm))
+      liveResizeLines.value = Math.max(1, Math.min(40, resizeInitialLines + deltaLines))
+    } else if (block.type === 'composition_grid') {
+      const deltaRows = Math.round(dyMm / 8)
+      liveResizeGrids.value = Math.max(
+        100,
+        Math.min(2000, resizeInitialGrids + deltaRows * compCols),
+      )
+    } else {
+      liveResizeHeightMm.value = Math.max(
+        14,
+        Math.min(240, Math.round(resizeInitialHeightMm + dyMm)),
+      )
+    }
   }
 
   const onUp = () => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
-    if (resizingBlockId.value && liveResizeHeightMm.value !== null) {
-      store.setBlockHeightMm(resizingBlockId.value, liveResizeHeightMm.value)
+    const activeId = resizingBlockId.value
+    if (activeId) {
+      if (block.type === 'lined_writing' && liveResizeLines.value !== null) {
+        const delta = liveResizeLines.value - resizeInitialLines
+        if (delta !== 0) store.adjustBlockLines(activeId, delta)
+      } else if (block.type === 'composition_grid' && liveResizeGrids.value !== null) {
+        const nextGrids = liveResizeGrids.value
+        if (nextGrids !== resizeInitialGrids) {
+          store.updateBlock(activeId, (b) =>
+            b.type === 'composition_grid' ? { ...b, totalGrids: nextGrids } : b,
+          )
+        }
+      } else if (liveResizeHeightMm.value !== null) {
+        store.setBlockHeightMm(activeId, liveResizeHeightMm.value)
+      }
     }
     resizingBlockId.value = null
     liveResizeHeightMm.value = null
+    liveResizeLines.value = null
+    liveResizeGrids.value = null
   }
 
   window.addEventListener('pointermove', onMove)
@@ -194,9 +277,8 @@ function scrollToBlock(blockId: string) {
 
 const renderedItemWithLiveResize = computed(() => {
   return (item: RenderItem): RenderItem => {
+    if (item.type !== 'block' || resizingBlockId.value !== item.block.id) return item
     if (
-      item.type === 'block' &&
-      resizingBlockId.value === item.block.id &&
       liveResizeHeightMm.value !== null &&
       (item.block.type === 'open_blank_box' || item.block.type === 'drawing_grid')
     ) {
@@ -205,6 +287,33 @@ const renderedItemWithLiveResize = computed(() => {
         block: {
           ...item.block,
           baseHeightMm: liveResizeHeightMm.value,
+        },
+      }
+    }
+    if (
+      liveResizeHeightMm.value !== null &&
+      (item.block.type === 'compact_blank' || item.block.type === 'mixed_inline')
+    ) {
+      return {
+        ...item,
+        minHeightMm: liveResizeHeightMm.value,
+      }
+    }
+    if (liveResizeLines.value !== null && item.block.type === 'lined_writing') {
+      return {
+        ...item,
+        block: {
+          ...item.block,
+          baseLines: liveResizeLines.value,
+        },
+      }
+    }
+    if (liveResizeGrids.value !== null && item.block.type === 'composition_grid') {
+      return {
+        ...item,
+        block: {
+          ...item.block,
+          totalGrids: liveResizeGrids.value,
         },
       }
     }
@@ -368,28 +477,32 @@ const renderedItemWithLiveResize = computed(() => {
                     :assets="store.assetsMap"
                   />
 
-                  <!-- Bottom Drag Handle for open_blank_box & drawing_grid (Screen Only) -->
+                  <!-- Bottom Drag Handle for all subjective blocks (Screen Only) -->
                   <div
                     v-if="isResizableBlock(itemBlock(entry.item))"
                     data-sheet-screen-only
                     data-resize-handle
                     role="slider"
-                    :aria-label="`拖拽调整第 ${itemBlock(entry.item)!.displayNo} 题毫米高度`"
-                    :aria-valuenow="getEffectiveBlockHeightMm(itemBlock(entry.item)!)"
+                    :aria-label="`拖拽调整第 ${itemBlock(entry.item)!.displayNo} 题高度`"
+                    :aria-valuenow="
+                      getEffectiveBlockHeightMm(itemBlock(entry.item)!, entry.heightMm)
+                    "
                     class="absolute inset-x-0 -bottom-2 z-20 flex h-4 cursor-ns-resize items-center justify-center opacity-0 transition-opacity group-hover/block:opacity-100"
                     :class="{
                       'opacity-100':
                         store.selectedBlockId === itemBlock(entry.item)!.id ||
                         resizingBlockId === itemBlock(entry.item)!.id,
                     }"
-                    @pointerdown="onResizePointerDown($event, itemBlock(entry.item)!)"
+                    @pointerdown="
+                      onResizePointerDown($event, itemBlock(entry.item)!, entry.heightMm)
+                    "
                   >
                     <div
                       class="flex items-center gap-1 rounded-full border border-[#2563eb] bg-raised px-2 py-0.5 text-[9px] font-semibold text-ink shadow-sm"
                     >
                       <GripHorizontal class="size-3 text-[#2563eb]" />
                       <span class="font-mono tabular-nums">
-                        {{ getEffectiveBlockHeightMm(itemBlock(entry.item)!) }}mm
+                        {{ getResizeHandleLabel(itemBlock(entry.item)!, entry.heightMm) }}
                       </span>
                     </div>
                   </div>

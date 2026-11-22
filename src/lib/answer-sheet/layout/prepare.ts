@@ -125,6 +125,10 @@ export function prepareItems(
         block,
         monochrome: override?.monochrome,
         imageWidthMm: override?.imageWidthMm,
+        minHeightMm:
+          block.type === 'compact_blank' || block.type === 'mixed_inline'
+            ? override?.manualHeightMm
+            : undefined,
         preferredCompositionCols: config?.defaultCompositionCols,
       },
       forceBreak: override?.forceBreakBefore,

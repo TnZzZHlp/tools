@@ -34,5 +34,6 @@ defineProps<{
     :monochrome="item.monochrome"
     :image-width-mm="item.imageWidthMm"
     :preferred-composition-cols="item.preferredCompositionCols"
+    :style="item.minHeightMm ? { minHeight: `${item.minHeightMm}mm` } : undefined"
   />
 </template>

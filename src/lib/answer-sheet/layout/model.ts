@@ -20,6 +20,7 @@ export type RenderItem =
       end?: number
       monochrome?: boolean
       imageWidthMm?: number
+      minHeightMm?: number
       preferredCompositionCols?: number
     }
 
