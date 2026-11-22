@@ -6,6 +6,7 @@ import {
   type ParseReasoningDeltaEvent,
   type ParseStreamOutput,
 } from './api'
+import { getAnswerSheetAuthHeaders } from './auth'
 import { loadPdfCheckpoints, savePdfCheckpoint } from './draft'
 import type { OcrPage, PdfCheckpoint, SplitPaperResult, SplitQuestion } from './pdfPipelineTypes'
 import type { QuestionGroup, QuestionSourceImage, ReviewSourceImage } from './review'
@@ -334,7 +335,7 @@ export async function parsePdfByPage(
   const splitResponse = await fetch(`${BASE}/split`, {
     method: 'POST',
     signal,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAnswerSheetAuthHeaders() },
     body: JSON.stringify({
       markdown: paper.lines.join('\n'),
       pageEndLines: paper.pageEndLines,

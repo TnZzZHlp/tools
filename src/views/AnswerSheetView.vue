@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useElementSize } from '@vueuse/core'
+import { KeyRound, Loader2 } from 'lucide-vue-next'
 import ParseDebugDialog from '@/components/answer-sheet/ParseDebugDialog.vue'
 import SheetRenderItem from '@/components/answer-sheet/SheetRenderItem.vue'
 import WorkbenchCanvas from '@/components/answer-sheet/WorkbenchCanvas.vue'
@@ -9,6 +11,7 @@ import WorkbenchRightInspector from '@/components/answer-sheet/WorkbenchRightIns
 import WorkbenchTopBar from '@/components/answer-sheet/WorkbenchTopBar.vue'
 import '@/components/answer-sheet/print.css'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -17,6 +20,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast'
+import {
+  clearAnswerSheetAccessKey,
+  extractPwParam,
+  getAnswerSheetAccessKey,
+  setAnswerSheetAccessKey,
+  verifyAnswerSheetAccessKey,
+} from '@/lib/answer-sheet/auth'
 import {
   DEFAULT_SHEET_FONT,
   loadSheetFont,
@@ -42,6 +52,68 @@ function tryUseToast() {
 
 const toastApi = tryUseToast()
 const store = useAnswerSheetStore()
+const route = useRoute()
+const router = useRouter()
+
+// Access-key authorization state (?pw=<random> + X-Answer-Sheet-Key header)
+const authState = ref<'checking' | 'authorized' | 'unauthorized'>('authorized')
+const authError = ref('')
+const manualAccessKey = ref('')
+const authSubmitting = ref(false)
+let workbenchInitialized = false
+
+async function ensureWorkbenchInitialized() {
+  if (workbenchInitialized) return
+  workbenchInitialized = true
+  await store.initializeWorkbench()
+}
+
+async function checkAccessAuthorization(explicitKey?: string) {
+  const fromQuery = extractPwParam(route?.query?.pw)
+  let keyToCheck = explicitKey !== undefined ? explicitKey.trim() : getAnswerSheetAccessKey()
+
+  if (fromQuery) {
+    keyToCheck = setAnswerSheetAccessKey(fromQuery)
+    const nextQuery = { ...route.query }
+    delete nextQuery.pw
+    void router.replace({ query: nextQuery }).catch(() => undefined)
+  } else if (explicitKey !== undefined) {
+    keyToCheck = setAnswerSheetAccessKey(keyToCheck)
+  }
+
+  authError.value = ''
+  const verification = await verifyAnswerSheetAccessKey(keyToCheck)
+  if (verification.authorized) {
+    authState.value = 'authorized'
+    await ensureWorkbenchInitialized()
+    return true
+  }
+
+  if (keyToCheck) {
+    clearAnswerSheetAccessKey()
+  }
+  authState.value = 'unauthorized'
+  authError.value = verification.message ?? '授权码无效或未提供，请通过 ?pw=<授权码> 访问。'
+  return false
+}
+
+async function handleManualAuthSubmit() {
+  if (!manualAccessKey.value.trim()) {
+    authError.value = '请输入授权码。'
+    return
+  }
+  authSubmitting.value = true
+  try {
+    const ok = await checkAccessAuthorization(manualAccessKey.value)
+    if (ok) {
+      manualAccessKey.value = ''
+      notify('授权成功', '已保存授权码，可开始使用智能答题卡工作台。', 'success')
+    }
+  } finally {
+    authSubmitting.value = false
+  }
+}
+
 const retrySubject = ref<SubjectType | 'auto'>('auto')
 watch(
   () => store.sheetId,
@@ -282,9 +354,18 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => route?.query?.pw,
+  (pw) => {
+    if (extractPwParam(pw)) {
+      void checkAccessAuthorization()
+    }
+  },
+)
+
 onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown)
-  await store.initializeWorkbench()
+  await checkAccessAuthorization()
 })
 
 onBeforeUnmount(() => {
@@ -294,7 +375,60 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface text-ink">
+  <!-- Access Key Authorization Gate -->
+  <div
+    v-if="authState === 'unauthorized'"
+    class="flex h-[100dvh] w-full items-center justify-center bg-surface p-6 text-ink"
+  >
+    <form
+      class="w-full max-w-sm space-y-4 rounded-panel border border-line bg-raised p-6 shadow-popup"
+      @submit.prevent="handleManualAuthSubmit"
+    >
+      <div class="flex items-center gap-2.5">
+        <div
+          class="flex size-9 shrink-0 items-center justify-center rounded-control border border-line bg-control text-accent"
+        >
+          <KeyRound class="size-4" />
+        </div>
+        <div>
+          <h1 class="text-sm font-semibold text-ink">需要授权码访问</h1>
+          <p class="text-xs text-ink-muted">智能答题卡工作台已启用授权验证</p>
+        </div>
+      </div>
+
+      <p class="text-xs leading-relaxed text-ink-muted">
+        请使用带 <code class="rounded bg-surface px-1 py-0.5 font-mono text-ink">?pw=授权码</code>
+        参数的链接打开，或在下方输入授权码：
+      </p>
+
+      <div class="space-y-2">
+        <Input
+          v-model="manualAccessKey"
+          type="password"
+          placeholder="请输入授权码"
+          aria-label="授权码"
+          :invalid="Boolean(authError)"
+          class="h-9 text-xs"
+        />
+        <p v-if="authError" class="text-xs text-danger">{{ authError }}</p>
+      </div>
+
+      <Button
+        type="submit"
+        variant="primary"
+        size="md"
+        class="w-full text-xs"
+        :loading="authSubmitting"
+      >
+        <template v-if="authSubmitting" #leading>
+          <Loader2 class="size-3.5 animate-spin" />
+        </template>
+        验证并进入工作台
+      </Button>
+    </form>
+  </div>
+
+  <div v-else class="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface text-ink">
     <!-- 1. Top Global Toolbar -->
     <WorkbenchTopBar
       :print-root="canvasComponentRef?.printRoot"

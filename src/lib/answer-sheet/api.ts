@@ -1,3 +1,4 @@
+import { getAnswerSheetAuthHeaders } from './auth'
 import type { DraftSource } from './draft'
 import type {
   AnswerSheetParseResult,
@@ -124,7 +125,12 @@ export async function readAnswerSheetStream<T>(
   requiredAssets: (result: T) => QuestionSourceImage[],
   callbacks?: ParseStreamCallbacks,
 ): Promise<{ result: T; assets: Map<string, Blob> }> {
-  const response = await fetch(url, { method: 'POST', body: formData, signal: callbacks?.signal })
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getAnswerSheetAuthHeaders(),
+    body: formData,
+    signal: callbacks?.signal,
+  })
 
   if (!response.ok) {
     if (response.status === 554) {
@@ -291,6 +297,7 @@ export async function reviewQuestionGroupApi(
   }
   const response = await fetch('/api/v1/answer-sheet/questions/review', {
     method: 'POST',
+    headers: getAnswerSheetAuthHeaders(),
     body: formData,
     signal,
   })
@@ -312,6 +319,7 @@ export async function reparseQuestionGroupApi(
   }
   const response = await fetch('/api/v1/answer-sheet/questions/reparse', {
     method: 'POST',
+    headers: getAnswerSheetAuthHeaders(),
     body: formData,
     signal,
   })
