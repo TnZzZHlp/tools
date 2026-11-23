@@ -107,6 +107,9 @@ fn model_sample(image: &DynamicImage) -> DynamicImage {
     match image {
         ImageLuma8(pixels) => resize_view!(pixels, ImageLuma8),
         ImageLumaA8(pixels) => resize_view!(pixels, ImageLumaA8),
+        ImageRgb8(pixels) if side != size => {
+            ImageRgb8(crate::resize::rgb_triangle_crop(pixels, x, y, side, size))
+        }
         ImageRgb8(pixels) => resize_view!(pixels, ImageRgb8),
         ImageRgba8(pixels) => resize_view!(pixels, ImageRgba8),
         ImageLuma16(pixels) => resize_view!(pixels, ImageLuma16),
@@ -169,19 +172,16 @@ mod tests {
 
     #[test]
     fn borrowed_sample_matches_owned_crop() {
-        let image = DynamicImage::ImageRgb8(RgbImage::from_fn(701, 483, |x, y| {
-            Rgb([x as u8, y as u8, (x ^ y) as u8])
-        }));
-        let side = image.height() * 7 / 8;
-        let expected = image
-            .crop_imm(
-                (image.width() - side) / 2,
-                (image.height() - side) / 2,
-                side,
-                side,
-            )
-            .resize_exact(SIDE as u32, SIDE as u32, imageops::FilterType::Triangle);
-        assert_eq!(model_sample(&image), expected);
+        for (width, height) in [(1, 1), (151, 193), (256, 301), (701, 483), (2560, 3584)] {
+            let image = DynamicImage::ImageRgb8(RgbImage::from_fn(width, height, |x, y| {
+                Rgb([x as u8, y as u8, (x ^ y) as u8])
+            }));
+            let side = (width.min(height) * 7 / 8).max(1);
+            let expected = image
+                .crop_imm((width - side) / 2, (height - side) / 2, side, side)
+                .resize_exact(SIDE as u32, SIDE as u32, imageops::FilterType::Triangle);
+            assert_eq!(model_sample(&image), expected, "{width}x{height}");
+        }
     }
 
     #[test]

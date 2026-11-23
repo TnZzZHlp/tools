@@ -3,6 +3,7 @@ mod cli;
 mod codecs;
 mod orientation;
 mod output;
+mod resize;
 
 use std::process::ExitCode;
 

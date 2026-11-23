@@ -85,12 +85,13 @@ impl HeicCodec {
             .encoder_for_format(CompressionFormat::Hevc)
             .context("no HEVC encoder available to write HEIC")?;
         encoder.set_quality(EncoderQuality::Lossy(92))?;
-        if encoder
-            .parameters_names()
-            .iter()
-            .any(|name| name == "threads")
-        {
+        let parameters = encoder.parameters_names();
+        if parameters.iter().any(|name| name == "threads") {
             encoder.set_parameter_value("threads", EncoderParameterValue::Int(1))?;
+        }
+        if encoder.name().starts_with("x265") && parameters.iter().any(|name| name == "preset") {
+            encoder
+                .set_parameter_value("preset", EncoderParameterValue::String("medium".into()))?;
         }
         let (width, height) = (pixels.width(), pixels.height());
         let (raw, chroma, channels) = match pixels {
