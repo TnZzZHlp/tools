@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Result, ensure};
-use image::{DynamicImage, imageops::FilterType, metadata::Orientation};
+use image::{DynamicImage, imageops, metadata::Orientation};
 use tract_onnx::prelude::*;
 
 const MODEL: &[u8] = include_bytes!("../assets/pp-lcnet-doc-ori.onnx");
@@ -33,11 +33,7 @@ impl Classifier {
         exif: Orientation,
         threshold: f32,
     ) -> Result<Decision> {
-        let (width, height) = (image.width(), image.height());
-        let side = (width.min(height) * 7 / 8).max(1);
-        let mut sample = image
-            .crop_imm((width - side) / 2, (height - side) / 2, side, side)
-            .resize_exact(SIDE as u32, SIDE as u32, FilterType::Triangle);
+        let mut sample = model_sample(image);
         sample.apply_orientation(exif);
         let result = self.predict(&sample)?;
         if !result.reliable(threshold) {
@@ -91,6 +87,40 @@ impl Classifier {
     }
 }
 
+fn model_sample(image: &DynamicImage) -> DynamicImage {
+    use DynamicImage::*;
+    let (width, height) = (image.width(), image.height());
+    let side = (width.min(height) * 7 / 8).max(1);
+    let (x, y) = ((width - side) / 2, (height - side) / 2);
+    let size = SIDE as u32;
+    let filter = imageops::FilterType::Triangle;
+    macro_rules! resize_view {
+        ($pixels:expr, $variant:ident) => {
+            $variant(imageops::resize(
+                &*imageops::crop_imm($pixels, x, y, side, side),
+                size,
+                size,
+                filter,
+            ))
+        };
+    }
+    match image {
+        ImageLuma8(pixels) => resize_view!(pixels, ImageLuma8),
+        ImageLumaA8(pixels) => resize_view!(pixels, ImageLumaA8),
+        ImageRgb8(pixels) => resize_view!(pixels, ImageRgb8),
+        ImageRgba8(pixels) => resize_view!(pixels, ImageRgba8),
+        ImageLuma16(pixels) => resize_view!(pixels, ImageLuma16),
+        ImageLumaA16(pixels) => resize_view!(pixels, ImageLumaA16),
+        ImageRgb16(pixels) => resize_view!(pixels, ImageRgb16),
+        ImageRgba16(pixels) => resize_view!(pixels, ImageRgba16),
+        ImageRgb32F(pixels) => resize_view!(pixels, ImageRgb32F),
+        ImageRgba32F(pixels) => resize_view!(pixels, ImageRgba32F),
+        _ => image
+            .crop_imm(x, y, side, side)
+            .resize_exact(size, size, filter),
+    }
+}
+
 struct Prediction {
     label: u8,
     score: f32,
@@ -135,7 +165,24 @@ pub fn compose(exif: Orientation, turns: u8) -> Orientation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::{GrayImage, Luma};
+    use image::{GrayImage, Luma, Rgb, RgbImage};
+
+    #[test]
+    fn borrowed_sample_matches_owned_crop() {
+        let image = DynamicImage::ImageRgb8(RgbImage::from_fn(701, 483, |x, y| {
+            Rgb([x as u8, y as u8, (x ^ y) as u8])
+        }));
+        let side = image.height() * 7 / 8;
+        let expected = image
+            .crop_imm(
+                (image.width() - side) / 2,
+                (image.height() - side) / 2,
+                side,
+                side,
+            )
+            .resize_exact(SIDE as u32, SIDE as u32, imageops::FilterType::Triangle);
+        assert_eq!(model_sample(&image), expected);
+    }
 
     #[test]
     fn composed_transform_matches_exif_then_rotation() {
