@@ -1,12 +1,13 @@
 [package]
 name = "upright-pic"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "tiff", "webp"] }
+indicatif = "0.18"
 libheif-rs = { version = "3", default-features = false, features = ["v1_21"] }
 rayon = "1"
 same-file = "1"

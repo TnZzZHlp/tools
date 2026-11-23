@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{Context, Result, ensure};
 use image::metadata::Orientation;
+use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use walkdir::{DirEntry, WalkDir};
 
@@ -23,6 +24,7 @@ pub fn run(
     output: &Output,
     jobs: usize,
     threshold: f32,
+    show_progress: bool,
     report: &mut impl Write,
 ) -> Result<bool> {
     let start = Instant::now();
@@ -40,26 +42,48 @@ pub fn run(
         .follow_links(false)
         .into_iter()
         .filter_entry(traversable);
-    let mut results: Vec<_> = workers.install(|| {
-        entries
-            .filter_map(|entry| match entry {
-                Ok(entry) if entry.file_type().is_file() => {
-                    let format = Format::from_path(entry.path())?;
-                    Some(Ok((entry.into_path(), format)))
+    let mut files = Vec::new();
+    let mut results = Vec::new();
+    for entry in entries {
+        match entry {
+            Ok(entry) if entry.file_type().is_file() => {
+                if let Some(format) = Format::from_path(entry.path()) {
+                    files.push((entry.into_path(), format));
                 }
-                Ok(_) => None,
-                Err(error) => Some(Err(error)),
-            })
-            .par_bridge()
-            .map(|entry| match entry {
-                Ok((path, format)) => {
-                    let result = pipeline.process(&path, format);
-                    (path, result)
+            }
+            Ok(_) => {}
+            Err(error) => {
+                results.push((error.path().unwrap_or(source).to_owned(), Err(error.into())))
+            }
+        }
+    }
+
+    let progress = if show_progress && !files.is_empty() {
+        ProgressBar::new(files.len() as u64).with_style(
+            ProgressStyle::with_template(
+                "Processing [{bar:30}] {pos}/{len} ({percent}%)  ETA {eta}",
+            )?
+            .progress_chars("=>-"),
+        )
+    } else {
+        ProgressBar::hidden()
+    };
+    progress.tick();
+    let track_progress = !progress.is_hidden();
+    let processed: Vec<_> = workers.install(|| {
+        files
+            .into_par_iter()
+            .map(|(path, format)| {
+                let result = pipeline.process(&path, format);
+                if track_progress {
+                    progress.inc(1);
                 }
-                Err(error) => (error.path().unwrap_or(source).to_owned(), Err(error.into())),
+                (path, result)
             })
             .collect()
     });
+    progress.finish_and_clear();
+    results.extend(processed);
     results.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
     report_results(results, start, report)
 }

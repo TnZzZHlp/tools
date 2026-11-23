@@ -38,6 +38,8 @@ struct Args {
     jobs: Option<u8>,
     #[arg(long, default_value_t = 0.85, value_parser = parse_confidence, help = "Minimum model score to accept a direction")]
     confidence: f32,
+    #[arg(long, help = "Do not show the terminal progress bar")]
+    no_progress: bool,
 }
 
 pub fn run() -> Result<bool> {
@@ -67,6 +69,7 @@ pub fn run() -> Result<bool> {
         &output,
         jobs,
         args.confidence,
+        !args.no_progress,
         &mut BufWriter::new(io::stdout().lock()),
     )
 }
