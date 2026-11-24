@@ -82,8 +82,8 @@ export function areaPaths(
     }
   }
 
-  const points: AreaPoint[] = values.map((val, index) => {
-    const v = sanitizeValue(val)
+  const points: AreaPoint[] = Array.from({ length: values.length }, (_, index) => {
+    const v = sanitizeValue(values[index])
     const x = round((index / (values.length - 1)) * width)
     const y = round(padTop + usableHeight * (1 - clamp(v / top, 0, 1)))
     return { x, y, value: v }

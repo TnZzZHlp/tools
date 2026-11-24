@@ -14,7 +14,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <li v-bind="forwarded" :class="cn('inline-flex items-center gap-1.5', attrs.class as ClassValue)">
+  <li
+    v-bind="forwarded"
+    :class="cn('m-0 inline-flex list-none items-center gap-1.5', attrs.class as ClassValue)"
+  >
     <slot />
   </li>
 </template>

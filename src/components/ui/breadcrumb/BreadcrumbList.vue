@@ -18,7 +18,7 @@ const forwarded = computed(() => {
     v-bind="forwarded"
     :class="
       cn(
-        'flex flex-wrap items-center gap-1.5 text-[13px] break-words text-ink-muted sm:gap-2',
+        'm-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-[13px] break-words text-ink-muted sm:gap-2',
         attrs.class as ClassValue,
       )
     "

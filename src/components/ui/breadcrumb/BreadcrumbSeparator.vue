@@ -18,7 +18,12 @@ const forwarded = computed(() => {
     role="presentation"
     aria-hidden="true"
     v-bind="forwarded"
-    :class="cn('text-ink-faint select-none', attrs.class as ClassValue)"
+    :class="
+      cn(
+        'm-0 inline-flex list-none items-center text-ink-faint select-none [&>svg]:size-3.5',
+        attrs.class as ClassValue,
+      )
+    "
   >
     <slot>/</slot>
   </li>

@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, useAttrs, useId } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AccordionHeader, AccordionTrigger } from 'reka-ui'
+import { AccordionHeader, AccordionTrigger, injectCollapsibleRootContext } from 'reka-ui'
 
 defineOptions({ inheritAttrs: false })
+
+const collapsibleContext = injectCollapsibleRootContext(null)
+const fallbackContentId = `p0seid0n-accordion-content-${useId()}`
+if (collapsibleContext && !collapsibleContext.contentId) {
+  collapsibleContext.contentId = fallbackContentId
+}
 
 const attrs = useAttrs()
 const forwarded = computed(() => {
@@ -15,7 +21,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AccordionHeader class="flex">
+  <AccordionHeader class="m-0 flex">
     <AccordionTrigger
       v-bind="forwarded"
       :class="
@@ -30,7 +36,7 @@ const forwarded = computed(() => {
       <slot />
       <slot name="icon">
         <svg
-          class="size-4 shrink-0 text-ink-muted transition-transform duration-[var(--p0seid0n-duration-normal)] ease-out-expo group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+          class="size-4 shrink-0 text-ink-muted transition-[rotate,color] duration-[var(--p0seid0n-duration-normal)] ease-out-expo group-hover:text-ink group-data-[state=open]:rotate-180 motion-reduce:transition-none"
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"

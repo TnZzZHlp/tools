@@ -19,7 +19,7 @@ const forwarded = computed(() => {
     v-bind="forwarded"
     class="overflow-hidden text-[14px] leading-relaxed text-ink-muted data-[state=open]:motion-safe:animate-accordion-down data-[state=closed]:motion-safe:animate-accordion-up"
   >
-    <div :class="cn('pt-0 pb-4', attrs.class as ClassValue)">
+    <div :class="cn('pt-0 pb-4 [&>p]:m-0', attrs.class as ClassValue)">
       <slot />
     </div>
   </AccordionContent>

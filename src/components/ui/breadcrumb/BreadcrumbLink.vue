@@ -31,7 +31,7 @@ const forwarded = computed(() => {
     :as-child="asChild"
     :class="
       cn(
-        'rounded-[6px] text-ink-muted transition-colors duration-[var(--p0seid0n-duration-fast)] ease-out-expo hover:text-ink',
+        'rounded-[6px] text-ink-muted no-underline transition-colors duration-[var(--p0seid0n-duration-fast)] ease-out-expo hover:text-ink',
         'outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink motion-reduce:transition-none',
         attrs.class as ClassValue,
       )
