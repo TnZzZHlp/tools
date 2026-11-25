@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { SelectIcon, SelectTrigger } from 'reka-ui'
+import { SelectTrigger as SdkSelectTrigger } from '@ui-sdk/vue/select'
 
 defineOptions({ inheritAttrs: false })
 
@@ -34,7 +34,7 @@ const ariaInvalid = computed(() => {
 </script>
 
 <template>
-  <SelectTrigger
+  <SdkSelectTrigger
     v-bind="forwarded"
     :id="id"
     :disabled="disabled"
@@ -42,7 +42,7 @@ const ariaInvalid = computed(() => {
     :class="
       cn(
         'inline-flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-control border border-line bg-control px-3 text-[15px] text-ink',
-        'data-[placeholder]:text-ink-muted [&>span]:line-clamp-1',
+        'data-[placeholder]:text-ink-muted [&>span]:line-clamp-1 after:hidden',
         'outline-none focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink',
         'aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:outline-danger',
         'disabled:cursor-default disabled:opacity-55',
@@ -52,7 +52,7 @@ const ariaInvalid = computed(() => {
     "
   >
     <slot />
-    <SelectIcon as-child>
+    <span aria-hidden="true" class="inline-flex shrink-0">
       <slot name="icon">
         <svg
           class="size-4 shrink-0 text-ink-muted"
@@ -67,6 +67,6 @@ const ariaInvalid = computed(() => {
           <path d="m4 6 4 4 4-4" />
         </svg>
       </slot>
-    </SelectIcon>
-  </SelectTrigger>
+    </span>
+  </SdkSelectTrigger>
 </template>

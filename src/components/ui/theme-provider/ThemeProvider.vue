@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { createLocalStorage, createPreference } from '@ui-sdk/core'
+import { usePreference } from '@ui-sdk/vue/preferences'
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import {
   DEFAULT_STORAGE_KEY,
   applyThemeToDocument,
-  readStoredTheme,
   systemTheme,
   type ResolvedTheme,
   type ThemeChoice,
@@ -24,7 +25,24 @@ const props = withDefaults(defineProps<ThemeProviderProps>(), {
   attribute: 'data-theme',
 })
 
-const theme = ref<ThemeChoice>(props.defaultTheme)
+const storage = createLocalStorage(props.storageKey)
+const preference = createPreference({
+  values: ['system', 'light', 'dark'],
+  defaultValue: props.defaultTheme,
+  attribute: 'data-p0seid0n-theme-preference',
+  storage: {
+    ...storage,
+    set: (value) =>
+      value === 'system' && props.defaultTheme === 'system' ? storage.remove() : storage.set(value),
+  },
+})
+const preferenceState = usePreference(preference)
+const theme = computed({
+  get: () => preferenceState.value.value,
+  set: (next: ThemeChoice) => {
+    preference.set(next)
+  },
+})
 const resolvedTheme = ref<ResolvedTheme>(props.defaultTheme === 'dark' ? 'dark' : 'light')
 const hydrated = ref(false)
 
@@ -38,21 +56,7 @@ function setTheme(next: ThemeChoice): void {
   theme.value = next
 }
 
-// localStorage is written only when the choice changes, not on every system
-// preference event: those are not user decisions and must not pin `system`.
-watch(theme, (next) => {
-  sync()
-  if (!hydrated.value) return
-  try {
-    if (next === 'system' && props.defaultTheme === 'system') {
-      localStorage.removeItem(props.storageKey)
-    } else {
-      localStorage.setItem(props.storageKey, next)
-    }
-  } catch {
-    // A blocked storage backend still needs the in-memory choice to apply.
-  }
-})
+watch(theme, sync)
 
 function onSystemChange(): void {
   // Only matters while following the system; a pinned choice ignores it.
@@ -60,12 +64,12 @@ function onSystemChange(): void {
 }
 
 onMounted(() => {
-  theme.value = readStoredTheme(props.storageKey, props.defaultTheme)
   sync()
   hydrated.value = true
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-  media = window.matchMedia('(prefers-color-scheme: dark)')
-  media.addEventListener('change', onSystemChange)
+  if (typeof window.matchMedia === 'function') {
+    media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener('change', onSystemChange)
+  }
 })
 
 onBeforeUnmount(() => {

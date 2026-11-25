@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { SelectSeparator } from 'reka-ui'
+import { SelectSeparator as SdkSelectSeparator } from '@ui-sdk/vue/select'
 import { selectSeparator } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -16,5 +16,5 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <SelectSeparator v-bind="forwarded" :class="cn(selectSeparator, attrs.class as ClassValue)" />
+  <SdkSelectSeparator v-bind="forwarded" :class="cn(selectSeparator, attrs.class as ClassValue)" />
 </template>

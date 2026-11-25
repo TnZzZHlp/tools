@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DialogRoot } from 'reka-ui'
+import { Dialog as DialogRoot } from '@ui-sdk/vue/dialog'
 import { provideDialogBehaviour } from './behaviour'
 
 defineOptions({ name: 'UiDialog', inheritAttrs: false })
@@ -18,17 +18,22 @@ const props = withDefaults(defineProps<DialogProps>(), {
   closeOnEsc: true,
 })
 
-// Passed as thunks rather than as props so the flags are read at event time.
-provideDialogBehaviour({
+const onOpenChange = provideDialogBehaviour({
   closeOnOutside: () => props.closeOnOutside,
   closeOnEsc: () => props.closeOnEsc,
 })
 
-const open = defineModel<boolean>('open')
+const open = defineModel<boolean | undefined>('open', { default: undefined })
 </script>
 
 <template>
-  <DialogRoot v-model:open="open" :default-open="defaultOpen" modal v-bind="$attrs">
+  <DialogRoot
+    v-model:open="open"
+    :default-open="defaultOpen"
+    modal
+    v-bind="$attrs"
+    @open-change="onOpenChange"
+  >
     <slot />
   </DialogRoot>
 </template>

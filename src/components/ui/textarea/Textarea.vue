@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Textarea as SdkTextarea } from '@ui-sdk/vue/textarea'
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
@@ -37,10 +38,10 @@ const ariaInvalid = computed(() => {
 </script>
 
 <template>
-  <textarea
-    v-bind="forwarded"
+  <SdkTextarea
     :id="id"
     v-model="model"
+    v-bind="forwarded"
     :rows="rows"
     :disabled="disabled"
     :aria-invalid="ariaInvalid"

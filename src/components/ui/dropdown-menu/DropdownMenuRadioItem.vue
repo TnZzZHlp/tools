@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, inject, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuItemIndicator, DropdownMenuRadioItem } from 'reka-ui'
+import { MenuItem as SdkMenuItem } from '@ui-sdk/vue/menu'
+import { emitMenuSelect, menuRadioValue } from './selection'
 import { menuItem } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -13,12 +14,20 @@ export type DropdownMenuRadioItemProps = {
   textValue?: string
 }
 
-withDefaults(defineProps<DropdownMenuRadioItemProps>(), {
+const props = withDefaults(defineProps<DropdownMenuRadioItemProps>(), {
   disabled: false,
   textValue: undefined,
 })
 
 const emit = defineEmits<{ select: [event: Event] }>()
+
+const model = inject(menuRadioValue)
+const checked = computed(() => model?.value === props.value)
+
+function onSelect(event: Event) {
+  emitMenuSelect(event, (select) => emit('select', select))
+  if (model) model.value = props.value
+}
 
 const attrs = useAttrs()
 const forwarded = computed(() => {
@@ -29,23 +38,32 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DropdownMenuRadioItem
+  <SdkMenuItem
     v-bind="forwarded"
-    :value="value"
     :disabled="disabled"
-    :text-value="textValue"
+    :label="textValue"
     :class="cn(menuItem, attrs.class as ClassValue)"
-    @select="emit('select', $event)"
+    @select="onSelect"
   >
-    <span class="flex size-3.5 shrink-0 items-center justify-center">
-      <DropdownMenuItemIndicator
-        class="flex items-center justify-center text-ink motion-safe:animate-check-in data-[state=unchecked]:motion-safe:animate-check-out"
+    <template #render="{ props: part }">
+      <div
+        v-bind="part"
+        role="menuitemradio"
+        :aria-checked="checked"
+        :data-state="checked ? 'checked' : 'unchecked'"
       >
-        <slot name="indicator">
-          <span class="size-1.5 rounded-full bg-ink" />
-        </slot>
-      </DropdownMenuItemIndicator>
-    </span>
-    <slot />
-  </DropdownMenuRadioItem>
+        <span class="flex size-3.5 shrink-0 items-center justify-center">
+          <Transition
+            enter-active-class="motion-safe:animate-check-in"
+            leave-active-class="motion-safe:animate-check-out"
+          >
+            <span v-if="checked" class="flex items-center justify-center text-ink">
+              <slot name="indicator"><span class="size-1.5 rounded-full bg-ink" /></slot>
+            </span>
+          </Transition>
+        </span>
+        <slot />
+      </div>
+    </template>
+  </SdkMenuItem>
 </template>

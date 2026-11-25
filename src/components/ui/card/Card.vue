@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { CardPart } from './parts'
 
 defineOptions({ name: 'UiCard', inheritAttrs: false })
 
@@ -27,7 +28,7 @@ const appearanceClass = computed(() =>
 </script>
 
 <template>
-  <div
+  <CardPart
     v-bind="forwarded"
     :class="
       cn(
@@ -38,5 +39,5 @@ const appearanceClass = computed(() =>
     "
   >
     <slot />
-  </div>
+  </CardPart>
 </template>

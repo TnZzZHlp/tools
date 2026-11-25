@@ -4,8 +4,8 @@ export type SheetSide = 'top' | 'right' | 'bottom' | 'left'
 
 export const sheetVariants = cva(
   [
-    'fixed z-50 flex flex-col gap-4 border-line bg-raised p-6 shadow-popup outline-none',
-    'motion-safe:animate-sheet-in data-[state=closed]:motion-safe:animate-sheet-out',
+    'fixed inset-auto z-50 m-0 flex h-auto max-h-dvh flex-col gap-4 rounded-none border-0 border-line bg-raised p-6 shadow-popup outline-none',
+    'motion-safe:animate-sheet-in data-ending-style:motion-safe:animate-sheet-out',
   ].join(' '),
   {
     variants: {
@@ -25,9 +25,9 @@ export const sheetVariants = cva(
 )
 
 export const sheetCloseButton = [
-  'absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-[10px]',
+  'absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-[10px] border-0 bg-transparent p-0',
   'text-[16px] leading-none text-ink-muted',
   'hover:bg-control hover:text-ink active:scale-95 motion-reduce:active:scale-100',
   'outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink',
-  'transition-[background-color,color,transform] duration-[var(--p0seid0n-duration-fast)] ease-spring motion-reduce:transition-none',
+  'transition-[background-color,color,scale] duration-[var(--p0seid0n-duration-fast)] ease-spring motion-reduce:transition-none',
 ].join(' ')

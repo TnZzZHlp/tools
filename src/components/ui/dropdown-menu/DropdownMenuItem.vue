@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuItem } from 'reka-ui'
+import { MenuItem as SdkMenuItem } from '@ui-sdk/vue/menu'
+import { emitMenuSelect } from './selection'
 import { menuItem } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -20,6 +21,10 @@ withDefaults(defineProps<DropdownMenuItemProps>(), {
 
 const emit = defineEmits<{ select: [event: Event] }>()
 
+function onSelect(event: Event) {
+  emitMenuSelect(event, (select) => emit('select', select))
+}
+
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -29,13 +34,13 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DropdownMenuItem
+  <SdkMenuItem
     v-bind="forwarded"
     :disabled="disabled"
-    :text-value="textValue"
+    :label="textValue"
     :class="cn(menuItem, attrs.class as ClassValue)"
-    @select="emit('select', $event)"
+    @select="onSelect"
   >
     <slot />
-  </DropdownMenuItem>
+  </SdkMenuItem>
 </template>

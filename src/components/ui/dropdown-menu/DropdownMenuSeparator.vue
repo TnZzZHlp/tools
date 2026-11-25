@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuSeparator } from 'reka-ui'
+import { MenuSeparator as SdkMenuSeparator } from '@ui-sdk/vue/menu'
 import { menuSeparator } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -16,5 +16,5 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DropdownMenuSeparator v-bind="forwarded" :class="cn(menuSeparator, attrs.class as ClassValue)" />
+  <SdkMenuSeparator v-bind="forwarded" :class="cn(menuSeparator, attrs.class as ClassValue)" />
 </template>

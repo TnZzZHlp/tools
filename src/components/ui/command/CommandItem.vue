@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, useAttrs, useId, watch } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { ListboxItem } from 'reka-ui'
+import { CommandItem as SdkCommandItem } from '@ui-sdk/vue/command'
 import { useCommandContext, useCommandGroupContext } from './context'
 
 defineOptions({ inheritAttrs: false })
@@ -26,9 +26,9 @@ const groupContext = useCommandGroupContext()
 const id = useId()
 
 watch(
-  () => [props.value, props.keywords] as const,
-  ([value, keywords]) => {
-    context.registerItem(id, { value, keywords })
+  () => [props.value, props.keywords, props.disabled] as const,
+  ([value, keywords, disabled]) => {
+    context.registerItem(id, { value, keywords, disabled })
     groupContext?.registerGroupItem(id)
   },
   { immediate: true },
@@ -43,6 +43,17 @@ const isVisible = computed(
   () => context.visibleIds.value.has(id) || context.matches(props.value, props.keywords),
 )
 
+function onSelect(event: Event) {
+  const selection = new CustomEvent('listbox.select', {
+    bubbles: true,
+    cancelable: true,
+    detail: { originalEvent: event, value: props.value },
+  })
+  emit('select', selection)
+  if (selection.defaultPrevented) event.preventDefault()
+  else context.select(props.value, event)
+}
+
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -52,11 +63,11 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <ListboxItem
+  <SdkCommandItem
     v-if="isVisible"
     v-bind="forwarded"
     :value="value"
-    :disabled="disabled"
+    :disabled="disabled || context.disabled.value"
     :class="
       cn(
         'relative flex min-h-9 cursor-pointer select-none items-center gap-2 rounded-[10px] px-2.5 py-1.5',
@@ -67,8 +78,12 @@ const forwarded = computed(() => {
         attrs.class as ClassValue,
       )
     "
-    @select="emit('select', $event)"
+    @select="onSelect"
   >
-    <slot />
-  </ListboxItem>
+    <template #render="{ props: part }">
+      <div v-bind="part" :aria-selected="context.isSelected(value)">
+        <slot />
+      </div>
+    </template>
+  </SdkCommandItem>
 </template>

@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DialogTitle } from 'reka-ui'
+import { DialogTitle as SdkDialogTitle } from '@ui-sdk/vue/dialog'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,10 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DialogTitle
+  <SdkDialogTitle
     v-bind="forwarded"
     :class="cn('text-[17px] font-medium text-ink', attrs.class as ClassValue)"
   >
     <slot />
-  </DialogTitle>
+  </SdkDialogTitle>
 </template>

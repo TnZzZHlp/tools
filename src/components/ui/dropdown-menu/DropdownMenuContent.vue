@@ -3,7 +3,7 @@ import { computed, useAttrs } from 'vue'
 import type { StyleValue } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuContent, DropdownMenuPortal } from 'reka-ui'
+import { MenuContent as SdkMenuContent } from '@ui-sdk/vue/menu'
 import { popupSurface } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -38,16 +38,14 @@ function minWidthStyle(value: number | string): string {
 </script>
 
 <template>
-  <DropdownMenuPortal>
-    <DropdownMenuContent
-      v-bind="forwarded"
-      :side="props.side"
-      :side-offset="props.sideOffset"
-      :align="props.align"
-      :class="cn(popupSurface, attrs.class as ClassValue)"
-      :style="[{ minWidth: minWidthStyle(props.minWidth) }, attrs.style as StyleValue]"
-    >
-      <slot />
-    </DropdownMenuContent>
-  </DropdownMenuPortal>
+  <SdkMenuContent
+    v-bind="forwarded"
+    :side="props.side"
+    :side-offset="props.sideOffset"
+    :align="props.align"
+    :class="cn(popupSurface, attrs.class as ClassValue)"
+    :style="[{ minWidth: minWidthStyle(props.minWidth) }, attrs.style as StyleValue]"
+  >
+    <slot />
+  </SdkMenuContent>
 </template>

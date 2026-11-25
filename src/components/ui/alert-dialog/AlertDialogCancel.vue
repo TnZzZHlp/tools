@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AlertDialogCancel } from 'reka-ui'
+import { AlertDialogClose } from '@ui-sdk/vue/alert-dialog'
+import { RenderChild } from '@/lib/render-child'
 import { buttonVariants, type ButtonSize, type ButtonVariant } from '../button'
 
 defineOptions({ inheritAttrs: false })
@@ -28,15 +29,19 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AlertDialogCancel
+  <AlertDialogClose
     v-bind="forwarded"
-    :as-child="asChild"
+    data-p0seid0n-alert-cancel
+    value="cancel"
     :class="
       asChild
         ? cn(attrs.class as ClassValue)
-        : cn(buttonVariants({ variant, size }), attrs.class as ClassValue)
+        : cn('h-auto border-0', buttonVariants({ variant, size }), attrs.class as ClassValue)
     "
   >
-    <slot />
-  </AlertDialogCancel>
+    <template v-if="asChild" #render="{ props: part }">
+      <RenderChild v-bind="part"><slot /></RenderChild>
+    </template>
+    <slot v-if="!asChild" />
+  </AlertDialogClose>
 </template>

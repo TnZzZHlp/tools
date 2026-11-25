@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AvatarRoot } from 'reka-ui'
+import { Avatar as AvatarRoot } from '@ui-sdk/vue/avatar'
 import { avatarVariants, type AvatarShape, type AvatarSize } from './variants'
 
 defineOptions({ name: 'UiAvatar', inheritAttrs: false })

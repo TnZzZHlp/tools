@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { BreadcrumbPart } from './parts'
 
 defineOptions({ name: 'UiBreadcrumb', inheritAttrs: false })
 
@@ -14,7 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <nav aria-label="Breadcrumb" v-bind="forwarded" :class="cn(attrs.class as ClassValue)">
+  <BreadcrumbPart v-bind="forwarded" :class="cn(attrs.class as ClassValue)">
     <slot />
-  </nav>
+  </BreadcrumbPart>
 </template>

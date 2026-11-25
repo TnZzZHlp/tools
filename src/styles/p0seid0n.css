@@ -1,15 +1,15 @@
 :root {
   color-scheme: light dark;
 
-  --p0seid0n-surface: light-dark(#f5f6f8, #121419);
-  --p0seid0n-raised: light-dark(#ffffff, #1a1d24);
-  --p0seid0n-ink: light-dark(#15181f, #eceef2);
-  --p0seid0n-ink-muted: light-dark(#5b6270, #969caa);
-  --p0seid0n-ink-faint: light-dark(#a3a9b5, #5e6473);
-  --p0seid0n-line: light-dark(#dde1e7, #2a2e37);
-  --p0seid0n-control: light-dark(#e7eaef, #2b303a);
-  --p0seid0n-download: light-dark(#2f6fe4, #5b8def);
-  --p0seid0n-upload: light-dark(#c8731a, #c97c26);
+  --p0seid0n-surface: light-dark(#F5F6F8, #121419);
+  --p0seid0n-raised: light-dark(#FFFFFF, #1A1D24);
+  --p0seid0n-ink: light-dark(#15181F, #ECEEF2);
+  --p0seid0n-ink-muted: light-dark(#5B6270, #969CAA);
+  --p0seid0n-ink-faint: light-dark(#A3A9B5, #5E6473);
+  --p0seid0n-line: light-dark(#DDE1E7, #2A2E37);
+  --p0seid0n-control: light-dark(#E7EAEF, #2B303A);
+  --p0seid0n-download: light-dark(#2F6FE4, #5B8DEF);
+  --p0seid0n-upload: light-dark(#C8731A, #C97C26);
   /* Derived, not taken from the reference palette: the upload colour is too light
      to carry surface-coloured text at 4.5:1, so it is mixed toward the ink. */
   --p0seid0n-danger: color-mix(in oklab, var(--p0seid0n-upload) 80%, var(--p0seid0n-ink));
@@ -53,9 +53,9 @@
   --radius-panel: var(--p0seid0n-radius-panel);
   --radius-panel-lg: var(--p0seid0n-radius-panel-lg);
 
-  --font-sans: var(--font-barlow, 'Barlow'), system-ui, sans-serif;
+  --font-sans: var(--font-barlow, "Barlow"), system-ui, sans-serif;
   --font-condensed:
-    var(--font-barlow-semi-condensed, 'Barlow Semi Condensed'), var(--font-barlow, 'Barlow'),
+    var(--font-barlow-semi-condensed, "Barlow Semi Condensed"), var(--font-barlow, "Barlow"),
     system-ui, sans-serif;
 
   --shadow-popup: var(--p0seid0n-shadow-popup);
@@ -64,23 +64,32 @@
   --ease-in-quad: var(--p0seid0n-ease-in);
   --ease-spring: var(--p0seid0n-ease-spring);
 
-  --animate-fade-in: p0seid0n-fade-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out);
-  --animate-fade-out: p0seid0n-fade-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in);
-  --animate-dialog-in: p0seid0n-dialog-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out);
-  --animate-dialog-out: p0seid0n-dialog-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in);
-  --animate-pop-in: p0seid0n-pop-in var(--p0seid0n-duration-normal) var(--p0seid0n-ease-out);
-  --animate-pop-out: p0seid0n-pop-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in);
-  --animate-panel-in: p0seid0n-panel-in var(--p0seid0n-duration-normal) var(--p0seid0n-ease-out);
-  --animate-toast-in: p0seid0n-toast-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out);
-  --animate-toast-out: p0seid0n-toast-out var(--p0seid0n-duration-normal) var(--p0seid0n-ease-in);
-  --animate-check-in: p0seid0n-check-in var(--p0seid0n-duration-fast) var(--p0seid0n-ease-spring);
-  --animate-check-out: p0seid0n-check-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in);
+  --animate-fade-in: p0seid0n-fade-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out) both;
+  --animate-fade-out: p0seid0n-fade-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in)
+    forwards;
+  --animate-dialog-in: p0seid0n-dialog-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out)
+    both;
+  --animate-dialog-out: p0seid0n-dialog-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in)
+    forwards;
+  --animate-pop-in: p0seid0n-pop-in var(--p0seid0n-duration-normal) var(--p0seid0n-ease-out) both;
+  --animate-pop-out: p0seid0n-pop-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in)
+    forwards;
+  --animate-panel-in: p0seid0n-panel-in var(--p0seid0n-duration-normal) var(--p0seid0n-ease-out)
+    both;
+  --animate-toast-in: p0seid0n-toast-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out) both;
+  --animate-toast-out: p0seid0n-toast-out var(--p0seid0n-duration-normal) var(--p0seid0n-ease-in)
+    forwards;
+  --animate-check-in: p0seid0n-check-in var(--p0seid0n-duration-fast) var(--p0seid0n-ease-spring)
+    both;
+  --animate-check-out: p0seid0n-check-out var(--p0seid0n-duration-fast) var(--p0seid0n-ease-in)
+    forwards;
   --animate-accordion-down: p0seid0n-accordion-down var(--p0seid0n-duration-normal)
-    var(--p0seid0n-ease-out);
+    var(--p0seid0n-ease-out) both;
   --animate-accordion-up: p0seid0n-accordion-up var(--p0seid0n-duration-fast)
-    var(--p0seid0n-ease-in);
-  --animate-sheet-in: p0seid0n-sheet-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out);
-  --animate-sheet-out: p0seid0n-sheet-out var(--p0seid0n-duration-normal) var(--p0seid0n-ease-in);
+    var(--p0seid0n-ease-in) forwards;
+  --animate-sheet-in: p0seid0n-sheet-in var(--p0seid0n-duration-slow) var(--p0seid0n-ease-out) both;
+  --animate-sheet-out: p0seid0n-sheet-out var(--p0seid0n-duration-normal) var(--p0seid0n-ease-in)
+    forwards;
   --animate-progress-indeterminate: p0seid0n-progress-indeterminate 1.4s var(--p0seid0n-ease-out)
     infinite;
 }
@@ -208,14 +217,14 @@
     opacity: 0;
   }
   to {
-    height: var(--reka-accordion-content-height);
+    height: var(--accordion-panel-height);
     opacity: 1;
   }
 }
 
 @keyframes p0seid0n-accordion-up {
   from {
-    height: var(--reka-accordion-content-height);
+    height: var(--accordion-panel-height);
     opacity: 1;
   }
   to {

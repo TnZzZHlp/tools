@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, inject, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { SelectLabel } from 'reka-ui'
+import { SelectGroupLabel as SdkSelectGroupLabel } from '@ui-sdk/vue/select'
+import { selectGroup } from './selection'
 import { selectLabel } from './styles'
 
 defineOptions({ inheritAttrs: false })
 
+const grouped = inject(selectGroup, false)
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -16,7 +18,11 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <SelectLabel v-bind="forwarded" :class="cn(selectLabel, attrs.class as ClassValue)">
+  <component
+    :is="grouped ? SdkSelectGroupLabel : 'div'"
+    v-bind="forwarded"
+    :class="cn(selectLabel, attrs.class as ClassValue)"
+  >
     <slot />
-  </SelectLabel>
+  </component>
 </template>

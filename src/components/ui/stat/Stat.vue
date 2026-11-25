@@ -2,6 +2,14 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import {
+  StatPart,
+  StatLabelPart,
+  StatValueRowPart,
+  StatValuePart,
+  StatUnitPart,
+  StatFigurePart,
+} from './parts'
 
 defineOptions({ name: 'UiStat', inheritAttrs: false })
 
@@ -46,10 +54,10 @@ const toneClass = computed(
 </script>
 
 <template>
-  <div v-bind="forwarded" :class="cn('flex flex-col', attrs.class as ClassValue)">
-    <span class="text-[13px] font-medium text-ink-muted">{{ label }}</span>
-    <div class="mt-1 flex items-baseline gap-0">
-      <span
+  <StatPart v-bind="forwarded" :class="cn('flex flex-col', attrs.class as ClassValue)">
+    <StatLabelPart class="text-[13px] font-medium text-ink-muted">{{ label }}</StatLabelPart>
+    <StatValueRowPart class="mt-1 flex items-baseline gap-0">
+      <StatValuePart
         :class="
           cn(
             'font-condensed text-[26px] leading-none font-medium tracking-[-0.01em] tabular-nums',
@@ -59,18 +67,18 @@ const toneClass = computed(
         "
       >
         {{ isEmpty ? emptyText : value }}
-      </span>
-      <span
+      </StatValuePart>
+      <StatUnitPart
         v-if="unit && !isEmpty"
         class="ml-1.5 font-sans text-[14px] font-normal text-ink-muted lg:text-[16px]"
-        >{{ unit }}</span
+        >{{ unit }}</StatUnitPart
       >
-      <span
+      <StatFigurePart
         v-if="$slots.figure"
         class="min-w-0 flex-1 pl-3 font-condensed text-[26px] leading-none max-sm:text-[24px] lg:text-[28px]"
       >
         <slot name="figure" />
-      </span>
-    </div>
-  </div>
+      </StatFigurePart>
+    </StatValueRowPart>
+  </StatPart>
 </template>

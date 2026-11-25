@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, inject, useAttrs, watchEffect } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { RadioGroupIndicator, RadioGroupItem } from 'reka-ui'
+import { Radio as RadioGroupItem, RadioIndicator as RadioGroupIndicator } from '@ui-sdk/vue/radio'
+import { requiredRadioItems } from './context'
 
 defineOptions({ inheritAttrs: false })
 
@@ -30,6 +31,16 @@ const props = withDefaults(defineProps<RadioGroupItemProps>(), {
   invalid: false,
 })
 
+const requiredItems = inject(requiredRadioItems)
+if (requiredItems) {
+  const key = Symbol()
+  watchEffect((onCleanup) => {
+    if (!props.required) return
+    requiredItems.add(key)
+    onCleanup(() => requiredItems.delete(key))
+  })
+}
+
 const ariaInvalid = computed(() => {
   if (props.invalid) return 'true'
   return attrs['aria-invalid'] as 'true' | 'false' | 'grammar' | 'spelling' | undefined
@@ -42,13 +53,12 @@ const ariaInvalid = computed(() => {
     :id="id"
     :value="value"
     :disabled="disabled"
-    :required="required"
     :aria-invalid="ariaInvalid"
     :class="
       cn(
         'inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-line bg-control text-surface',
         'outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ink',
-        'data-[state=checked]:border-ink data-[state=checked]:bg-ink',
+        'data-checked:border-ink data-checked:bg-ink',
         'aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:outline-danger',
         'disabled:cursor-default disabled:opacity-55',
         'transition-[background-color,border-color,color] duration-[var(--p0seid0n-duration-fast)] ease-out-expo motion-reduce:transition-none',
@@ -57,7 +67,7 @@ const ariaInvalid = computed(() => {
     "
   >
     <RadioGroupIndicator
-      class="flex items-center justify-center motion-safe:animate-check-in data-[state=unchecked]:motion-safe:animate-check-out"
+      class="flex items-center justify-center motion-safe:animate-check-in data-ending-style:motion-safe:animate-check-out"
     >
       <slot name="indicator">
         <span class="size-2 rounded-full bg-surface" />

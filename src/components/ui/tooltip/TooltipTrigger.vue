@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { TooltipTrigger } from 'reka-ui'
+import { TooltipTrigger as SdkTooltipTrigger } from '@ui-sdk/vue/tooltip'
+import { RenderChild } from '@/lib/render-child'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,7 +16,10 @@ withDefaults(defineProps<TooltipTriggerProps>(), {
 </script>
 
 <template>
-  <TooltipTrigger :as="as" :as-child="asChild" v-bind="$attrs">
-    <slot />
-  </TooltipTrigger>
+  <SdkTooltipTrigger v-bind="$attrs">
+    <template #render="{ props: part }">
+      <RenderChild v-if="asChild" v-bind="part"><slot /></RenderChild>
+      <component :is="as" v-else v-bind="part"><slot /></component>
+    </template>
+  </SdkTooltipTrigger>
 </template>

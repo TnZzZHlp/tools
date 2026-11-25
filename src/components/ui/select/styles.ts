@@ -1,11 +1,11 @@
 export const selectSurface = [
-  'z-50 max-h-80 min-w-[8rem] overflow-hidden rounded-panel border border-line bg-raised text-ink shadow-popup outline-none',
-  'origin-[var(--reka-select-content-transform-origin)]',
+  'z-50 flex max-h-[min(20rem,var(--available-height,20rem))] min-w-[8rem] flex-col gap-0 overflow-hidden p-0 rounded-panel border border-line bg-raised text-ink shadow-popup outline-none',
+  'origin-[var(--transform-origin)]',
   'data-[side=bottom]:[--p0seid0n-pop-y:-4px]',
   'data-[side=top]:[--p0seid0n-pop-y:4px]',
   'data-[side=left]:[--p0seid0n-pop-x:4px] data-[side=left]:[--p0seid0n-pop-y:0px]',
   'data-[side=right]:[--p0seid0n-pop-x:-4px] data-[side=right]:[--p0seid0n-pop-y:0px]',
-  'motion-safe:animate-pop-in data-[state=closed]:motion-safe:animate-pop-out',
+  'motion-safe:animate-pop-in data-ending-style:motion-safe:animate-pop-out',
 ].join(' ')
 
 export const selectItem = [

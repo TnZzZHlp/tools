@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TablePart } from './parts'
 
 defineOptions({ name: 'UiTable', inheritAttrs: false })
 
@@ -15,13 +16,13 @@ const forwarded = computed(() => {
 
 <template>
   <div class="relative w-full overflow-x-auto">
-    <table
+    <TablePart
       v-bind="forwarded"
       :class="
         cn('w-full caption-bottom border-collapse text-[14px] text-ink', attrs.class as ClassValue)
       "
     >
       <slot />
-    </table>
+    </TablePart>
   </div>
 </template>

@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { PaginationEllipsis } from 'reka-ui'
+import { PaginationEllipsis as SdkPaginationEllipsis } from '@ui-sdk/vue/pagination'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,7 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <PaginationEllipsis
+  <SdkPaginationEllipsis
     v-bind="forwarded"
     :class="
       cn(
@@ -31,5 +31,5 @@ const forwarded = computed(() => {
         <circle cx="12.5" cy="8" r="1.25" />
       </svg>
     </slot>
-  </PaginationEllipsis>
+  </SdkPaginationEllipsis>
 </template>

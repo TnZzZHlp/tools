@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, provide, reactive, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { RadioGroupRoot } from 'reka-ui'
+import { RadioGroup as RadioGroupRoot } from '@ui-sdk/vue/radio'
+import { requiredRadioItems } from './context'
 
 defineOptions({ inheritAttrs: false })
 
@@ -32,18 +33,21 @@ withDefaults(defineProps<RadioGroupProps>(), {
 })
 
 const model = defineModel<string>()
+const requiredItems = reactive(new Set<symbol>())
+provide(requiredRadioItems, requiredItems)
 </script>
 
 <template>
   <RadioGroupRoot
     v-bind="forwarded"
-    v-model="model"
+    :value="model"
     :default-value="defaultValue"
     :disabled="disabled"
-    :orientation="orientation"
+    :aria-orientation="orientation"
+    :data-orientation="orientation"
     :loop="loop"
     :name="name"
-    :required="required"
+    :required="required || requiredItems.size > 0"
     :class="
       cn(
         'grid gap-2.5',
@@ -51,6 +55,7 @@ const model = defineModel<string>()
         attrs.class as ClassValue,
       )
     "
+    @update:value="model = $event ?? undefined"
   >
     <slot />
   </RadioGroupRoot>

@@ -3,10 +3,15 @@ import { inject, provide, type ComputedRef, type InjectionKey, type Ref } from '
 export type CommandItemMeta = {
   value: string
   keywords?: readonly string[]
+  disabled?: boolean
 }
 
 export type CommandContext = {
   search: Ref<string>
+  disabled: ComputedRef<boolean>
+  multiple: ComputedRef<boolean>
+  isSelected: (value: string) => boolean
+  select: (value: string, event: Event) => void
   filterDisabled: ComputedRef<boolean>
   visibleIds: ComputedRef<Set<string>>
   registerItem: (id: string, meta: CommandItemMeta) => void
@@ -37,6 +42,17 @@ export function matchesCommandItem(
   if (contains(value, trimmed)) return true
   if (!keywords || keywords.length === 0) return false
   return keywords.some((keyword) => contains(keyword, trimmed))
+}
+
+const collator = new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' })
+
+export function containsCommandText(text: string, query: string) {
+  const target = text.normalize('NFC')
+  const search = query.normalize('NFC')
+  for (let index = 0; index <= target.length - search.length; index += 1) {
+    if (collator.compare(target.slice(index, index + search.length), search) === 0) return true
+  }
+  return false
 }
 
 export function provideCommandContext(context: CommandContext): void {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DropdownMenuRoot } from 'reka-ui'
+import { Menu as SdkMenu } from '@ui-sdk/vue/menu'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,11 +15,11 @@ withDefaults(defineProps<DropdownMenuProps>(), {
   modal: false,
 })
 
-const open = defineModel<boolean>('open')
+const open = defineModel<boolean | undefined>('open', { default: undefined })
 </script>
 
 <template>
-  <DropdownMenuRoot v-model:open="open" :default-open="defaultOpen" :modal="modal" v-bind="$attrs">
+  <SdkMenu v-model:open="open" :default-open="defaultOpen" :modal="modal" v-bind="$attrs">
     <slot />
-  </DropdownMenuRoot>
+  </SdkMenu>
 </template>

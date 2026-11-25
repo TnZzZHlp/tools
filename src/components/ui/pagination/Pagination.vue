@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { PaginationRoot } from 'reka-ui'
+import { Pagination as PaginationRoot } from '@ui-sdk/vue/pagination'
 
 defineOptions({ name: 'UiPagination', inheritAttrs: false })
 
@@ -36,18 +36,18 @@ const forwarded = computed(() => {
 
 <template>
   <PaginationRoot
-    v-slot="slotProps"
+    v-slot="{ state }"
     v-model:page="page"
     aria-label="Pagination"
     v-bind="forwarded"
     :default-page="defaultPage"
     :total="total"
-    :items-per-page="itemsPerPage"
-    :sibling-count="siblingCount"
-    :show-edges="showEdges"
+    :page-size="itemsPerPage"
+    :siblings="siblingCount"
+    :boundaries="showEdges ? 1 : 0"
     :disabled="disabled"
     :class="cn('mx-auto flex w-full justify-center', attrs.class as ClassValue)"
   >
-    <slot v-bind="slotProps" />
+    <slot :page="state.page" :page-count="state.pageCount" />
   </PaginationRoot>
 </template>

@@ -95,20 +95,19 @@ export function areaPaths(
 
   if (curve === 'linear' || points.length === 2) {
     for (let index = 1; index < points.length; index += 1) {
-      const pt = points[index]!
-      linePath += `L${pt.x},${pt.y}`
+      const point = points[index]!
+      linePath += `L${point.x},${point.y}`
     }
   } else {
     const count = points.length
-    const slopes = Array.from({ length: count - 1 }, () => 0)
-    for (let index = 0; index < count - 1; index += 1) {
-      const cur = points[index]!
-      const nxt = points[index + 1]!
-      const dx = nxt.x - cur.x || 1
-      slopes[index] = (nxt.y - cur.y) / dx
-    }
+    const slopes: number[] = Array.from({ length: count - 1 }, (_, index) => {
+      const p0 = points[index]!
+      const p1 = points[index + 1]!
+      const dx = p1.x - p0.x || 1
+      return (p1.y - p0.y) / dx
+    })
 
-    const tangents = Array.from({ length: count }, () => 0)
+    const tangents: number[] = Array.from({ length: count }, () => 0)
     tangents[0] = slopes[0] ?? 0
     tangents[count - 1] = slopes[count - 2] ?? 0
 
@@ -125,13 +124,11 @@ export function areaPaths(
     for (let index = 0; index < count - 1; index += 1) {
       const p0 = points[index]!
       const p1 = points[index + 1]!
-      const t0 = tangents[index] ?? 0
-      const t1 = tangents[index + 1] ?? 0
       const dx = p1.x - p0.x
       const cp1x = round(p0.x + dx / 3)
-      const cp1y = round(p0.y + (t0 * dx) / 3)
+      const cp1y = round(p0.y + ((tangents[index] ?? 0) * dx) / 3)
       const cp2x = round(p1.x - dx / 3)
-      const cp2y = round(p1.y - (t1 * dx) / 3)
+      const cp2y = round(p1.y - ((tangents[index + 1] ?? 0) * dx) / 3)
       linePath += `C${cp1x},${cp1y},${cp2x},${cp2y},${p1.x},${p1.y}`
     }
   }

@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { BreadcrumbEllipsisPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,9 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <span
-    role="presentation"
-    aria-hidden="true"
+  <BreadcrumbEllipsisPart
     v-bind="forwarded"
     :class="
       cn('inline-flex size-7 items-center justify-center text-ink-faint', attrs.class as ClassValue)
@@ -30,5 +29,5 @@ const forwarded = computed(() => {
       </svg>
     </slot>
     <span class="sr-only">More</span>
-  </span>
+  </BreadcrumbEllipsisPart>
 </template>

@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { DropdownMenuGroup } from 'reka-ui'
+import { MenuGroup as SdkMenuGroup } from '@ui-sdk/vue/menu'
+import { provide } from 'vue'
+import { menuGroup } from './selection'
 
 defineOptions({ inheritAttrs: false })
+
+provide(menuGroup, true)
 </script>
 
 <template>
-  <DropdownMenuGroup v-bind="$attrs">
+  <SdkMenuGroup v-bind="$attrs">
     <slot />
-  </DropdownMenuGroup>
+  </SdkMenuGroup>
 </template>

@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { SelectGroup } from 'reka-ui'
+import { SelectGroup as SdkSelectGroup } from '@ui-sdk/vue/select'
+import { provide } from 'vue'
+import { selectGroup } from './selection'
 
 defineOptions({ inheritAttrs: false })
+
+provide(selectGroup, true)
 </script>
 
 <template>
-  <SelectGroup v-bind="$attrs">
+  <SdkSelectGroup v-bind="$attrs">
     <slot />
-  </SelectGroup>
+  </SdkSelectGroup>
 </template>

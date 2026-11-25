@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { DropdownMenuTrigger } from 'reka-ui'
+import { MenuTrigger as SdkMenuTrigger } from '@ui-sdk/vue/menu'
+import { RenderChild } from '@/lib/render-child'
 
 defineOptions({ inheritAttrs: false })
 
@@ -18,7 +19,14 @@ withDefaults(defineProps<DropdownMenuTriggerProps>(), {
 </script>
 
 <template>
-  <DropdownMenuTrigger :as="as" :as-child="asChild" :disabled="disabled" v-bind="$attrs">
-    <slot />
-  </DropdownMenuTrigger>
+  <SdkMenuTrigger
+    v-bind="$attrs"
+    :disabled="disabled"
+    :class="!asChild && 'h-auto border-0 bg-transparent p-0'"
+  >
+    <template #render="{ props: part }">
+      <RenderChild v-if="asChild" v-bind="part"><slot /></RenderChild>
+      <component :is="as" v-else v-bind="part"><slot /></component>
+    </template>
+  </SdkMenuTrigger>
 </template>

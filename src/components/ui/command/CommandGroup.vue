@@ -2,7 +2,7 @@
 import { computed, reactive, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { ListboxGroup, ListboxGroupLabel } from 'reka-ui'
+import { CommandGroup as SdkCommandGroup, CommandGroupLabel } from '@ui-sdk/vue/command'
 import { provideCommandGroupContext, useCommandContext } from './context'
 
 defineOptions({ inheritAttrs: false })
@@ -45,17 +45,17 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <ListboxGroup
+  <SdkCommandGroup
     v-show="isVisible"
     v-bind="forwarded"
     :class="cn('overflow-hidden text-ink [&+&]:mt-1', attrs.class as ClassValue)"
   >
-    <ListboxGroupLabel
+    <CommandGroupLabel
       v-if="heading || $slots.heading"
       class="px-2.5 py-1.5 text-[12px] font-medium text-ink-faint"
     >
       <slot name="heading">{{ heading }}</slot>
-    </ListboxGroupLabel>
+    </CommandGroupLabel>
     <slot />
-  </ListboxGroup>
+  </SdkCommandGroup>
 </template>

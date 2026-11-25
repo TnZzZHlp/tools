@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuCheckboxItem, DropdownMenuItemIndicator } from 'reka-ui'
+import { MenuItem as SdkMenuItem } from '@ui-sdk/vue/menu'
+import { emitMenuSelect } from './selection'
 import { menuItem } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -20,6 +21,13 @@ withDefaults(defineProps<DropdownMenuCheckboxItemProps>(), {
 const model = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ select: [event: Event] }>()
 
+const checked = model
+
+function onSelect(event: Event) {
+  emitMenuSelect(event, (select) => emit('select', select))
+  model.value = !model.value
+}
+
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -29,23 +37,32 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DropdownMenuCheckboxItem
-    v-model="model"
+  <SdkMenuItem
     v-bind="forwarded"
     :disabled="disabled"
-    :text-value="textValue"
+    :label="textValue"
     :class="cn(menuItem, attrs.class as ClassValue)"
-    @select="emit('select', $event)"
+    @select="onSelect"
   >
-    <span class="flex size-3.5 shrink-0 items-center justify-center">
-      <DropdownMenuItemIndicator
-        class="flex items-center justify-center text-ink motion-safe:animate-check-in data-[state=unchecked]:motion-safe:animate-check-out"
+    <template #render="{ props: part }">
+      <div
+        v-bind="part"
+        role="menuitemcheckbox"
+        :aria-checked="checked"
+        :data-state="checked ? 'checked' : 'unchecked'"
       >
-        <slot name="indicator">
-          <span class="size-1.5 rounded-full bg-ink" />
-        </slot>
-      </DropdownMenuItemIndicator>
-    </span>
-    <slot />
-  </DropdownMenuCheckboxItem>
+        <span class="flex size-3.5 shrink-0 items-center justify-center">
+          <Transition
+            enter-active-class="motion-safe:animate-check-in"
+            leave-active-class="motion-safe:animate-check-out"
+          >
+            <span v-if="checked" class="flex items-center justify-center text-ink">
+              <slot name="indicator"><span class="size-1.5 rounded-full bg-ink" /></slot>
+            </span>
+          </Transition>
+        </span>
+        <slot />
+      </div>
+    </template>
+  </SdkMenuItem>
 </template>

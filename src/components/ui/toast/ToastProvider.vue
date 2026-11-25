@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide } from 'vue'
+import { onBeforeUnmount, provide } from 'vue'
 import { toastKey, type ToastApi, type ToastOptions } from './context'
 import { createToastStack, provideToastStack } from './stack'
 import Toaster from './Toaster.vue'
@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<ToastProviderProps>(), {
 
 const stack = createToastStack()
 provideToastStack(stack)
+onBeforeUnmount(stack.dismissAll)
 
 function toast(options: ToastOptions): string {
   return stack.push(options, props.duration, props.max)

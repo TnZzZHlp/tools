@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button as SdkButton } from '@ui-sdk/vue/button'
 import { computed, useAttrs } from 'vue'
 import type { Component } from 'vue'
 import type { ClassValue } from 'clsx'
@@ -68,10 +69,16 @@ function onAuxClick(event: MouseEvent): void {
 
 <template>
   <component
-    :is="as"
+    :is="isNativeButton ? SdkButton : as"
     v-bind="forwarded"
     :type="isNativeButton ? type : undefined"
-    :class="cn(buttonVariants({ variant, size }), attrs.class as ClassValue)"
+    :class="
+      cn(
+        isNativeButton && 'h-auto border-0',
+        buttonVariants({ variant, size }),
+        attrs.class as ClassValue,
+      )
+    "
     :disabled="isNativeButton ? isInert : undefined"
     :tabindex="!isNativeButton && isInert ? -1 : (attrs.tabindex as number | string | undefined)"
     :aria-disabled="isInert ? 'true' : undefined"

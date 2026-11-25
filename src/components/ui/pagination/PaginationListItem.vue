@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { PaginationListItem } from 'reka-ui'
+import { PaginationLink } from '@ui-sdk/vue/pagination'
+import { RenderChild } from '@/lib/render-child'
 import { paginationItemButton } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -25,12 +26,14 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <PaginationListItem
+  <PaginationLink
     v-bind="forwarded"
-    :value="value"
-    :as-child="asChild"
+    :page="value"
     :class="cn(paginationItemButton, attrs.class as ClassValue)"
   >
-    <slot>{{ value }}</slot>
-  </PaginationListItem>
+    <template v-if="asChild" #render="{ props: part }">
+      <RenderChild v-bind="part"><slot /></RenderChild>
+    </template>
+    <slot v-if="!asChild">{{ value }}</slot>
+  </PaginationLink>
 </template>

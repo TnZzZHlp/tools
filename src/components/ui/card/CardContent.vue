@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { CardContentPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,10 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <div
+  <CardContentPart
     v-bind="forwarded"
     :class="cn('px-6 py-4 text-[14px] text-ink-muted', attrs.class as ClassValue)"
   >
     <slot />
-  </div>
+  </CardContentPart>
 </template>

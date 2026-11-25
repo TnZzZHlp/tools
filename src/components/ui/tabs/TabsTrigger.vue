@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { TabsTrigger } from 'reka-ui'
+import { TabsTab } from '@ui-sdk/vue/tabs'
+import { encodeTab } from './context'
 import { tabTrigger } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -25,12 +26,12 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <TabsTrigger
+  <TabsTab
     v-bind="forwarded"
-    :value="value"
+    :value="encodeTab(value)"
     :disabled="disabled"
     :class="cn(tabTrigger, attrs.class as ClassValue)"
   >
     <slot />
-  </TabsTrigger>
+  </TabsTab>
 </template>

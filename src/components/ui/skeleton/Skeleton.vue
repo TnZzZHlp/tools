@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { SkeletonPart } from './parts'
 
 defineOptions({ name: 'UiSkeleton', inheritAttrs: false })
 
@@ -14,8 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <div
-    aria-hidden="true"
+  <SkeletonPart
     v-bind="forwarded"
     :class="cn('rounded-control bg-control motion-safe:animate-pulse', attrs.class as ClassValue)"
   />

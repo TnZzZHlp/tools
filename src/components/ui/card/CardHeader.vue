@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { CardHeaderPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,7 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <div
+  <CardHeaderPart
     v-bind="forwarded"
     :class="cn('flex items-start justify-between gap-4 px-6 pt-5 pb-4', attrs.class as ClassValue)"
   >
@@ -30,5 +31,5 @@ const forwarded = computed(() => {
       <slot name="description" />
     </div>
     <slot name="action" />
-  </div>
+  </CardHeaderPart>
 </template>

@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useAttrs } from 'vue'
+import {
+  computed,
+  inject,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useAttrs,
+  watchEffect,
+} from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { TabsIndicator, TabsList } from 'reka-ui'
+import { TabsIndicator, TabsList as SdkTabsList } from '@ui-sdk/vue/tabs'
+import { tabsContext } from './context'
 import { tabIndicator, tabList } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -12,8 +22,13 @@ export type TabsListProps = {
   loop?: boolean
 }
 
-withDefaults(defineProps<TabsListProps>(), {
+const props = withDefaults(defineProps<TabsListProps>(), {
   loop: true,
+})
+
+const context = inject(tabsContext)
+watchEffect(() => {
+  if (context) context.loop.value = props.loop
 })
 
 const attrs = useAttrs()
@@ -41,13 +56,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <TabsList
+  <SdkTabsList
     v-bind="forwarded"
-    :loop="loop"
     :data-ready="ready ? '' : undefined"
     :class="cn(tabList, attrs.class as ClassValue)"
   >
     <TabsIndicator :class="tabIndicator" />
     <slot />
-  </TabsList>
+  </SdkTabsList>
 </template>

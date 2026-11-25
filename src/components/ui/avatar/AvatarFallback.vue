@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AvatarFallback } from 'reka-ui'
+import { AvatarFallback as SdkAvatarFallback } from '@ui-sdk/vue/avatar'
 
 defineOptions({ inheritAttrs: false })
 
@@ -23,9 +23,9 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AvatarFallback
+  <SdkAvatarFallback
     v-bind="forwarded"
-    :delay-ms="delayMs"
+    :delay="delayMs"
     :class="
       cn(
         'flex size-full items-center justify-center bg-control font-medium text-ink-muted',
@@ -34,5 +34,5 @@ const forwarded = computed(() => {
     "
   >
     <slot />
-  </AvatarFallback>
+  </SdkAvatarFallback>
 </template>

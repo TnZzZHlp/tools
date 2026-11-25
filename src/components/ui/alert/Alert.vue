@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { AlertPart } from './parts'
 import { alertVariants, type AlertVariant } from './variants'
 
 defineOptions({ name: 'UiAlert', inheritAttrs: false })
@@ -34,7 +35,7 @@ const iconTone = computed(() => {
 </script>
 
 <template>
-  <div
+  <AlertPart
     v-bind="forwarded"
     :role="role"
     :class="cn(alertVariants({ variant }), attrs.class as ClassValue)"
@@ -45,5 +46,5 @@ const iconTone = computed(() => {
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <slot />
     </div>
-  </div>
+  </AlertPart>
 </template>

@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { ListboxFilter } from 'reka-ui'
+import { CommandInput as SdkCommandInput } from '@ui-sdk/vue/command'
 import { useCommandContext } from './context'
 
 defineOptions({ inheritAttrs: false })
@@ -17,7 +17,7 @@ withDefaults(defineProps<CommandInputProps>(), {
   disabled: false,
 })
 
-const { search } = useCommandContext()
+const { disabled: commandDisabled } = useCommandContext()
 
 const attrs = useAttrs()
 const forwarded = computed(() => {
@@ -44,11 +44,10 @@ const forwarded = computed(() => {
         <path d="m10.5 10.5 3 3" />
       </svg>
     </slot>
-    <ListboxFilter
-      v-model="search"
+    <SdkCommandInput
       v-bind="forwarded"
-      :auto-focus="autoFocus"
-      :disabled="disabled"
+      :autofocus="autoFocus"
+      :disabled="disabled || commandDisabled"
       :class="
         cn(
           'flex h-11 w-full bg-transparent py-2.5 text-[14px] text-ink placeholder:text-ink-muted',

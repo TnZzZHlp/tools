@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Label as SdkLabel } from '@ui-sdk/vue/label'
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
@@ -26,7 +27,7 @@ withDefaults(defineProps<LabelProps>(), {
 </script>
 
 <template>
-  <label
+  <SdkLabel
     v-bind="forwarded"
     :for="$props.for"
     :class="
@@ -38,5 +39,5 @@ withDefaults(defineProps<LabelProps>(), {
   >
     <slot />
     <span v-if="required" aria-hidden="true" class="text-danger">*</span>
-  </label>
+  </SdkLabel>
 </template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, onMounted, ref, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AvatarImage } from 'reka-ui'
+import { AvatarImage as SdkAvatarImage } from '@ui-sdk/vue/avatar'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,6 +15,11 @@ withDefaults(defineProps<AvatarImageProps>(), {
   alt: '',
 })
 
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+})
+
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -24,9 +29,9 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AvatarImage
+  <SdkAvatarImage
     v-bind="forwarded"
-    :src="src"
+    :src="mounted ? src : undefined"
     :alt="alt"
     :class="cn('aspect-square size-full object-cover', attrs.class as ClassValue)"
   />

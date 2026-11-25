@@ -1,35 +1,79 @@
-import { computed, inject, provide, type ComputedRef, type InjectionKey } from 'vue'
+import type {
+  DialogFinalFocus,
+  DialogInitialFocus,
+  DialogOpenChangeDetails,
+} from '@ui-sdk/vue/dialog'
+import { inject, onScopeDispose, provide, type InjectionKey } from 'vue'
 
-export type DialogBehaviour = {
-  closeOnOutside: ComputedRef<boolean>
-  closeOnEsc: ComputedRef<boolean>
+export type PanelFocusProps = {
+  initialFocus?: DialogInitialFocus
+  finalFocus?: DialogFinalFocus
 }
 
-export const dialogBehaviourKey: InjectionKey<DialogBehaviour> = Symbol('p0seid0n-dialog')
+type DismissHandler = (details: DialogOpenChangeDetails) => void
+const behaviourKey: InjectionKey<Set<DismissHandler>> = Symbol('p0seid0n-dialog')
 
-export type DialogBehaviourSource = {
+type DismissOptions = {
   closeOnOutside: () => boolean
   closeOnEsc: () => boolean
 }
-
-/**
- * The source is a plain pair of getters rather than the props object: a destructured
- * or defaulted props proxy can resolve before `withDefaults` settles, which would
- * freeze the flags at their defaults.
- */
-export function provideDialogBehaviour(source: DialogBehaviourSource): void {
-  provide(dialogBehaviourKey, {
-    closeOnOutside: computed(source.closeOnOutside),
-    closeOnEsc: computed(source.closeOnEsc),
-  })
+const defaults: DismissOptions = {
+  closeOnOutside: () => true,
+  closeOnEsc: () => true,
 }
 
-const defaults: DialogBehaviour = {
-  closeOnOutside: computed(() => true),
-  closeOnEsc: computed(() => true),
+export function provideDialogBehaviour(options = defaults) {
+  const handlers = new Set<DismissHandler>()
+  provide(behaviourKey, handlers)
+
+  return (open: boolean, details: DialogOpenChangeDetails) => {
+    if (open) return
+    if (
+      (details.reason === 'outside-press' && !options.closeOnOutside()) ||
+      (details.reason === 'escape-key' && !options.closeOnEsc())
+    ) {
+      details.cancel()
+    }
+    for (const handler of handlers) handler(details)
+  }
 }
 
-/** Both flags stay true when DialogContent is used without a Dialog parent. */
-export function useDialogBehaviour(): DialogBehaviour {
-  return inject(dialogBehaviourKey, defaults)
+export type PointerDownOutsideEvent = CustomEvent<{ originalEvent: MouseEvent }>
+
+type DismissEvents = {
+  escapeKeyDown: (event: KeyboardEvent) => void
+  pointerDownOutside: (event: PointerDownOutsideEvent) => void
+  interactOutside: (event: Event) => void
+}
+
+export function useDialogDismiss(events: DismissEvents, options = defaults) {
+  const handlers = inject(behaviourKey, null)
+  const handler: DismissHandler = (details) => {
+    const original = details.event
+    if (details.reason === 'escape-key' && original instanceof KeyboardEvent) {
+      const event = new KeyboardEvent(original.type, {
+        key: original.key,
+        code: original.code,
+        altKey: original.altKey,
+        ctrlKey: original.ctrlKey,
+        metaKey: original.metaKey,
+        shiftKey: original.shiftKey,
+        cancelable: true,
+      })
+      if (details.canceled || !options.closeOnEsc()) event.preventDefault()
+      events.escapeKeyDown(event)
+      if (event.defaultPrevented) details.cancel()
+    } else if (details.reason === 'outside-press' && original instanceof MouseEvent) {
+      const event = new CustomEvent('dismissableLayer.pointerDownOutside', {
+        cancelable: true,
+        detail: { originalEvent: original },
+      })
+      if (details.canceled || !options.closeOnOutside()) event.preventDefault()
+      events.pointerDownOutside(event)
+      events.interactOutside(event)
+      if (event.defaultPrevented) details.cancel()
+    }
+  }
+  handlers?.add(handler)
+  onScopeDispose(() => handlers?.delete(handler))
 }

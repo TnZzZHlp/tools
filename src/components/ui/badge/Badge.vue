@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { BadgePart } from './parts'
 import { badgeVariants } from './variants'
 import type { BadgeVariant } from './variants'
 
@@ -24,10 +25,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <span
+  <BadgePart
     v-bind="forwarded"
     :class="cn(badgeVariants({ variant: props.variant }), attrs.class as ClassValue)"
   >
     <slot />
-  </span>
+  </BadgePart>
 </template>

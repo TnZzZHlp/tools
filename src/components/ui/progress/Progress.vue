@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { ProgressIndicator, ProgressRoot } from 'reka-ui'
+import { Progress as ProgressRoot, ProgressIndicator } from '@ui-sdk/vue/progress'
 
 defineOptions({ name: 'UiProgress', inheritAttrs: false })
 
@@ -39,10 +39,7 @@ const isIndeterminate = computed(
     !Number.isFinite(props.modelValue),
 )
 
-const percentage = computed(() => {
-  if (isIndeterminate.value || typeof props.modelValue !== 'number') return 0
-  return Math.min(100, Math.max(0, (props.modelValue / safeMax.value) * 100))
-})
+const value = computed(() => (isIndeterminate.value ? null : props.modelValue))
 
 const toneClass = computed(() => {
   if (props.tone === 'accent') return 'bg-accent'
@@ -53,24 +50,26 @@ const toneClass = computed(() => {
 
 <template>
   <ProgressRoot
-    :model-value="modelValue"
+    :value="value"
     :max="safeMax"
     v-bind="forwarded"
     :class="
-      cn('relative h-2.5 w-full overflow-hidden rounded-full bg-control', attrs.class as ClassValue)
+      cn(
+        'relative block h-2.5 w-full min-w-0 overflow-hidden rounded-full bg-control',
+        attrs.class as ClassValue,
+      )
     "
   >
     <ProgressIndicator
       :class="
         cn(
-          'h-full rounded-full',
+          'relative inset-auto h-full rounded-full bg-none',
           toneClass,
           isIndeterminate
             ? 'w-2/5 motion-safe:animate-progress-indeterminate motion-reduce:translate-x-3/4'
-            : 'w-full flex-1 transition-transform duration-[var(--p0seid0n-duration-slow)] ease-out-expo motion-reduce:transition-none',
+            : 'transition-[width] duration-[var(--p0seid0n-duration-slow)] ease-out-expo motion-reduce:transition-none',
         )
       "
-      :style="isIndeterminate ? undefined : { transform: `translateX(-${100 - percentage}%)` }"
     />
   </ProgressRoot>
 </template>

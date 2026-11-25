@@ -2,18 +2,17 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { DialogBackdrop, DialogClose, DialogContent as SdkDialogContent } from '@ui-sdk/vue/dialog'
 import {
-  DialogClose,
-  DialogContent,
-  DialogOverlay,
-  DialogPortal,
+  useDialogDismiss,
+  type PanelFocusProps,
   type PointerDownOutsideEvent,
-} from 'reka-ui'
+} from '../dialog/behaviour'
 import { sheetCloseButton, sheetVariants, type SheetSide } from './variants'
 
 defineOptions({ inheritAttrs: false })
 
-export type SheetContentProps = {
+export type SheetContentProps = PanelFocusProps & {
   side?: SheetSide
   /** Hides the built-in close button when the panel supplies its own. */
   hideClose?: boolean
@@ -24,6 +23,8 @@ export type SheetContentProps = {
 const props = withDefaults(defineProps<SheetContentProps>(), {
   side: 'right',
   hideClose: false,
+  initialFocus: undefined,
+  finalFocus: undefined,
   closeOnEsc: true,
   closeOnOutside: true,
 })
@@ -41,38 +42,30 @@ const emit = defineEmits<{
   interactOutside: [event: Event]
 }>()
 
-function onEscapeKeyDown(event: KeyboardEvent): void {
-  if (!props.closeOnEsc) event.preventDefault()
-  emit('escapeKeyDown', event)
-}
-
-function onPointerDownOutside(event: PointerDownOutsideEvent): void {
-  if (!props.closeOnOutside) event.preventDefault()
-  emit('pointerDownOutside', event)
-}
-
-function onInteractOutside(event: Event): void {
-  emit('interactOutside', event)
-}
+useDialogDismiss(
+  {
+    escapeKeyDown: (event) => emit('escapeKeyDown', event),
+    pointerDownOutside: (event) => emit('pointerDownOutside', event),
+    interactOutside: (event) => emit('interactOutside', event),
+  },
+  { closeOnEsc: () => props.closeOnEsc, closeOnOutside: () => props.closeOnOutside },
+)
 </script>
 
 <template>
-  <DialogPortal>
-    <DialogOverlay
-      class="fixed inset-0 z-40 bg-[color-mix(in_oklab,var(--color-ink)_45%,transparent)] motion-safe:animate-fade-in data-[state=closed]:motion-safe:animate-fade-out"
-    />
-    <DialogContent
-      v-bind="forwarded"
-      aria-modal="true"
-      :class="cn(sheetVariants({ side }), attrs.class as ClassValue)"
-      @escape-key-down="onEscapeKeyDown"
-      @pointer-down-outside="onPointerDownOutside"
-      @interact-outside="onInteractOutside"
-    >
-      <slot />
-      <DialogClose v-if="!hideClose" aria-label="Close" :class="sheetCloseButton">
-        <span aria-hidden="true">&#215;</span>
-      </DialogClose>
-    </DialogContent>
-  </DialogPortal>
+  <DialogBackdrop
+    class="fixed inset-0 z-40 bg-[color-mix(in_oklab,var(--color-ink)_45%,transparent)] motion-safe:animate-fade-in data-ending-style:motion-safe:animate-fade-out"
+  />
+  <SdkDialogContent
+    v-bind="forwarded"
+    :initial-focus="initialFocus"
+    :final-focus="finalFocus"
+    aria-modal="true"
+    :class="cn(sheetVariants({ side }), attrs.class as ClassValue)"
+  >
+    <slot />
+    <DialogClose v-if="!hideClose" aria-label="Close" :class="sheetCloseButton">
+      <span aria-hidden="true">&#215;</span>
+    </DialogClose>
+  </SdkDialogContent>
 </template>

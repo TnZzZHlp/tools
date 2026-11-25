@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { AlertTitlePart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,10 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <h5
+  <AlertTitlePart
     v-bind="forwarded"
     :class="cn('text-[14px] leading-snug font-semibold text-ink', attrs.class as ClassValue)"
   >
     <slot />
-  </h5>
+  </AlertTitlePart>
 </template>

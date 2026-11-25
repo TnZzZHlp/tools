@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TableHeadPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -23,7 +24,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <th
+  <TableHeadPart
     v-bind="forwarded"
     :class="
       cn(
@@ -34,5 +35,5 @@ const forwarded = computed(() => {
     "
   >
     <slot />
-  </th>
+  </TableHeadPart>
 </template>

@@ -23,7 +23,7 @@ withDefaults(defineProps<CommandDialogProps>(), {
   closeOnOutside: true,
 })
 
-const open = defineModel<boolean>('open')
+const open = defineModel<boolean | undefined>('open', { default: undefined })
 
 const attrs = useAttrs()
 const forwarded = computed(() => {

@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '../dropdown-menu'
+import { Menu, MenuItemIndicator, MenuRadioGroup, MenuRadioItem } from '@ui-sdk/vue/menu'
+import { DropdownMenuContent, DropdownMenuTrigger } from '../dropdown-menu'
+import { menuItem } from '../dropdown-menu/styles'
 import { Button } from '../button'
 import { useTheme } from '../theme-provider'
 import type { ThemeChoice } from '../theme-provider'
@@ -28,15 +23,13 @@ const { theme, setTheme } = useTheme()
 
 const choices: readonly ThemeChoice[] = ['system', 'light', 'dark']
 
-// The radio group wants a plain string model; the injected ref stays the single source.
-const model = computed({
-  get: () => theme.value,
-  set: (next: string) => setTheme(next as ThemeChoice),
-})
+function onThemeChange(next: string | null) {
+  if (next === 'system' || next === 'light' || next === 'dark') setTheme(next)
+}
 </script>
 
 <template>
-  <DropdownMenu v-bind="$attrs">
+  <Menu :modal="false" v-bind="$attrs">
     <DropdownMenuTrigger as-child>
       <Button variant="ghost" size="sm" :aria-label="props.label">
         <slot name="icon" :theme="theme">
@@ -45,16 +38,23 @@ const model = computed({
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" :min-width="160">
-      <DropdownMenuRadioGroup v-model="model">
-        <DropdownMenuRadioItem
+      <MenuRadioGroup :value="theme" :aria-label="props.label" @update:value="onThemeChange">
+        <MenuRadioItem
           v-for="choice in choices"
           :key="choice"
           :value="choice"
+          :close-on-select="true"
           :data-testid="`theme-${choice}`"
+          :class="menuItem"
         >
+          <span class="flex size-3.5 shrink-0 items-center justify-center">
+            <MenuItemIndicator class="before:hidden">
+              <span class="block size-1.5 rounded-full bg-ink" />
+            </MenuItemIndicator>
+          </span>
           {{ props.labels[choice] }}
-        </DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
+        </MenuRadioItem>
+      </MenuRadioGroup>
     </DropdownMenuContent>
-  </DropdownMenu>
+  </Menu>
 </template>

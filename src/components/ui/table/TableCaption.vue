@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TableCaptionPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,10 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <caption
+  <TableCaptionPart
     v-bind="forwarded"
     :class="cn('mt-3 text-[12px] text-ink-faint', attrs.class as ClassValue)"
   >
     <slot />
-  </caption>
+  </TableCaptionPart>
 </template>

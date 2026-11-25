@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Separator as SdkSeparator } from '@ui-sdk/vue/separator'
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,7 @@ const isVertical = computed(() => props.orientation === 'vertical')
 </script>
 
 <template>
-  <div
+  <SdkSeparator
     v-bind="forwarded"
     :class="
       cn(
@@ -36,9 +37,8 @@ const isVertical = computed(() => props.orientation === 'vertical')
         attrs.class as ClassValue,
       )
     "
-    :role="decorative ? 'presentation' : 'separator'"
-    :aria-orientation="decorative ? undefined : orientation"
+    :decorative="decorative"
+    :orientation="orientation"
     :aria-hidden="decorative ? 'true' : undefined"
-    :data-orientation="orientation"
   />
 </template>

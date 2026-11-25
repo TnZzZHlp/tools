@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, useAttrs, useId, type StyleValue } from 'vue'
+import { computed, useAttrs, useId, type StyleValue } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
 import { areaPaths, niceMax, normalizeAreaData, type AreaCurve, type AreaTone } from './geometry'
+import { AreaChartAxis, AreaChartLegend, AreaChartPart, AreaChartPlot } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -47,7 +48,6 @@ const props = withDefaults(defineProps<AreaChartProps>(), {
 })
 
 const chartId = useId()
-const activeIndex = ref<number | null>(null)
 
 const attrs = useAttrs()
 const forwarded = computed(() => {
@@ -93,16 +93,9 @@ const legendVisible = computed(() =>
   props.showLegend !== undefined ? props.showLegend : renderedSeries.value.length > 1,
 )
 
-const activeX = computed(() => {
-  if (activeIndex.value === null) return 0
-  const firstSeries = renderedSeries.value[0]
-  return firstSeries?.points[activeIndex.value]?.x ?? 0
-})
-
-const activeLabel = computed(() => {
-  if (activeIndex.value === null) return ''
-  return normalised.value.labels[activeIndex.value] ?? ''
-})
+function activeX(index: number) {
+  return renderedSeries.value[0]?.points[index]?.x ?? 0
+}
 
 const gridLines = [4, 36, 68, 100] as const
 
@@ -124,34 +117,24 @@ function formatValue(value: number): string {
   return props.valueFormatter ? props.valueFormatter(value) : String(value)
 }
 
-function onPointerMove(event: PointerEvent): void {
-  if (!props.showTooltip || normalised.value.pointCount === 0) return
-  const target = event.currentTarget as HTMLElement | null
-  if (!target) return
-  const rect = target.getBoundingClientRect()
-  if (rect.width <= 0) return
-  const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
-  const count = normalised.value.pointCount
-  activeIndex.value = count <= 1 ? 0 : Math.round(ratio * (count - 1))
-}
-
-function onPointerLeave(): void {
-  activeIndex.value = null
-}
-
 const labelled = computed(() => props.ariaLabel !== undefined)
 const xAxisLabels = computed(() => {
   const labels = normalised.value.labels
   if (labels.length === 0) return []
   if (labels.length <= 5) return labels
   const mid = Math.floor((labels.length - 1) / 2)
-  return [labels[0] ?? '', labels[mid] ?? '', labels[labels.length - 1] ?? '']
+  return [labels[0], labels[mid], labels[labels.length - 1]]
 })
 </script>
 
 <template>
-  <div v-bind="forwarded" :class="cn('flex w-full flex-col gap-3', attrs.class as ClassValue)">
-    <div
+  <AreaChartPart
+    v-bind="forwarded"
+    :point-count="normalised.pointCount"
+    :interactive="showTooltip"
+    :class="cn('flex w-full flex-col gap-3', attrs.class as ClassValue)"
+  >
+    <AreaChartLegend
       v-if="legendVisible && renderedSeries.length > 0"
       class="flex flex-wrap items-center gap-4"
     >
@@ -163,13 +146,12 @@ const xAxisLabels = computed(() => {
         <span :class="cn('size-2 rounded-full', toneBgClass(item.tone))" aria-hidden="true" />
         <span>{{ item.name }}</span>
       </div>
-    </div>
+    </AreaChartLegend>
 
-    <div
+    <AreaChartPlot
+      v-slot="{ state: { activeIndex } }"
       class="relative w-full select-none"
       :style="[{ height: props.height }, attrs.style as StyleValue]"
-      @pointermove="onPointerMove"
-      @pointerleave="onPointerLeave"
     >
       <svg
         viewBox="0 0 100 100"
@@ -223,10 +205,10 @@ const xAxisLabels = computed(() => {
         </g>
       </svg>
 
-      <template v-if="showTooltip && activeIndex !== null && renderedSeries.length > 0">
+      <template v-if="showTooltip && activeIndex !== null && activeIndex < normalised.pointCount">
         <div
           class="pointer-events-none absolute inset-y-0 border-l border-line"
-          :style="{ left: `${activeX}%` }"
+          :style="{ left: `${activeX(activeIndex)}%` }"
         />
         <span
           v-for="item in renderedSeries"
@@ -245,12 +227,14 @@ const xAxisLabels = computed(() => {
         <div
           class="pointer-events-none absolute top-2 z-10 min-w-28 rounded-[10px] border border-line bg-raised px-2.5 py-1.5 text-[12px] shadow-popup"
           :style="
-            activeX > 60
-              ? { right: `${100 - activeX}%`, marginRight: '8px' }
-              : { left: `${activeX}%`, marginLeft: '8px' }
+            activeX(activeIndex) > 60
+              ? { right: `${100 - activeX(activeIndex)}%`, marginRight: '8px' }
+              : { left: `${activeX(activeIndex)}%`, marginLeft: '8px' }
           "
         >
-          <div class="mb-1 text-[11px] font-medium text-ink-faint">{{ activeLabel }}</div>
+          <div class="mb-1 text-[11px] font-medium text-ink-faint">
+            {{ normalised.labels[activeIndex] ?? '' }}
+          </div>
           <div
             v-for="item in renderedSeries"
             :key="item.name"
@@ -268,13 +252,13 @@ const xAxisLabels = computed(() => {
           </div>
         </div>
       </template>
-    </div>
+    </AreaChartPlot>
 
-    <div
+    <AreaChartAxis
       v-if="showXAxis && xAxisLabels.length > 0"
       class="flex items-center justify-between text-[11px] text-ink-faint"
     >
       <span v-for="(label, idx) in xAxisLabels" :key="`${label}-${idx}`">{{ label }}</span>
-    </div>
-  </div>
+    </AreaChartAxis>
+  </AreaChartPart>
 </template>

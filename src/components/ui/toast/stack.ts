@@ -1,8 +1,11 @@
+import { createOverlays } from '@ui-sdk/core/overlays'
+import { createToaster, type ToastContent } from '@ui-sdk/vue/toast'
 import { inject, provide, shallowRef, type InjectionKey, type Ref } from 'vue'
 import type { ToastOptions, ToastRecord } from './context'
 
 export type ToastStack = {
   items: Ref<ToastRecord[]>
+  toaster: ReturnType<typeof createToaster<ToastContent>>
   push: (options: ToastOptions, duration: number, max: number) => string
   dismiss: (id: string) => void
   dismissAll: () => void
@@ -15,15 +18,23 @@ export const toastStackKey: InjectionKey<ToastStack> = Symbol('p0seid0n-toast-st
  * reactive list without prop drilling through slots.
  */
 export function createToastStack(): ToastStack {
+  const toaster = createToaster({ overlays: createOverlays() })
   const items = shallowRef<ToastRecord[]>([])
   let sequence = 0
 
+  toaster.subscribe(() => {
+    items.value = toaster
+      .toasts()
+      .map((toast) => toast.data as ToastRecord)
+      .sort((a, b) => a.version - b.version)
+  })
+
   function dismiss(id: string): void {
-    items.value = items.value.filter((item) => item.id !== id)
+    toaster.dismiss(id)
   }
 
   function dismissAll(): void {
-    items.value = []
+    toaster.dismiss()
   }
 
   function push(options: ToastOptions, duration: number, max: number): string {
@@ -37,15 +48,26 @@ export function createToastStack(): ToastStack {
       version: sequence,
     }
 
-    // Re-pushing an id moves it to the top of the stack instead of duplicating it.
-    const withoutDuplicate = items.value.filter((item) => item.id !== id)
-    const next = [...withoutDuplicate, record]
-    // The cap trims the oldest entries, so a burst keeps the most recent ones.
-    items.value = next.slice(Math.max(0, next.length - Math.max(1, max)))
+    const existing = items.value.filter((item) => item.id !== id)
+    for (const oldest of existing.slice(0, Math.max(0, existing.length + 1 - Math.max(1, max)))) {
+      toaster.dismiss(oldest.id)
+    }
+
+    toaster({
+      id,
+      title: record.title,
+      description: record.description,
+      type: record.variant === 'danger' ? 'error' : record.variant,
+      duration: record.duration > 0 ? record.duration : Infinity,
+      action: record.action
+        ? { label: record.action.label, onAction: record.action.onClick, dismiss: true }
+        : undefined,
+      data: record,
+    })
     return id
   }
 
-  return { items, push, dismiss, dismissAll }
+  return { items, toaster, push, dismiss, dismissAll }
 }
 
 export function provideToastStack(stack: ToastStack): void {

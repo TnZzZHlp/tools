@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SelectValue } from 'reka-ui'
+import { SelectValue as SdkSelectValue } from '@ui-sdk/vue/select'
 
 defineOptions({ inheritAttrs: false })
 
@@ -13,8 +13,13 @@ withDefaults(defineProps<SelectValueProps>(), {
 </script>
 
 <template>
-  <SelectValue v-if="$slots.default" v-slot="slotProps" :placeholder="placeholder" v-bind="$attrs">
-    <slot v-bind="slotProps" />
-  </SelectValue>
-  <SelectValue v-else :placeholder="placeholder" v-bind="$attrs" />
+  <SdkSelectValue
+    v-if="$slots.default"
+    v-slot="{ state }"
+    :placeholder="placeholder"
+    v-bind="$attrs"
+  >
+    <slot :model-value="state.value ?? undefined" :selected-label="state.labels" />
+  </SdkSelectValue>
+  <SdkSelectValue v-else :placeholder="placeholder" v-bind="$attrs" />
 </template>

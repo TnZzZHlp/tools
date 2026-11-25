@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AlertDialogDescription } from 'reka-ui'
+import { AlertDialogDescription as SdkAlertDialogDescription } from '@ui-sdk/vue/alert-dialog'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,10 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AlertDialogDescription
+  <SdkAlertDialogDescription
     v-bind="forwarded"
     :class="cn('text-[14px] leading-relaxed text-ink-muted', attrs.class as ClassValue)"
   >
     <slot />
-  </AlertDialogDescription>
+  </SdkAlertDialogDescription>
 </template>

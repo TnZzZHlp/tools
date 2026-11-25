@@ -2,7 +2,8 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { PaginationFirst } from 'reka-ui'
+import { PaginationFirst as SdkPaginationFirst } from '@ui-sdk/vue/pagination'
+import { RenderChild } from '@/lib/render-child'
 import { paginationButton } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -24,12 +25,11 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <PaginationFirst
-    v-bind="forwarded"
-    :as-child="asChild"
-    :class="cn(paginationButton, attrs.class as ClassValue)"
-  >
-    <slot>
+  <SdkPaginationFirst v-bind="forwarded" :class="cn(paginationButton, attrs.class as ClassValue)">
+    <template v-if="asChild" #render="{ props: part }">
+      <RenderChild v-bind="part"><slot /></RenderChild>
+    </template>
+    <slot v-if="!asChild">
       <svg
         class="size-3.5"
         viewBox="0 0 16 16"
@@ -44,5 +44,5 @@ const forwarded = computed(() => {
         <path d="M6 12 2 8l4-4" />
       </svg>
     </slot>
-  </PaginationFirst>
+  </SdkPaginationFirst>
 </template>

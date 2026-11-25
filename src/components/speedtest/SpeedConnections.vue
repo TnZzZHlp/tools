@@ -60,7 +60,7 @@ function setMode(next: ThreadMode) {
       v-model="isSingle"
       :disabled="disabled"
       aria-label="切换单线程测速"
-      class="data-[state=checked]:border-line data-[state=checked]:bg-control [&>[data-state]]:bg-ink [&>[data-state]]:text-surface"
+      class="data-checked:border-line data-checked:bg-control [&>*]:bg-ink [&>*]:text-surface [&>*]:data-checked:text-surface"
     >
       <template #thumb>
         <svg

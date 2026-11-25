@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { DropdownMenuRadioGroup } from 'reka-ui'
+import { MenuGroup as SdkMenuGroup } from '@ui-sdk/vue/menu'
+import { provide } from 'vue'
+import { menuGroup, menuRadioValue } from './selection'
 
 defineOptions({ inheritAttrs: false })
 
 const model = defineModel<string>()
+provide(menuRadioValue, model)
+provide(menuGroup, true)
 </script>
 
 <template>
-  <DropdownMenuRadioGroup v-model="model" v-bind="$attrs">
+  <SdkMenuGroup v-bind="$attrs">
     <slot />
-  </DropdownMenuRadioGroup>
+  </SdkMenuGroup>
 </template>

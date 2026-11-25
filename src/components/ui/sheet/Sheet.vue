@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { DialogRoot } from 'reka-ui'
+import { Dialog as DialogRoot } from '@ui-sdk/vue/dialog'
+import { provideDialogBehaviour } from '../dialog/behaviour'
 
 defineOptions({ name: 'UiSheet', inheritAttrs: false })
 
@@ -12,11 +13,18 @@ withDefaults(defineProps<SheetProps>(), {
   defaultOpen: undefined,
 })
 
-const open = defineModel<boolean>('open')
+const open = defineModel<boolean | undefined>('open', { default: undefined })
+const onOpenChange = provideDialogBehaviour()
 </script>
 
 <template>
-  <DialogRoot v-model:open="open" :default-open="defaultOpen" modal v-bind="$attrs">
+  <DialogRoot
+    v-model:open="open"
+    :default-open="defaultOpen"
+    modal
+    v-bind="$attrs"
+    @open-change="onOpenChange"
+  >
     <slot />
   </DialogRoot>
 </template>

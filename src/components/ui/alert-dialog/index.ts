@@ -9,6 +9,7 @@ export { default as AlertDialogAction } from './AlertDialogAction.vue'
 export { default as AlertDialogCancel } from './AlertDialogCancel.vue'
 
 export type { AlertDialogProps } from './AlertDialog.vue'
+export type { AlertDialogContentProps } from './AlertDialogContent.vue'
 export type { AlertDialogTriggerProps } from './AlertDialogTrigger.vue'
 export type { AlertDialogActionProps } from './AlertDialogAction.vue'
 export type { AlertDialogCancelProps } from './AlertDialogCancel.vue'

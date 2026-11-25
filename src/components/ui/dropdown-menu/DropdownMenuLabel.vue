@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, inject, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { DropdownMenuLabel } from 'reka-ui'
+import { MenuGroupLabel as SdkMenuGroupLabel } from '@ui-sdk/vue/menu'
+import { menuGroup } from './selection'
 import { menuLabel } from './styles'
 
 defineOptions({ inheritAttrs: false })
 
+const grouped = inject(menuGroup, false)
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -16,7 +18,11 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <DropdownMenuLabel v-bind="forwarded" :class="cn(menuLabel, attrs.class as ClassValue)">
+  <component
+    :is="grouped ? SdkMenuGroupLabel : 'div'"
+    v-bind="forwarded"
+    :class="cn(menuLabel, attrs.class as ClassValue)"
+  >
     <slot />
-  </DropdownMenuLabel>
+  </component>
 </template>

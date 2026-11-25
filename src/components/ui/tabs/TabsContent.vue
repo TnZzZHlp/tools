@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, inject, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { TabsContent } from 'reka-ui'
+import { TabsPanel } from '@ui-sdk/vue/tabs'
+import { encodeTab, tabsContext } from './context'
 import { tabPanel } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -16,6 +17,7 @@ withDefaults(defineProps<TabsContentProps>(), {
   forceMount: false,
 })
 
+const context = inject(tabsContext)
 const attrs = useAttrs()
 const forwarded = computed(() => {
   const rest = { ...attrs }
@@ -25,12 +27,20 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <TabsContent
+  <TabsPanel
     v-bind="forwarded"
-    :value="value"
-    :force-mount="forceMount"
+    :value="encodeTab(value)"
+    :keep-mounted="forceMount || !context?.unmountOnHide.value"
     :class="cn(tabPanel, attrs.class as ClassValue)"
   >
-    <slot />
-  </TabsContent>
+    <template #render="{ props: part, state }">
+      <div
+        v-bind="part"
+        :hidden="!forceMount && part.hidden != null && part.hidden !== false"
+        :data-state="state.selected ? 'active' : 'inactive'"
+      >
+        <slot />
+      </div>
+    </template>
+  </TabsPanel>
 </template>

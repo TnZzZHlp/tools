@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { BreadcrumbSeparatorPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,9 +15,7 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <li
-    role="presentation"
-    aria-hidden="true"
+  <BreadcrumbSeparatorPart
     v-bind="forwarded"
     :class="
       cn(
@@ -26,5 +25,5 @@ const forwarded = computed(() => {
     "
   >
     <slot>/</slot>
-  </li>
+  </BreadcrumbSeparatorPart>
 </template>

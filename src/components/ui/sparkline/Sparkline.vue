@@ -3,6 +3,7 @@ import { computed, useAttrs } from 'vue'
 import type { StyleValue } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { SparklinePart } from './parts'
 import { sparklinePath } from './geometry'
 
 defineOptions({ name: 'UiSparkline', inheritAttrs: false })
@@ -65,7 +66,7 @@ const labelled = computed(() => props.ariaLabel !== undefined)
 </script>
 
 <template>
-  <svg
+  <SparklinePart
     v-bind="forwarded"
     :viewBox="`0 0 ${viewWidth} 1`"
     :style="[{ height: props.height }, attrs.style as StyleValue]"
@@ -83,5 +84,5 @@ const labelled = computed(() => props.ariaLabel !== undefined)
     :aria-hidden="labelled ? undefined : 'true'"
   >
     <path :d="path" fill="currentColor" />
-  </svg>
+  </SparklinePart>
 </template>

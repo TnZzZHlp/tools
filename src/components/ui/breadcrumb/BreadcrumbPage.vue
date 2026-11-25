@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { BreadcrumbPagePart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,13 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <span
-    role="link"
-    aria-disabled="true"
-    aria-current="page"
+  <BreadcrumbPagePart
     v-bind="forwarded"
     :class="cn('font-medium text-ink', attrs.class as ClassValue)"
   >
     <slot />
-  </span>
+  </BreadcrumbPagePart>
 </template>

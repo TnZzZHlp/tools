@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TooltipProvider, TooltipRoot } from 'reka-ui'
+import { Tooltip as TooltipRoot } from '@ui-sdk/vue/tooltip'
 
 defineOptions({ name: 'UiTooltip', inheritAttrs: false })
 
@@ -17,13 +17,17 @@ withDefaults(defineProps<TooltipProps>(), {
   disabled: false,
 })
 
-const open = defineModel<boolean>('open')
+const open = defineModel<boolean | undefined>('open', { default: undefined })
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="delay" :disabled="disabled">
-    <TooltipRoot v-model:open="open" :default-open="defaultOpen" v-bind="$attrs">
-      <slot />
-    </TooltipRoot>
-  </TooltipProvider>
+  <TooltipRoot
+    v-model:open="open"
+    v-bind="$attrs"
+    :default-open="defaultOpen"
+    :delay="delay"
+    :disabled="disabled"
+  >
+    <slot />
+  </TooltipRoot>
 </template>

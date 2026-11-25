@@ -1,17 +1,16 @@
 /**
  * Shared surface for every floating layer, taken from the reference menu styles:
  * 16px radius, 1px line border, popup shadow and a 6px inset so items keep their
- * own 10px radius from touching the edge. Portalled layers sit at z-50 so menus
- * opened from inside a dialog stack above that dialog.
+ * own 10px radius from touching the edge.
  */
 export const popupSurface = [
   'z-50 overflow-hidden rounded-panel border border-line bg-raised p-1.5 shadow-popup outline-none',
-  'origin-[var(--reka-dropdown-menu-content-transform-origin)]',
+  'origin-[var(--transform-origin)]',
   'data-[side=bottom]:[--p0seid0n-pop-y:-4px]',
   'data-[side=top]:[--p0seid0n-pop-y:4px]',
   'data-[side=left]:[--p0seid0n-pop-x:4px] data-[side=left]:[--p0seid0n-pop-y:0px]',
   'data-[side=right]:[--p0seid0n-pop-x:-4px] data-[side=right]:[--p0seid0n-pop-y:0px]',
-  'motion-safe:animate-pop-in data-[state=closed]:motion-safe:animate-pop-out',
+  'motion-safe:animate-pop-in data-ending-style:motion-safe:animate-pop-out',
 ].join(' ')
 
 export const menuItem = [

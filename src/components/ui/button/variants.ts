@@ -12,7 +12,7 @@ export const buttonVariants = cva(
     'relative isolate inline-flex shrink-0 select-none items-center justify-center gap-2 overflow-hidden',
     'whitespace-nowrap rounded-control font-medium',
     'outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-3 focus-visible:outline-ink',
-    'transition-[background-color,color,border-color,box-shadow,transform,opacity] duration-[var(--p0seid0n-duration-normal)] ease-spring motion-reduce:transition-none',
+    'transition-[background-color,color,border-color,box-shadow,scale,opacity] duration-[var(--p0seid0n-duration-normal)] ease-spring motion-reduce:transition-none',
     'active:scale-[0.98] disabled:active:scale-100 aria-[disabled=true]:active:scale-100 motion-reduce:active:scale-100',
     'disabled:cursor-default disabled:opacity-55 aria-disabled:cursor-default aria-disabled:opacity-55',
   ].join(' '),

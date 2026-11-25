@@ -414,8 +414,8 @@ describe('ExamPaperView UX', () => {
       const ansSwitch = document.getElementById('advanced-field-answer') as HTMLElement | null
       expect(diffSwitch).not.toBeNull()
       expect(ansSwitch).not.toBeNull()
-      expect(diffSwitch?.getAttribute('data-state')).toBe('unchecked')
-      expect(ansSwitch?.getAttribute('data-state')).toBe('unchecked')
+      expect(diffSwitch?.getAttribute('aria-checked')).toBe('false')
+      expect(ansSwitch?.getAttribute('aria-checked')).toBe('false')
 
       diffSwitch?.click()
       ansSwitch?.click()
@@ -466,8 +466,9 @@ describe('ExamPaperView UX', () => {
 
   it('keeps Tabs indicator valid and renders formatted preview without plain-text tab', async () => {
     expect(tabIndicator).not.toContain('reka-tabs-indicator-thickness')
-    expect(tabIndicator).toContain('top-1 bottom-1')
-    expect(tabPanel).toContain('data-[state=inactive]:hidden')
+    expect(tabIndicator).toContain('h-[var(--active-tab-height)]')
+    expect(tabIndicator).toContain('w-[var(--active-tab-width)]')
+    expect(tabPanel).toContain('data-selected:motion-safe:animate-panel-in')
 
     const sample = createSampleExamDocument()
     const wrapper = mount(ExamPaperPreview, {

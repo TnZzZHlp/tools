@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, useAttrs, useTemplateRef, type ComponentPublicInstance } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import {
-  SelectContent,
-  SelectPortal,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectViewport,
-} from 'reka-ui'
+import { SelectContent as SdkSelectContent, SelectList } from '@ui-sdk/vue/select'
+import SelectScrollButton from './SelectScrollButton.vue'
+import { useSelectScroll } from './scroll'
 import { selectSurface } from './styles'
 
 defineOptions({ inheritAttrs: false })
@@ -33,61 +29,33 @@ const forwarded = computed(() => {
   delete rest.class
   return rest
 })
+const list = useTemplateRef<ComponentPublicInstance>('list')
+const listElement = computed<HTMLElement | null>(() => {
+  const node = list.value?.$el
+  return typeof HTMLElement !== 'undefined' && node instanceof HTMLElement ? node : null
+})
+const { canScrollUp, canScrollDown, scroll } = useSelectScroll(listElement)
 </script>
 
 <template>
-  <SelectPortal>
-    <SelectContent
-      v-bind="forwarded"
-      :position="props.position"
-      :side="props.side"
-      :side-offset="props.sideOffset"
-      :align="props.align"
-      :class="cn(selectSurface, attrs.class as ClassValue)"
-    >
-      <SelectScrollUpButton
-        class="flex cursor-default items-center justify-center py-1 text-ink-muted"
-      >
-        <svg
-          class="size-3.5"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m4 10 4-4 4 4" />
-        </svg>
-      </SelectScrollUpButton>
-      <SelectViewport
-        :class="
-          cn(
-            'p-1.5',
-            props.position === 'popper' &&
-              'h-[var(--reka-select-trigger-height)] w-full min-w-[var(--reka-select-trigger-width)]',
-          )
-        "
-      >
-        <slot />
-      </SelectViewport>
-      <SelectScrollDownButton
-        class="flex cursor-default items-center justify-center py-1 text-ink-muted"
-      >
-        <svg
-          class="size-3.5"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m4 6 4 4 4-4" />
-        </svg>
-      </SelectScrollDownButton>
-    </SelectContent>
-  </SelectPortal>
+  <SdkSelectContent
+    v-bind="forwarded"
+    :align-item-with-trigger="props.position === 'item-aligned'"
+    :side="props.side"
+    :side-offset="props.sideOffset"
+    :align="props.align"
+    :class="
+      cn(
+        selectSurface,
+        props.position === 'popper' && 'min-w-[max(8rem,var(--anchor-width,0px))]',
+        attrs.class as ClassValue,
+      )
+    "
+  >
+    <SelectScrollButton v-if="canScrollUp" direction="up" @scroll="scroll(-1)" />
+    <SelectList ref="list" class="min-h-0 overflow-y-auto p-1.5">
+      <slot />
+    </SelectList>
+    <SelectScrollButton v-if="canScrollDown" direction="down" @scroll="scroll(1)" />
+  </SdkSelectContent>
 </template>

@@ -2,7 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
-import { AccordionContent } from 'reka-ui'
+import { AccordionPanel } from '@ui-sdk/vue/accordion'
 
 defineOptions({ inheritAttrs: false })
 
@@ -15,12 +15,16 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <AccordionContent
+  <AccordionPanel
     v-bind="forwarded"
-    class="overflow-hidden text-[14px] leading-relaxed text-ink-muted data-[state=open]:motion-safe:animate-accordion-down data-[state=closed]:motion-safe:animate-accordion-up"
+    class="h-[var(--accordion-panel-height)] overflow-hidden p-0 text-[14px] leading-relaxed text-ink-muted motion-safe:transition-[height,opacity] motion-safe:duration-[var(--p0seid0n-duration-normal)] motion-safe:ease-out-expo motion-safe:data-starting-style:h-0 motion-safe:data-starting-style:opacity-0 motion-safe:data-ending-style:h-0 motion-safe:data-ending-style:opacity-0"
   >
-    <div :class="cn('pt-0 pb-4 [&>p]:m-0', attrs.class as ClassValue)">
-      <slot />
-    </div>
-  </AccordionContent>
+    <template #render="{ props: part, state }">
+      <div v-bind="part" :data-state="state.open ? 'open' : 'closed'">
+        <div :class="cn('pt-0 pb-4 [&>p]:m-0', attrs.class as ClassValue)">
+          <slot />
+        </div>
+      </div>
+    </template>
+  </AccordionPanel>
 </template>

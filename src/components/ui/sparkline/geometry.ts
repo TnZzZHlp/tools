@@ -25,9 +25,9 @@ export function median(values: readonly number[]): number {
   if (values.length === 0) return 0
   const sorted = values.map(sanitize).sort((a, b) => a - b)
   const mid = sorted.length >> 1
-  return sorted.length % 2 === 0
-    ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
-    : (sorted[mid] ?? 0)
+  const current = sorted[mid] ?? 0
+  const previous = sorted[mid - 1] ?? current
+  return sorted.length % 2 === 0 ? (previous + current) / 2 : current
 }
 
 /**

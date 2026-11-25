@@ -2,6 +2,7 @@
 import { computed, useAttrs } from 'vue'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
+import { TableBodyPart } from './parts'
 
 defineOptions({ inheritAttrs: false })
 
@@ -14,7 +15,10 @@ const forwarded = computed(() => {
 </script>
 
 <template>
-  <tbody v-bind="forwarded" :class="cn('[&_tr:last-child]:border-0', attrs.class as ClassValue)">
+  <TableBodyPart
+    v-bind="forwarded"
+    :class="cn('[&_tr:last-child]:border-0', attrs.class as ClassValue)"
+  >
     <slot />
-  </tbody>
+  </TableBodyPart>
 </template>
