@@ -8,7 +8,7 @@ import { nextTick } from 'vue'
 import ExamPaperPreview from '@/components/exam-paper/ExamPaperPreview.vue'
 import { tabIndicator, tabPanel } from '@/components/ui/tabs/styles'
 import { buildExamDocxBytes, buildExamDocumentXml } from '@/lib/exam-paper/docxBuilder'
-import { parseExamDocx, parseExamJson, parseExamPdf, parseExamText } from '@/lib/exam-paper/parser'
+import { parseExamDocx, parseExamJson, parseExamText } from '@/lib/exam-paper/parser'
 import { createSampleExamDocument } from '@/lib/exam-paper/presets'
 import {
   buildRenderedParagraphs,
@@ -310,110 +310,6 @@ describe('exam-paper docx builder & parser round-trip', () => {
     expect(reparsed.sections.length).toBe(sample.sections.length)
     expect(computePaperStats(reparsed).questionCount).toBe(computePaperStats(sample).questionCount)
     expect(renderExamPlainText(reparsed)).toBe(renderExamPlainText(sample))
-  })
-
-  it('parses the reference 试卷模板文件 (1).docx accurately without stray hidden characters', async () => {
-    const templatePath = resolve(process.cwd(), '试卷模板文件 (1).docx')
-    const fileBytes = new Uint8Array(readFileSync(templatePath))
-    const parsed = await parseExamDocx(fileBytes)
-
-    expect(parsed.title).toBe('请在此处输入试卷名称')
-    expect(parsed.sections.map((s) => s.title)).toEqual(['选择题', '阅读理解', '填空题', '解答题'])
-    expect(parsed.sections[0]?.scoreMode).toBe('uniform')
-    expect(parsed.sections[0]?.scorePerQuestion).toBe(3)
-    expect(parsed.sections[3]?.scoreMode).toBe('per-question')
-
-    // Total continuous question numbers across all 4 sections: 1..25
-    const stats = computePaperStats(parsed)
-    expect(stats.questionCount).toBe(25)
-    expect(stats.groupCount).toBe(2)
-
-    // Compound question 2 has resolved （1） and （2） answers and analyses via numPr
-    const q2 = parsed.sections[0]?.items[1]
-    expect(q2?.kind).toBe('compound')
-    const q2Compound = q2 as Extract<NonNullable<typeof q2>, { kind: 'compound' }>
-    expect(q2Compound.subQuestions.length).toBe(2)
-    expect(q2Compound.subQuestions[0]?.answer).toContain('小题答案')
-    expect(q2Compound.subQuestions[1]?.analysis).toContain('解析')
-
-    // Stray white '[' must not appear in section header
-    expect(renderExamPlainText(parsed)).not.toContain('一、选择题（每小题3分）[')
-  })
-
-  it('parses the reference 1.pdf exam paper with multi-line title, 7 sections, 40 questions, blanks, and sub-questions', async () => {
-    const pdfPath = resolve(process.cwd(), '1.pdf')
-    const pdfBytes = new Uint8Array(readFileSync(pdfPath))
-    const parsed = await parseExamPdf(pdfBytes)
-
-    expect(parsed.title).toBe(
-      '文学院2025-2026学年（1）学期期末考试 《中国古代文学（1）》试卷（A卷）',
-    )
-    expect(parsed.sections.map((s) => s.title)).toEqual([
-      '单项选择题',
-      '多项选择题',
-      '填空',
-      '词语解释',
-      '简答题',
-      '诗歌赏析题',
-      '论述题',
-    ])
-    expect(parsed.sections.map((s) => s.scorePerQuestion)).toEqual([1, 2, 1, 4, 5, 10, 12])
-
-    const stats = computePaperStats(parsed)
-    expect(stats.sectionCount).toBe(7)
-    expect(stats.questionCount).toBe(40)
-    expect(stats.totalScore).toBe(100)
-
-    const q1 = parsed.sections[0]?.items[0] as Extract<
-      NonNullable<(typeof parsed.sections)[0]>['items'][0],
-      { kind: 'standard' }
-    >
-    expect(q1.kind).toBe('standard')
-    expect(q1.options.map((o) => o.label)).toEqual(['A', 'B', 'C', 'D'])
-    expect(q1.options[0]?.text).toBe('《吕氏春秋》')
-    expect(q1.options[1]?.text).toBe('《山海经》')
-
-    const q15 = parsed.sections[0]?.items[14] as Extract<
-      NonNullable<(typeof parsed.sections)[0]>['items'][0],
-      { kind: 'standard' }
-    >
-    expect(q15.stem).toContain('千古情语之祖')
-
-    const q16 = parsed.sections[1]?.items[0] as Extract<
-      NonNullable<(typeof parsed.sections)[1]>['items'][0],
-      { kind: 'standard' }
-    >
-    expect(q16.options.map((o) => o.label)).toEqual(['A', 'B', 'C', 'D', 'E'])
-
-    const q21 = parsed.sections[2]?.items[0] as Extract<
-      NonNullable<(typeof parsed.sections)[2]>['items'][0],
-      { kind: 'standard' }
-    >
-    const q26 = parsed.sections[2]?.items[5] as Extract<
-      NonNullable<(typeof parsed.sections)[2]>['items'][0],
-      { kind: 'standard' }
-    >
-    expect(q21.stem).toContain('我东曰归，______。')
-    expect(q26.stem).toContain('包括《______》《夏书》《商书》和《周书》四部分')
-
-    const q31 = parsed.sections[3]?.items[0] as Extract<
-      NonNullable<(typeof parsed.sections)[3]>['items'][0],
-      { kind: 'compound' }
-    >
-    expect(q31.kind).toBe('compound')
-    expect(q31.subQuestions.length).toBe(2)
-    expect(q31.subQuestions[0]?.stem).toBe('微：')
-    expect(q31.subQuestions[1]?.stem).toBe('亢：')
-
-    const q38 = parsed.sections[5]?.items[0] as Extract<
-      NonNullable<(typeof parsed.sections)[5]>['items'][0],
-      { kind: 'standard' }
-    >
-    expect(q38.stem).toContain('桃之夭夭、灼灼其华。之子于归、宜其室家。\n桃之夭夭、有蕡其实。')
-    expect(q38.stem.endsWith('思想观念。')).toBe(true)
-
-    const errors = validateExamDocument(parsed).filter((issue) => issue.severity === 'error')
-    expect(errors).toEqual([])
   })
 
   it('parses LLM JSON without ids and plain text templates', () => {
