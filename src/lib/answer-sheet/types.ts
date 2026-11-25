@@ -136,7 +136,13 @@ export interface PaperOverrides {
   blockOverrides: Record<string, BlockOverride>
 }
 
+export interface HeaderHeightsMm {
+  notice?: number
+  idArea?: number
+}
+
 export interface AnswerSheetLayoutConfig {
+  headerHeightsMm?: HeaderHeightsMm
   activePaperSpec: PaperSpecId
   customPaperSize?: PaperSize
   densityPreset: DensityPreset

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { SheetMeta } from '@/lib/answer-sheet/types'
+import type { HeaderHeightsMm, SheetMeta } from '@/lib/answer-sheet/types'
 import BubbleMark from './blocks/BubbleMark.vue'
 
-const props = defineProps<{ meta: SheetMeta; columnWidthMm: number }>()
+const props = defineProps<{ meta: SheetMeta; columnWidthMm: number; heightsMm?: HeaderHeightsMm }>()
+
+function areaSize(height?: number) {
+  return height === undefined ? undefined : { '--header-area-height': `${height}mm` }
+}
 
 const idDigitCount = computed(() => {
   const raw = props.meta.idDigits ?? 10
@@ -20,8 +24,15 @@ const idDigitCount = computed(() => {
         <span>{{ field }}:</span><span class="sheet-rule" />
       </div>
     </div>
-    <div class="header-details">
-      <div class="notice">
+    <div
+      class="header-details"
+      :class="{ 'custom-heights': heightsMm?.notice || heightsMm?.idArea }"
+    >
+      <div
+        class="notice"
+        :class="{ 'custom-height': heightsMm?.notice }"
+        :style="areaSize(heightsMm?.notice)"
+      >
         <div class="notice-body">
           <p class="notice-heading">注意事项:</p>
           <ol class="notice-list">
@@ -44,7 +55,12 @@ const idDigitCount = computed(() => {
         </div>
       </div>
 
-      <div v-if="meta.headerMode === 'barcode'" class="id-area barcode">
+      <div
+        v-if="meta.headerMode === 'barcode'"
+        class="id-area barcode"
+        :class="{ 'custom-height': heightsMm?.idArea }"
+        :style="areaSize(heightsMm?.idArea)"
+      >
         <div class="barcode-outline">
           <div
             class="barcode-cells"
@@ -57,7 +73,12 @@ const idDigitCount = computed(() => {
         </div>
       </div>
 
-      <div v-else class="id-area id-grid-box">
+      <div
+        v-else
+        class="id-area id-grid-box"
+        :class="{ 'custom-height': heightsMm?.idArea }"
+        :style="areaSize(heightsMm?.idArea)"
+      >
         <div class="id-title">准 考 证 号</div>
         <div
           class="id-columns"
@@ -124,6 +145,13 @@ h2 {
   grid-template-columns: 1fr;
   min-height: 0;
 }
+.header-details.custom-heights {
+  min-height: 0;
+}
+.custom-height {
+  align-self: start;
+  min-height: var(--header-area-height);
+}
 .notice {
   display: flex;
   flex-direction: column;
@@ -176,6 +204,17 @@ h2 {
 .barcode-outline {
   width: 100%;
   border: 0.25mm dashed;
+}
+.barcode.custom-height {
+  place-items: stretch;
+}
+.barcode.custom-height .barcode-outline {
+  display: flex;
+  flex-direction: column;
+}
+.barcode.custom-height .barcode-caption {
+  flex: 1;
+  min-height: 12mm;
 }
 .barcode-cells {
   display: grid;

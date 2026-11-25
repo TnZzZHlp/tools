@@ -1,4 +1,4 @@
-import type { AnswerSheetBlock, SheetMeta } from '../types'
+import type { AnswerSheetBlock, HeaderHeightsMm, SheetMeta } from '../types'
 
 export type Choice = Extract<AnswerSheetBlock, { type: 'omr_choice' }>
 export type Writing = Extract<AnswerSheetBlock, { type: 'lined_writing' }>
@@ -11,7 +11,7 @@ export interface ChoiceRow {
 }
 
 export type RenderItem =
-  | { type: 'header'; key: string; meta: SheetMeta }
+  | { type: 'header'; key: string; meta: SheetMeta; heightsMm?: HeaderHeightsMm }
   | { type: 'choices'; key: string; rows: ChoiceRow[] }
   | {
       type: 'block'

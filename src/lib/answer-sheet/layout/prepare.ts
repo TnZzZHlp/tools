@@ -29,7 +29,11 @@ export function prepareItems(
   const lineCount = (count: number, chars?: number) =>
     Math.max(1, Math.ceil(chars ? chars / capacity : count * factor))
   const items: LayoutItem[] = [
-    { item: { type: 'header', key: 'header', meta: data.meta }, unitCount: 0, minUnits: 1 },
+    {
+      item: { type: 'header', key: 'header', meta: data.meta, heightsMm: config?.headerHeightsMm },
+      unitCount: 0,
+      minUnits: 1,
+    },
   ]
   let pending: Choice[] = []
   let forced = false

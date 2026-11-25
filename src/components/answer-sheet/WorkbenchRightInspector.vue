@@ -41,10 +41,15 @@ import type {
   AssetPosition,
   BlockType,
   GridType,
+  HeaderHeightsMm,
   HeaderMode,
   SubjectType,
 } from '@/lib/answer-sheet/types'
-import { useAnswerSheetStore } from '@/stores/answerSheet'
+import {
+  MAX_HEADER_AREA_HEIGHT_MM,
+  MIN_HEADER_AREA_HEIGHT_MM,
+  useAnswerSheetStore,
+} from '@/stores/answerSheet'
 
 defineProps<{
   font: SheetFont
@@ -56,6 +61,19 @@ const emit = defineEmits<{
 }>()
 
 const store = useAnswerSheetStore()
+const headerHeightFields = [
+  { key: 'notice', label: '注意事项高度（毫米）' },
+  { key: 'idArea', label: '条码 / 考号区高度（毫米）' },
+] as const
+
+function updateHeaderHeight(area: keyof HeaderHeightsMm, event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.validity.badInput) {
+    store.setHeaderAreaHeight(area, input.value === '' ? undefined : input.valueAsNumber)
+  }
+  input.value = String(store.layoutConfig.headerHeightsMm?.[area] ?? '')
+}
+
 const newFieldInput = ref('')
 const imageInputRef = ref<HTMLInputElement>()
 const examFileInputRef = ref<HTMLInputElement>()
@@ -830,6 +848,22 @@ function setBlockImageWidthRatio(percent: number) {
           考号填涂与手写格位数限制为 4 ~ 12 位（当前
           {{ store.semanticData.meta.idDigits ?? 10 }} 位）。
         </p>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div v-for="{ key, label } in headerHeightFields" :key="key" class="space-y-1.5">
+            <Label :for="`inspector-header-height-${key}`" class="text-xs">{{ label }}</Label>
+            <Input
+              :id="`inspector-header-height-${key}`"
+              :model-value="store.layoutConfig.headerHeightsMm?.[key] ?? ''"
+              type="number"
+              :min="MIN_HEADER_AREA_HEIGHT_MM"
+              :max="MAX_HEADER_AREA_HEIGHT_MM"
+              placeholder="自动"
+              class="h-8 text-xs"
+              @change="updateHeaderHeight(key, $event)"
+            />
+          </div>
+        </div>
 
         <!-- Subtitle -->
         <div class="space-y-1">

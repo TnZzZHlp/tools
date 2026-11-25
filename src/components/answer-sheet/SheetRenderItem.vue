@@ -14,7 +14,12 @@ defineProps<{
 }>()
 </script>
 <template>
-  <HeaderBlock v-if="item.type === 'header'" :meta="item.meta" :column-width-mm="columnWidthMm" />
+  <HeaderBlock
+    v-if="item.type === 'header'"
+    :meta="item.meta"
+    :column-width-mm="columnWidthMm"
+    :heights-mm="item.heightsMm"
+  />
   <OmrChoiceBlock
     v-else-if="item.type === 'choices'"
     :rows="item.rows"

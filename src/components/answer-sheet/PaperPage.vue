@@ -83,7 +83,7 @@ const bottomMarkY = computed(() =>
           ? {
               right: `calc(${((profile.columns - 1) / profile.columns) * 100}% + ${profile.columnGapMm / 2 + 5}mm)`,
             }
-          : { right: `${profile.marginsMm.right}mm` }),
+          : { insetInline: `${profile.marginsMm.left}mm ${profile.marginsMm.right}mm` }),
       }"
     >
       第 {{ page }} 面 共 {{ totalPages }} 面
@@ -119,6 +119,6 @@ const bottomMarkY = computed(() =>
   font-size: 9pt;
 }
 .single-col-footer {
-  right: 12mm;
+  text-align: center;
 }
 </style>

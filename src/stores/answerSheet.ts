@@ -59,6 +59,7 @@ import type {
   BlockOverride,
   BlockType,
   DensityPreset,
+  HeaderHeightsMm,
   HeaderMode,
   PaperSize,
   PaperSpecId,
@@ -72,6 +73,9 @@ export interface WorkbenchSnapshot {
   layoutConfig: AnswerSheetLayoutConfig
   questionGroups: QuestionGroup[]
 }
+
+export const MIN_HEADER_AREA_HEIGHT_MM = 20
+export const MAX_HEADER_AREA_HEIGHT_MM = 90
 
 const MAX_HISTORY = 50
 let globalAutoSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -367,6 +371,8 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
       globalLineHeightMm: paperOv?.globalLineHeightMm,
       defaultCompositionCols: layoutConfig.value.defaultCompositionCols,
       maxChoicesPerColumn: layoutConfig.value.maxChoicesPerColumn,
+      noticeHeightMm: layoutConfig.value.headerHeightsMm?.notice,
+      idAreaHeightMm: layoutConfig.value.headerHeightsMm?.idArea,
       blockOverrides,
       layoutSignature,
     })
@@ -1291,6 +1297,22 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     })
   }
 
+  function setHeaderAreaHeight(area: keyof HeaderHeightsMm, height?: number) {
+    if (height !== undefined && !Number.isFinite(height)) return
+    const next =
+      height === undefined
+        ? undefined
+        : Math.min(
+            MAX_HEADER_AREA_HEIGHT_MM,
+            Math.max(MIN_HEADER_AREA_HEIGHT_MM, Math.round(height)),
+          )
+    const current = layoutConfig.value.headerHeightsMm
+    if (current?.[area] === next) return
+    applyMutation(() => {
+      layoutConfig.value.headerHeightsMm = { ...current, [area]: next }
+    })
+  }
+
   function setMaxChoicesPerColumn(value?: number) {
     if (value !== undefined && !isChoicesPerColumn(value)) return
     if (layoutConfig.value.maxChoicesPerColumn === value) return
@@ -2064,6 +2086,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     setCustomPaperSize,
     setDensityPreset,
     setMaxChoicesPerColumn,
+    setHeaderAreaHeight,
     setGlobalLineHeightMm,
     setShowBoundaryWarning,
     setDefaultCompositionConfig,
