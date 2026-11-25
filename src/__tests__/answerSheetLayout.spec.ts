@@ -23,6 +23,37 @@ it('fills objective questions down before moving right at the configured column 
     ['1', '3', '5'],
     ['2', '4', '6'],
   ])
+  expect(choices?.type === 'choices' && choices.rows[2]).toMatchObject({
+    bandStart: true,
+    gapBefore: true,
+    entries: [
+      { block: { displayNo: '10' } },
+      { block: { displayNo: '12' } },
+      { block: { displayNo: '18' } },
+      { block: { displayNo: '20' } },
+    ],
+  })
+})
+
+it('automatically fits 45 four-option questions in five continuous columns', () => {
+  const sheet = {
+    ...previewSamples.chinese,
+    blocks: Array.from({ length: 45 }, (_, i) => ({
+      id: `q${i + 1}`,
+      type: 'omr_choice' as const,
+      displayNo: String(i + 1),
+      numericOrder: i + 1,
+      groupTag: i < 15 ? '第一组' : '第二组',
+      options: ['A', 'B', 'C', 'D'],
+      isMultiple: false,
+    })),
+  }
+  const items = prepareItems(sheet, PAPER_PROFILES.A4_1COL, initialSettings())
+  const choices = items.find(({ item }) => item.type === 'choices')?.item
+  expect(
+    choices?.type === 'choices' &&
+      choices.rows.map(({ entries }) => entries.map(({ block }) => Number(block.displayNo))),
+  ).toEqual(Array.from({ length: 9 }, (_, i) => [1, 10, 19, 28, 37].map((no) => no + i)))
 })
 
 it('keeps two writing lines together and fits a two-line spill after reducing line height', () => {

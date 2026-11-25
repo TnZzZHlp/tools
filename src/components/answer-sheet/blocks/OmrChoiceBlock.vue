@@ -65,7 +65,7 @@ function rowEntriesWithColumns(row: ChoiceRow) {
   padding-bottom: 0;
 }
 .group-start {
-  padding-top: 1.8mm;
+  padding-top: 5mm;
 }
 .question {
   min-width: 0;

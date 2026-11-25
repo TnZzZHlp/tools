@@ -402,13 +402,14 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     const { columns: weekendCols, rows } = choiceRows(weekendChoices, 179.7, 2)
     expect(weekendCols).toBe(5)
     expect(rows.map((row) => row.entries.map((e) => e.block.displayNo))).toEqual([
-      ['1', '7', '15', '24'],
-      ['2', '10', '19', '25'],
-      ['3', '11', '22', '26'],
-      ['6', '12', '23', '27'],
-      ['28', '31', '34', '37', '40'],
-      ['29', '32', '35', '38', '41'],
-      ['30', '33', '36', '39'],
+      ['1', '15', '28', '36'],
+      ['2', '19', '29', '37'],
+      ['3', '22', '30', '38'],
+      ['6', '23', '31', '39'],
+      ['7', '24', '32', '40'],
+      ['10', '25', '33', '41'],
+      ['11', '26', '34'],
+      ['12', '27', '35'],
     ])
 
     const hubeiStyleChoices: Choice[] = [
