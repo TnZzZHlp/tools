@@ -143,6 +143,7 @@ export interface AnswerSheetLayoutConfig {
   showBoundaryWarning?: boolean
   defaultCompositionWords?: number
   defaultCompositionCols?: number
+  maxChoicesPerColumn?: number
   resolvedIssueKeys?: string[]
   perPaperOverrides: Record<PaperSpecId, PaperOverrides>
 }

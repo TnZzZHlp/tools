@@ -29,6 +29,7 @@ import {
 } from '@/lib/answer-sheet/draft'
 import { inferSubjectFromText, isPdf, parsePdfByPage } from '@/lib/answer-sheet/pdfPipeline'
 import type { OcrPage } from '@/lib/answer-sheet/pdfPipelineTypes'
+import { isChoicesPerColumn } from '@/lib/answer-sheet/layout/flow'
 import type { PaginatedSheetModel } from '@/lib/answer-sheet/layout/model'
 import { captureQuestionReview } from '@/lib/answer-sheet/layout/reviewCapture'
 import { PAPER_PROFILES, type PaperProfile } from '@/lib/answer-sheet/paper'
@@ -365,6 +366,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
       density: layoutConfig.value.densityPreset,
       globalLineHeightMm: paperOv?.globalLineHeightMm,
       defaultCompositionCols: layoutConfig.value.defaultCompositionCols,
+      maxChoicesPerColumn: layoutConfig.value.maxChoicesPerColumn,
       blockOverrides,
       layoutSignature,
     })
@@ -1289,6 +1291,14 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     })
   }
 
+  function setMaxChoicesPerColumn(value?: number) {
+    if (value !== undefined && !isChoicesPerColumn(value)) return
+    if (layoutConfig.value.maxChoicesPerColumn === value) return
+    applyMutation(() => {
+      layoutConfig.value.maxChoicesPerColumn = value
+    })
+  }
+
   function setGlobalLineHeightMm(heightMm?: number) {
     const spec = layoutConfig.value.activePaperSpec
     applyMutation(() => {
@@ -2053,6 +2063,7 @@ export const useAnswerSheetStore = defineStore('answerSheetWorkbench', () => {
     switchPaperSpec,
     setCustomPaperSize,
     setDensityPreset,
+    setMaxChoicesPerColumn,
     setGlobalLineHeightMm,
     setShowBoundaryWarning,
     setDefaultCompositionConfig,

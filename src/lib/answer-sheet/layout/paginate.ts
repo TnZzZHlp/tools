@@ -62,6 +62,9 @@ export function paginate(
       while (to < entry.unitCount && heightAt(from, to + 1) <= available() + EPSILON) to++
       if (entry.unitCount - to < entry.minUnits && to < entry.unitCount)
         to = Math.max(from, entry.unitCount - entry.minUnits)
+      if (entry.item.type === 'choices' && to < entry.unitCount) {
+        while (to > from && !entry.item.rows[to]?.bandStart) to--
+      }
       const required = Math.min(entry.minUnits, entry.unitCount - from)
       if (to - from < required) {
         if (!column.entries.length) throw new Error(`题块 ${entry.item.key} 无法在单栏内拆分。`)

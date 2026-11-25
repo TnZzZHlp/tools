@@ -36,7 +36,12 @@ export function prepareItems(
   function flushChoices() {
     if (!pending.length) return
     const key = `choices:${pending[0]?.id}`
-    const { rows } = choiceRows(pending, widthMm, settings.blockPaddingMm)
+    const { rows } = choiceRows(
+      pending,
+      widthMm,
+      settings.blockPaddingMm,
+      config?.maxChoicesPerColumn,
+    )
     items.push({
       item: { type: 'choices', key, rows },
       forceBreak: forced,

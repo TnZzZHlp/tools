@@ -6,6 +6,7 @@ export type Mixed = Extract<AnswerSheetBlock, { type: 'mixed_inline' }>
 
 export interface ChoiceRow {
   entries: { block: Choice; span: number; colStart?: number }[]
+  bandStart: boolean
   gapBefore: boolean
 }
 

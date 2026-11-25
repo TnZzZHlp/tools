@@ -1,8 +1,29 @@
 import { expect, it } from 'vitest'
+import { createDefaultLayoutConfig } from '@/lib/answer-sheet/draft'
 import { paginate } from '@/lib/answer-sheet/layout/paginate'
 import { initialSettings, prepareItems } from '@/lib/answer-sheet/layout/prepare'
 import { PAPER_PROFILES } from '@/lib/answer-sheet/paper'
 import { previewSamples } from '@/lib/answer-sheet/preview'
+
+it('fills objective questions down before moving right at the configured column limit', () => {
+  const config = { ...createDefaultLayoutConfig('A4_1COL'), maxChoicesPerColumn: 2 }
+  const items = prepareItems(
+    previewSamples.chinese,
+    PAPER_PROFILES.A4_1COL,
+    initialSettings(config),
+    config,
+  )
+  const choices = items.find(({ item }) => item.type === 'choices')?.item
+  expect(
+    choices?.type === 'choices' &&
+      choices.rows
+        .slice(0, 2)
+        .map(({ entries }) => entries.slice(0, 3).map(({ block }) => block.displayNo)),
+  ).toEqual([
+    ['1', '3', '5'],
+    ['2', '4', '6'],
+  ])
+})
 
 it('keeps two writing lines together and fits a two-line spill after reducing line height', () => {
   const sheet = {

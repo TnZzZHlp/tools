@@ -33,6 +33,7 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { SHEET_FONTS, type SheetFont } from '@/lib/answer-sheet/fonts'
+import { MAX_CHOICES_PER_COLUMN } from '@/lib/answer-sheet/layout/flow'
 import { getColumnSizeMm } from '@/lib/answer-sheet/paper'
 import { BLOCK_TYPE_LABELS, SUBJECT_LABELS } from '@/lib/answer-sheet/preview'
 import type {
@@ -855,6 +856,30 @@ function setBlockImageWidthRatio(percent: number) {
             <SelectContent>
               <SelectItem v-for="(entry, key) in SHEET_FONTS" :key="key" :value="key">
                 {{ entry.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="space-y-1.5">
+          <Label for="inspector-max-choices-per-column" class="text-xs">客观题每列最多题数</Label>
+          <Select
+            :model-value="String(store.layoutConfig.maxChoicesPerColumn ?? 'auto')"
+            @update:model-value="
+              (val) => store.setMaxChoicesPerColumn(val === 'auto' ? undefined : Number(val))
+            "
+          >
+            <SelectTrigger id="inspector-max-choices-per-column" class="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">自动</SelectItem>
+              <SelectItem
+                v-for="count in MAX_CHOICES_PER_COLUMN"
+                :key="count"
+                :value="String(count)"
+              >
+                {{ count }} 题
               </SelectItem>
             </SelectContent>
           </Select>

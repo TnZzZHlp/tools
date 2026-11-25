@@ -368,7 +368,7 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     expect(wrapper.text()).toContain('质检与总分核查')
   })
 
-  it('matches reference PDF styling: vertical 4-row OMR columns,顿号 label punctuation, and 10-column ID grid table', async () => {
+  it('matches reference PDF styling: column-first OMR layout, 顿号 label punctuation, and ID grid table', async () => {
     // 1. Verify HeaderBlock in barcode mode & id_grid mode
     const barcodeHeader = mount(HeaderBlock, {
       props: {
@@ -396,29 +396,21 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     const labelSub = mount(BlockLabel, { props: { displayNo: '13(1)', score: 4 } })
     expect(labelSub.text()).toBe('13(1)、(4分)')
 
-    // 3. Verify OMR choiceRows strictly keeps consecutive question numbers in each vertical column
     const weekendChoices = previewSamples.weekend.blocks.filter(
       (b): b is Choice => b.type === 'omr_choice',
     )
     const { columns: weekendCols, rows } = choiceRows(weekendChoices, 179.7, 2)
     expect(weekendCols).toBe(5)
-    // Every vertical column in Group 1 has strictly consecutive question numbers
-    // and each vertical column group's width equals the widest question in that group:
-    // Col 1: [1, 2, 3] (span 1), Col 2: [6, 7] (span 1), Col 3-4: [10, 11, 12] (entire group has span 2!), Col 5: [15] (span 1)
-    // Next band: Col 1: [19], Col 2: [22, 23, 24], Col 3: [25, 26, 27]
-    expect(rows[0]?.entries.map((e) => e.block.displayNo)).toEqual(['1', '6', '10', '15'])
-    expect(rows[1]?.entries.map((e) => e.block.displayNo)).toEqual(['2', '7', '11'])
-    expect(rows[2]?.entries.map((e) => e.block.displayNo)).toEqual(['3', '12'])
-    expect(rows[3]?.entries.map((e) => e.block.displayNo)).toEqual(['19', '22', '25'])
-    expect(rows[4]?.entries.map((e) => e.block.displayNo)).toEqual(['23', '26'])
-    expect(rows[5]?.entries.map((e) => e.block.displayNo)).toEqual(['24', '27'])
-    // Group 2 ("选择题综合", consecutive 28..41) fits into 5 horizontal columns with 3 consecutive rows per column:
-    expect(rows[6]?.entries.map((e) => e.block.displayNo)).toEqual(['28', '31', '34', '37', '40'])
-    expect(rows[7]?.entries.map((e) => e.block.displayNo)).toEqual(['29', '32', '35', '38', '41'])
-    expect(rows[8]?.entries.map((e) => e.block.displayNo)).toEqual(['30', '33', '36', '39'])
+    expect(rows.map((row) => row.entries.map((e) => e.block.displayNo))).toEqual([
+      ['1', '7', '15', '24'],
+      ['2', '10', '19', '25'],
+      ['3', '11', '22', '26'],
+      ['6', '12', '23', '27'],
+      ['28', '31', '34', '37', '40'],
+      ['29', '32', '35', '38', '41'],
+      ['30', '33', '36', '39'],
+    ])
 
-    // Verify Hubei 10-question set (1..3, 6..7, 10..12, 15, 18) splits into consecutive vertical columns
-    // where the [10, 11, 12] group takes the width of question 10 (span 2) for all 3 rows in that group:
     const hubeiStyleChoices: Choice[] = [
       {
         id: 'h1',
@@ -502,19 +494,13 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
       },
     ]
     const hubeiMatrix = choiceRows(hubeiStyleChoices, 179.7, 2)
-    expect(hubeiMatrix.rows).toHaveLength(4)
-    expect(hubeiMatrix.rows[0]?.entries.map((e) => e.block.displayNo)).toEqual([
-      '1',
-      '6',
-      '10',
-      '15',
+    expect(hubeiMatrix.rows.map((row) => row.entries.map((e) => e.block.displayNo))).toEqual([
+      ['1', '6', '11', '18'],
+      ['2', '7', '12'],
+      ['3', '10', '15'],
     ])
-    expect(hubeiMatrix.rows[1]?.entries.map((e) => e.block.displayNo)).toEqual(['2', '7', '11'])
-    expect(hubeiMatrix.rows[2]?.entries.map((e) => e.block.displayNo)).toEqual(['3', '12'])
-    expect(hubeiMatrix.rows[0]?.entries.find((e) => e.block.displayNo === '10')?.span).toBe(2)
-    expect(hubeiMatrix.rows[1]?.entries.find((e) => e.block.displayNo === '11')?.span).toBe(2)
-    expect(hubeiMatrix.rows[2]?.entries.find((e) => e.block.displayNo === '12')?.span).toBe(2)
-    expect(hubeiMatrix.rows[0]?.entries.find((e) => e.block.displayNo === '15')?.colStart).toBe(5)
+    expect(hubeiMatrix.rows.map((row) => row.entries[1]?.span)).toEqual([2, 2, 2])
+    expect(hubeiMatrix.rows[0]?.entries.find((e) => e.block.displayNo === '18')?.colStart).toBe(5)
 
     // 4. Verify Gaokao printing font stack is default
     expect(DEFAULT_SHEET_FONT).toBe('gaokaoPrint')
@@ -574,7 +560,6 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     })
     expect(open16.text()).toBe('16(2)②、')
 
-    // 4. Choice layout: 1..15 consecutive integers + 18(1) -> packs into 4 rows total (5 columns wide: [1..4], [5..8], [9..12], [13..15], [18(1)])
     const bioChoices: Choice[] = [
       ...Array.from({ length: 15 }, (_, i) => ({
         id: `b${i + 1}`,
@@ -595,13 +580,12 @@ describe('Answer Sheet Workbench Store & Step 07 Interactions', () => {
     ]
     const bioMatrix = choiceRows(bioChoices, 179.7, 2)
     expect(bioMatrix.rows).toHaveLength(4)
-    expect(bioMatrix.rows[0]?.entries.map((e) => e.block.displayNo)).toEqual([
-      '1',
-      '5',
-      '9',
-      '13',
+    expect(bioMatrix.rows[0]?.entries.map((e) => e.block.displayNo)).toEqual(['1', '5', '9', '13'])
+    expect(bioMatrix.rows[3]?.entries.map((e) => e.block.displayNo)).toEqual([
+      '4',
+      '8',
+      '12',
       '18(1)',
     ])
-    expect(bioMatrix.rows[3]?.entries.map((e) => e.block.displayNo)).toEqual(['4', '8', '12'])
   })
 })

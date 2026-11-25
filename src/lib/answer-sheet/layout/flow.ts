@@ -1,9 +1,16 @@
 import type { Choice, ChoiceRow, Mixed, Writing } from './model'
 
+export const MAX_CHOICES_PER_COLUMN = 12
+
+export function isChoicesPerColumn(value: number): boolean {
+  return Number.isInteger(value) && value >= 1 && value <= MAX_CHOICES_PER_COLUMN
+}
+
 export function choiceRows(
   blocks: Choice[],
   columnWidthMm: number,
   paddingMm = 2,
+  maxChoicesPerColumn?: number,
 ): { columns: number; rows: ChoiceRow[] } {
   const usable = Math.max(1, columnWidthMm - 2 * paddingMm - 0.6)
   // Minimum track width for a standard 4-option choice group: ~5mm number + 4 * 4.4mm bubbles + gaps = ~29.5mm
@@ -34,40 +41,6 @@ export function choiceRows(
     }
   }
 
-  // Split into runs of strictly consecutive numericOrder (curr.numericOrder === prev.numericOrder + 1)
-  // and consistent plain-integer displayNo (so e.g. 1..15 stay together, while 18(1) is separate).
-  // Also tolerate duplicate/weird numericOrder when displayNo is an integer like "1", "2", "3"..."15".
-  function parsePlainInt(text: string): number | null {
-    const m = text.trim().match(/^(\d+)$/)
-    return m ? Number(m[1]) : null
-  }
-
-  function buildConsecutiveRuns(group: Choice[]): Choice[][] {
-    const runs: Choice[][] = []
-    for (const block of group) {
-      const currentRun = runs[runs.length - 1]
-      const prevBlock = currentRun?.[currentRun.length - 1]
-      if (!currentRun || !prevBlock) {
-        runs.push([block])
-        continue
-      }
-      const prevInt = parsePlainInt(prevBlock.displayNo)
-      const currInt = parsePlainInt(block.displayNo)
-      const isConsecutive =
-        prevInt !== null && currInt !== null
-          ? currInt === prevInt + 1
-          : prevInt === null &&
-            currInt === null &&
-            block.numericOrder === prevBlock.numericOrder + 1
-      if (!isConsecutive) {
-        runs.push([block])
-      } else {
-        currentRun.push(block)
-      }
-    }
-    return runs
-  }
-
   for (const [groupIdx, group] of groups.entries()) {
     const spanMap = new Map<string, number>()
     for (const block of group) {
@@ -76,17 +49,10 @@ export function choiceRows(
       spanMap.set(block.id, span)
     }
 
-    const runs = buildConsecutiveRuns(group)
-    const maxRunLen = runs.reduce((m, r) => Math.max(m, r.length), 1)
-
     const packWithHeight = (bandHeight: number): ChoiceRow[] => {
       const chunks: Choice[][] = []
-      for (const run of runs) {
-        // When a consecutive run is long (e.g. 1..15) and splits into columns of bandHeight,
-        // distribute items evenly only if bandHeight divides cleanly or keep standard bandHeight vertical slices
-        for (let i = 0; i < run.length; i += bandHeight) {
-          chunks.push(run.slice(i, i + bandHeight))
-        }
+      for (let i = 0; i < group.length; i += bandHeight) {
+        chunks.push(group.slice(i, i + bandHeight))
       }
 
       const resultRows: ChoiceRow[] = []
@@ -120,10 +86,11 @@ export function choiceRows(
           cIdx++
         }
 
-        for (const entries of bandEntries) {
+        for (const [rowIndex, entries] of bandEntries.entries()) {
           if (!entries.length) continue
           resultRows.push({
             entries,
+            bandStart: rowIndex === 0,
             gapBefore: groupIdx > 0 && isFirstRowOfGroup,
           })
           isFirstRowOfGroup = false
@@ -132,9 +99,14 @@ export function choiceRows(
       return resultRows
     }
 
+    if (maxChoicesPerColumn !== undefined && isChoicesPerColumn(maxChoicesPerColumn)) {
+      rows.push(...packWithHeight(Math.min(maxChoicesPerColumn, group.length)))
+      continue
+    }
+
     let bestRows = packWithHeight(4)
     for (const h of [3, 5]) {
-      if (h > Math.max(3, maxRunLen)) continue
+      if (h > group.length) continue
       const candidate = packWithHeight(h)
       if (candidate.length < bestRows.length) {
         bestRows = candidate
