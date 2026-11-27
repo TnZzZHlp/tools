@@ -34,7 +34,7 @@ struct Args {
     copy_unchanged: bool,
     #[arg(long, help = "Replace corrected files in place without making backups")]
     in_place: bool,
-    #[arg(short = 'j', long, value_parser = clap::value_parser!(u8).range(1..=64), help = "Worker count (default: up to 4)")]
+    #[arg(short = 'j', long, value_parser = clap::value_parser!(u8).range(1..=64), help = "Worker count (default: all available threads)")]
     jobs: Option<u8>,
     #[arg(long, default_value_t = 0.85, value_parser = parse_confidence, help = "Minimum model score to accept a direction")]
     confidence: f32,
@@ -61,9 +61,10 @@ pub fn run() -> Result<bool> {
         None if args.in_place => Output::InPlace,
         None => Output::Preview,
     };
-    let jobs = args.jobs.map(usize::from).unwrap_or_else(|| {
-        std::thread::available_parallelism().map_or(1, |count| count.get().min(4))
-    });
+    let jobs = args
+        .jobs
+        .map(usize::from)
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |count| count.get()));
     batch::run(
         &input,
         &output,
